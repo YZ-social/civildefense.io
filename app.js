@@ -1,10 +1,11 @@
-var express = require('express');
-var path = require('path');
-var logger = require('morgan');
-var indexRouter = require('./routes/index');
+const express = require('express');
+const path = require('path');
+const logger = require('morgan');
+const addIndexRoutes = require('./routes/index');
+const app = express();
+const expressWs = require('express-ws')(app);
 
 process.title = 'yz.social';
-var app = express();
 app.use(logger('dev'));
 
 // No need:
@@ -13,8 +14,8 @@ app.use(logger('dev'));
 //app.use(express.urlencoded({ extended: false }));
 //app.use(cookieParser());
 
-app.use('/', indexRouter);
 app.use(express.static(path.join(__dirname, 'public')));
+addIndexRoutes(app);
 
 module.exports = app;
 

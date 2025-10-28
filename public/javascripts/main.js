@@ -40,10 +40,43 @@ document.getElementById('qrButton').onclick = () => { // generate (and display) 
 }
 qrDisplayContainer.onclick = () => qrDisplayContainer.classList.toggle('hidden', true);
 
+function delay(ms = 1e3) {
+  new Promise(resolve => setTimeout(resolve, ms));
+}
+
 let positionWatch;
+function initializeGeolocation() {
+  const {geolocation} = navigator;  // Get user's geolocation
+  geolocation.clearWatch(positionWatch);
+  positionWatch = geolocation.watchPosition(
+    position => {
+      const {latitude, longitude} = position.coords;
+      updateLocation(latitude, longitude);
+    }, async error => {
+      console.warn(`Gelocation code ${error.code}.`);
+      if (navigator.onLine) {
+	if (error.code === GeolocationPositionError.PERMISSION_DENIED) {
+	  showMessage('Location access denied. Using default location.', 'error', error);
+	  defaultInit();
+	} else {
+	  geolocation.clearWatch(positionWatch);
+	  await delay();
+	  initializeGeolocation();
+	}
+      } else {
+	showMessage('No network connection.', 'error');
+      }
+    }, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    }
+  );
+}
+
 async function initialize(doDelay) { // Setup everything, or reset things.
   showMessage('');
-  if (doDelay) await new Promise(resolve => setTimeout(resolve, 1e3)); // For online/visibility handlers.
+  if (doDelay) await delay(); // For online/visibility handlers.
 
   console.log('initializing', document.visibilityState, navigator.onLine ? 'online' : 'offline');
   if (document.visibilityState !== 'visible') return;
@@ -53,26 +86,8 @@ async function initialize(doDelay) { // Setup everything, or reset things.
   }
 
   setupNetwork(); // No-op if already open.
-  const {geolocation} = navigator;  // Get user's geolocation
-  if (geolocation) {
-    geolocation.clearWatch(positionWatch);
-    positionWatch = geolocation.watchPosition(
-      position => {
-	const {latitude, longitude} = position.coords;
-	updateLocation(latitude, longitude);
-      }, error => {
-	if (navigator.onLine) {
-	  showMessage('Location access denied. Using default location.', 'error', error);
-	  defaultInit();
-	} else {
-	  showMessage('No network connection.', 'error');
-	}
-      }, {
-	enableHighAccuracy: true,
-	timeout: 10000,
-	maximumAge: 0
-      }
-    );
+  if ('geolocation' in navigator) {
+    initializeGeolocation();
   } else {
     showMessage('Geolocation not supported. Using default location.', 'error', 'fail');
     defaultInit();
