@@ -14,6 +14,7 @@ app.use(logger('dev'));
 //app.use(express.urlencoded({ extended: false }));
 //app.use(cookieParser());
 
+app.use('/images', express.static(path.join(__dirname, 'public/images'), {maxAge: '1d', immutable: true}));
 app.use(express.static(path.join(__dirname, 'public')));
 addIndexRoutes(app);
 
