@@ -1,5 +1,6 @@
+import { s2 } from 'https://esm.sh/s2js';
 import { publish, subscribe } from './pubSub.js';
-import { getContainingCells, findCoverCellsByCenterAndPoint} from './s2.js';
+import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 
 export let map; // Leaflet map object.
 const ttl = 10 * 10e3;
@@ -11,7 +12,7 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
     infoBanner.style.display = 'none';
     return;
   }
-  
+
   infoBanner.style = '';
   infoBanner.textContent = message;
   infoBanner.className = `info-banner ${type}`;
@@ -21,65 +22,90 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   }
 }
 
-let markers = [];
+let markers = []; // array of { marker, key }
 const icon = L.icon({iconUrl: "images/Achtung.png", iconSize: [40, 35]});
-export function showMarker({position, expiration}) { // Add marker at position, completing a fade out at expiration.
+export function showMarker({position, expiration, _level}, key) { // Add marker at position, completing a fade out at expiration.  key is the subscription key that triggered the call.
   const now = Date.now(),
         remaining = expiration - now;
   if (remaining < 0) return;  // expired.
   const marker = L.marker(position, {icon}).addTo(map);
   // TODO: use css transitions?
-  const seconds = remaining,  // milliseconds to fade
-        interval = 200, // milliseconds to adjustment
-        fade = interval / ttl; // Change in opacity each adjustment.
-  let opacity = remaining / ttl;  // We do not start at one it was reported some time ago.
+  const interval = 1000, // milliseconds per adjustment (a tiny increment at a time)
+        fade = interval / ttl; // Change in opacity per adjustment.
+  let opacity = remaining / ttl; // Do not start at 1 if it was reported some time ago.
+  marker.setOpacity(opacity);
   const timer = setInterval(() => {
     marker.setOpacity(opacity -= fade);
     if (opacity > 0) return;
     clearInterval(timer);
     marker.removeFrom(map);
-    markers = markers.filter(m => m != marker);
+    markers = markers.filter(mObj => mObj.marker !== marker);
   }, interval);
 
-  markers.push(marker); // TODO: use a weak map to hold against gc instead?
+  markers.push({ marker, key }); // TODO: use a weak map to hold against gc instead?
 }
 
-let subscriptions = [];
+let subscriptions = []; // array of stringy keys s2:<cellID>
 function updateSubscriptions() { // Update current subscriptions to the new map bounds.
   const center = map.getCenter();
   const bounds = map.getBounds();
   const northEast = bounds.getNorthEast();
-  const cells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng);
-  for (const cell of subscriptions) cells.includes(cell) || subscribe(cell, null); 
-  for (const cell of cells) subscriptions.includes(cell) || subscribe(cell, showMarker);
-  subscriptions = cells;
+  const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
+  const newKeys = newCells.map(cell => `s2:${cell}`);
+
+  // For each entry in the new subscription set that was not previously subscribed,
+  // subscribe now.
+  for (const key of newKeys) subscriptions.includes(key) || subscribe(key, showMarker);
+
+  // For each existing subscription, if it does not appear in the new set then
+  // unsubscribe, and after a small pause (to allow the new subscriptions' stickies
+  // to arrive) remove all markers that were placed by that sub.
+  for (const key of subscriptions) {
+    if (!newKeys.includes(key)) {
+      subscribe(key, null);
+      const newMarkers = [];
+      for (const mObj of markers) {
+        const { marker, key: mKey } = mObj;
+        if (mKey === key) {
+          // first fade, then after a while remove.  TODO: smooth this.
+          marker.setOpacity(marker.options.opacity / 2);
+          setTimeout(() => marker.removeFrom(map), 1000);
+        }
+        else newMarkers.push(mObj);
+      }
+      markers = newMarkers;
+    }
+  }
+
+  subscriptions = newKeys;
 }
 
 var yourLocation;
 export function initMap(lat, lng) { // Set up appropriate zoomed initial map and handlers for this position.
   // Initialize map centered on user's location
   map = L.map('map').setView([lat, lng], 14);
-  
+
   // Add OpenStreetMap tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
     maxZoom: 19
   }).addTo(map);
-  
+
   // Add a marker at user's current location
   yourLocation = L.marker([lat, lng])
     .addTo(map)
     .bindPopup('Your Location')
     .openPopup();
 
-  // Add click event to note postion
+  // Add click event to note position
   map.on('click', function(e) {
     const { lat, lng } = e.latlng;
     const position = [lat, lng];
     //showMarker({position, expiration: Date.now() + ttl}); // To debug by showing immediately.
     const cells = getContainingCells(lat, lng);
     for (const cell of cells) {
-      publish(cell, {position, expiration: Date.now() + ttl}, ttl);      
+      // add _level for debug only
+      publish(`s2:${cell}`, {position, _level: s2.cellid.level(cell), expiration: Date.now() + ttl}, ttl);
     }
   });
 

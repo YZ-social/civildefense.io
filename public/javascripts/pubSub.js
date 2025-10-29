@@ -11,7 +11,7 @@ export async function setupNetwork() { // Establish or re-establish a connection
     console.log('already connected');
     return;
   }
-  connection = WEBSOCKET_URI ? 
+  connection = WEBSOCKET_URI ?
     new WebSocket(WEBSOCKET_URI) :
     { // If no WEBSOCKET_URI, operate locally with an object that has a send() method
       send(string) {
@@ -43,12 +43,18 @@ export async function setupNetwork() { // Establish or re-establish a connection
     const {key, data} = JSON.parse(event.data);
     const handler = handlers[key];
     if (!handler) return;
-    const index = inFlight.indexOf(data.messageTag); // If it is ours inFlight, just consume it.
-    if (index >= 0) {
-      inFlight.splice(index, 1);
-      return;
+
+    // If the publish was tagged for filtering by its publisher, check to see if
+    // the publisher was here.
+    if (data.messageTag) {
+      const index = inFlight.indexOf(data.messageTag);
+      if (index >= 0) {
+        inFlight.splice(index, 1);
+        return;
+      }
     }
-    handler(data);
+
+    handler(data, key);
   };
 
   for (const key in handlers) { // If this is reconnecting, re-establish the subscriptions on the new socket.
@@ -60,13 +66,19 @@ const inFlight = [];
 export async function publish(key, data, timeToLive = 10 * 60e3) { // Publish data to subscribers of key.
   await promise;
   key = key.toString();
-  const messageTag = uuid4(); // Added to data to be round-tripped. Not a user tag!
-  const message = {method: 'publish', key, data: {messageTag, ...data}, timeToLive};
 
-  // Make note of inFlight uuid and execute immediately.
-  inFlight.push(messageTag);
-  handlers[key]?.(data);
+  // Iff this client has a handler for this key, evaluate it immediately and tag the
+  // publish with a recognizable value so that we can ignore its receipt.
+  const publishData = { ...data };
+  if (handlers[key]) {
+    const messageTag = uuid4(); // Added to data to be round-tripped. Not a user tag!
+    publishData.messageTag = messageTag;
+    // Make note of inFlight uuid and execute immediately.
+    inFlight.push(messageTag);
+    handlers[key](data, key);
+  }
 
+  const message = {method: 'publish', key, data: publishData, timeToLive};
   connection.send(JSON.stringify(message));
 }
 const renewals = {};
