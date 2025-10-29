@@ -6,11 +6,25 @@
 // But that isn't ready just yet. So temporarily, the DHT pub/sub is handled in-memory
 // here, communicating through WebSocket for the whole client session.
 
+// Each client is identified by its websocket connection.  When a client subscribes to
+// a key, we ensure that its websocket appears in the set maintained for that key.
+// When a publish event happens for a given key, we signal all the websockets in that
+// key's set.  At that point we also add the published event to a set of "sticky"
+// publishes for the key, with a timed removal set up for the future.  Any client
+// newly subscribing to a key is sent the key's current set of sticky values.
+
+// When a client's user moves or resizes the map, the set of keys to subscribe to is
+// recomputed.  The client unsubscribes from any keys it is no longer interested in,
+// and subscribes to new keys of interest.  Because each event is published at a wide
+// range of scales, it is likely to be a frequent occurrence that even a major move
+// or rescale results in the map showing exactly the same events as before, albeit
+// supplied through different subscriptions.
+
 const SUBSCRIPTION_TIMEOUT = 60 * 60e3; // Delete after an hour. Must be renewed by app.
 const PUBLISH_TIMEOUT = 10 * 60e3;      // Delete after 10 minutes.
 
 const subscriptions = {}; // key => ws. Entries purged after SUBSCRIPTION_TIMEOUT.
-const sticky = {};        // key => data. Entries purshed after PUBLISH_TIMEOUT.
+const sticky = {};        // key => data. Entries purged after PUBLISH_TIMEOUT.
 
 const addRoutes = app => {
   app.ws('/ws', function(ws, req, next) {
