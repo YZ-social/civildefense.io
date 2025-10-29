@@ -1,9 +1,11 @@
-const express = require('express');
 const path = require('path');
+const express = require('express');
+const expressWs = require('express-ws');
 const logger = require('morgan');
-const addIndexRoutes = require('./routes/index');
 const app = express();
-const expressWs = require('express-ws')(app);
+
+expressWs(app);
+const Yz = require('./routes/index'); // Must be after expressWs() call.
 
 process.title = 'yz.social';
 app.use(logger('dev'));
@@ -16,7 +18,7 @@ app.use(logger('dev'));
 
 app.use('/images', express.static(path.join(__dirname, 'public/images'), {maxAge: '1d', immutable: true}));
 app.use(express.static(path.join(__dirname, 'public')));
-addIndexRoutes(app);
+app.use('/', Yz);
 
 module.exports = app;
 

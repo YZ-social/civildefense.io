@@ -12,7 +12,6 @@
     "background": "npm stop; (npm start 1>server.log 2>&1 &); sleep 1"
   },
   "dependencies": {
-    "debug": "~2.6.9",
     "express": "^4.21.2",
     "express-ws": "^5.0.2",
     "morgan": "^1.10.1",

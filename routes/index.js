@@ -1,3 +1,5 @@
+var express = require('express');
+var router = express.Router();
 
 // The DHT runs a hook here to connect nodes to each other, which uses WebSockets during
 // the connection and then gets out of the way.
@@ -26,60 +28,59 @@ const PUBLISH_TIMEOUT = 10 * 60e3;      // Delete after 10 minutes.
 const subscriptions = {}; // key => ws. Entries purged after SUBSCRIPTION_TIMEOUT.
 const sticky = {};        // key => data. Entries purged after PUBLISH_TIMEOUT.
 
-const addRoutes = app => {
-  app.ws('/ws', function(ws, req, next) {
-    // no on('connection') needed; connection is already made
-    function deleteFromKeySubs(key, keySubs = subscriptions[key]) {
-      if (!keySubs) return;
-      keySubs.delete(ws);
-      if (!keySubs.size) delete subscriptions[key];
+router.ws('/ws', function(ws, req, next) {
+  // no on('connection') needed; connection is already made
+  function deleteFromKeySubs(key, keySubs = subscriptions[key]) {
+    if (!keySubs) return;
+    keySubs.delete(ws);
+    if (!keySubs.size) delete subscriptions[key];
+  }
+  function deleteWS() {
+    for (const key in subscriptions)  {
+      deleteFromKeySubs(key);
     }
-    function deleteWS() {
-      for (const key in subscriptions)  {
-        deleteFromKeySubs(key);
+  }
+  let heartbeat = setInterval(() => ws.ping(), 10e3);
+  ws.on('message', message => {
+    const {method, key, timeToLive, data} = JSON.parse(message);
+    let keySubs = subscriptions[key] ||= new Set();
+    switch (method) {
+    case 'publish':
+      const string = JSON.stringify({key, timeToLive, data});
+      for (const ws of keySubs) {
+	ws.send(string);
       }
+      const existing = sticky[key] ||= new Set();
+      existing.add(string);
+      setTimeout(() => { existing.delete(string); if (!existing.size) delete sticky[key]; } , PUBLISH_TIMEOUT);
+      break;
+    case 'subscribe':
+      subscriptions[key].add(ws);
+      for (const string of (sticky[key] || [])) {
+	console.log('sending sticky', string);
+	ws.send(string);
+      }
+      setTimeout(() => deleteFromKeySubs(key), SUBSCRIPTION_TIMEOUT);
+      break;
+    case 'unsubscribe':
+      deleteFromKeySubs(key, keySubs);
+      break;
+    default:
+      console.error(`Unrecognized method ${method}`, message);
     }
-    let heartbeat = setInterval(() => ws.ping(), 10e3);
-    ws.on('message', message => {
-      const {method, key, timeToLive, data} = JSON.parse(message);
-      let keySubs = subscriptions[key] ||= new Set();
-      switch (method) {
-      case 'publish':
-        const string = JSON.stringify({key, timeToLive, data});
-        for (const ws of keySubs) {
-    ws.send(string);
-        }
-        const existing = sticky[key] ||= new Set();
-        existing.add(string);
-        setTimeout(() => { existing.delete(string); if (!existing.size) delete sticky[key]; } , PUBLISH_TIMEOUT);
-        break;
-      case 'subscribe':
-        subscriptions[key].add(ws);
-        for (const string of (sticky[key] || [])) {
-    console.log('sending sticky', string);
-    ws.send(string);
-        }
-        setTimeout(() => deleteFromKeySubs(key), SUBSCRIPTION_TIMEOUT);
-        break;
-      case 'unsubscribe':
-        deleteFromKeySubs(key, keySubs);
-        break;
-      default:
-        console.error(`Unrecognized method ${method}`, message);
-      }
-    });
-
-    ws.on('close', () => {
-      console.log(`Client disconnected`);
-      clearInterval(heartbeat);
-      deleteWS();
-    });
-
-    ws.on('error', error => {
-      console.error('WebSocket error:', error);
-      deleteWS();
-    });
   });
-};
 
-module.exports = addRoutes;
+  ws.on('close', () => {
+    console.log(`Client disconnected`);
+    clearInterval(heartbeat);
+    deleteWS();
+  });
+
+  ws.on('error', error => {
+    console.error('WebSocket error:', error);
+    deleteWS();
+  });
+});
+
+module.exports = router;
+
