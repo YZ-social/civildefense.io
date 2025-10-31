@@ -1,5 +1,5 @@
 import { setupNetwork } from './pubSub.js';
-import { map, showMessage, initMap, defaultInit, updateLocation } from './map.js';
+import { map, showMessage, initMap, defaultInit, updateLocation, recenterMap } from './map.js';
 
 let aboutPopup = L.popup({className: 'tipless', content: document.getElementById('aboutContent').innerHTML});
 document.getElementById('about-btn').onclick = () => {
@@ -40,6 +40,10 @@ document.getElementById('qrButton').onclick = () => { // generate (and display) 
 }
 qrDisplayContainer.onclick = () => qrDisplayContainer.classList.toggle('hidden', true);
 
+
+let lastLatitude, lastLongitude; // Can't call getCurrentPosition while watching. So set last in watch callcallback.
+document.getElementById('recenterButton').onclick = () => recenterMap(lastLatitude, lastLongitude);
+
 function delay(ms = 1e3) {
   new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -51,6 +55,8 @@ function initializeGeolocation() {
   positionWatch = geolocation.watchPosition(
     position => {
       const {latitude, longitude} = position.coords;
+      lastLatitude = latitude;
+      lastLongitude = longitude;
       updateLocation(latitude, longitude);
     }, async error => {
       console.warn(`Gelocation code ${error.code}.`);

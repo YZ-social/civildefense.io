@@ -62,21 +62,11 @@ body {
 .about-button:hover {
     transform: scale(1.1);
 }
-#qrButton {
-    background: none;
-    border: none;
-}
 
 .owl-image {
     width: 80px;
     height: auto;
     display: block;
-    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
-}
-.qr-image {
-    width: 40px;
-    height: auto;
-    background: none;
     filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
 }
 .about-container {
@@ -88,12 +78,25 @@ body {
     align-items: center;
     z-index: 400;
 }
-.qr-container {
+.button-container {
     z-index: 400;
     bottom: 0;
     left: 0;
     position: fixed;
+    display: flex;
+    gap: 15px;
 }
+.button-container button {
+    background: none;
+    border: none;
+}
+.button-image {
+    width: 40px;
+    height: auto;
+    background: none;
+    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
+}
+
 .about-text {
     color: #bf5107;
     font-family: Arial, sans-serif;

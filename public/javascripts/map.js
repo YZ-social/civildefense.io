@@ -122,7 +122,10 @@ export function updateLocation(lat, lng) {
   }
   const latLng = [lat, lng];
   yourLocation.setLatLng(latLng);
-  if (map.getBounds().contains(L.latLng(lat, lng))) return; // Do not recenter the map
+}
+
+export function recenterMap(lat, lng) {
+  const latLng = [lat, lng];
   map.panTo(latLng);
 }
 
