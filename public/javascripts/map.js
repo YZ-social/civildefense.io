@@ -83,7 +83,12 @@ function updateSubscriptions() { // Update current subscriptions to the new map 
 var yourLocation;
 export function initMap(lat, lng) { // Set up appropriate zoomed initial map and handlers for this position.
   // Initialize map centered on user's location
-  map = L.map('map').setView([lat, lng], 14);
+  map = L.map('map', { // Ensuring the default values, in case they have changed in some library version.
+    worldCopyJump: false,
+    maxBounds: null
+  })
+    .setView([lat, lng], 14)
+    .stopLocate(); // Just in case some library version initates this.
 
   // Add OpenStreetMap tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -126,7 +131,7 @@ export function updateLocation(lat, lng) {
 
 export function recenterMap(lat, lng) {
   const latLng = [lat, lng];
-  map.panTo(latLng);
+  map.flyTo(latLng);
 }
 
 export function defaultInit() { // After two seconds, show San Fransisco.
