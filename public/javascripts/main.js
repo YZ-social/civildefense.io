@@ -74,23 +74,30 @@ function initializeGeolocation() {
   );
 }
 
+let checking = false;
 async function initialize(doDelay) { // Setup everything, or reset things.
-  showMessage('');
-  if (doDelay) await delay(); // For online/visibility handlers.
+  if (checking) return;
+  checking = true;
+  try {
+    showMessage('');
+    if (doDelay) await delay(); // For online/visibility handlers.
 
-  console.log('initializing', document.visibilityState, navigator.onLine ? 'online' : 'offline');
-  if (document.visibilityState !== 'visible') return;
-  if (!navigator.onLine) {
-    showMessage('No network connection.', 'error');
-    return;
-  }
+    console.log('initializing', document.visibilityState, navigator.onLine ? 'online' : 'offline');
+    if (document.visibilityState !== 'visible') return;
+    if (!navigator.onLine) {
+      showMessage('No network connection.', 'error');
+      return;
+    }
 
-  setupNetwork(); // No-op if already open.
-  if ('geolocation' in navigator) {
-    initializeGeolocation();
-  } else {
-    showMessage('Geolocation not supported. Using default location.', 'error', 'fail');
-    defaultInit();
+    setupNetwork(); // No-op if already open.
+    if ('geolocation' in navigator) {
+      initializeGeolocation();
+    } else {
+      showMessage('Geolocation not supported. Using default location.', 'error', 'fail');
+      defaultInit();
+    }
+  } finally {
+    checking = false;
   }
 }
 document.addEventListener('visibilitychange', initialize);
