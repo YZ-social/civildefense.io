@@ -97,7 +97,7 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
   }).addTo(map);
 
   // Add a marker at user's current location
-  yourLocation = L.marker([lat, lng])
+  yourLocation = L.marker([lat, lng], {autoPanOnFocus: false})
     .addTo(map)
     .bindPopup('Your Location')
     .openPopup();
