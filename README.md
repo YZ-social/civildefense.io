@@ -15,8 +15,11 @@ Some apps of this type have been removed from mobile app stores, while others re
 Additionally, the source code is available right here so that a mirror can be hosted by anyone.
 
 The cool thing about the implementation, though, is that all the mirrors share the same data through peer-to-peer connections. There is no central database to be taken down. 
-
 **_FIXME: Current version does not work this way yet._**
+
+## The Bigger Project
+
+YZ.social [is building](./docs/YZ-Brief.pdf) a totally free and open source, fully secure, peer-to-peer network for a new class of applications. The YZ network has no servers, no central database, no single point of failure. It is a true, fully decentralized network constructed, controlled and owned by its users. YZ Alert (Wise Alert) is the first application built on the YZ network.
 
 ## Running a Mirror
 
