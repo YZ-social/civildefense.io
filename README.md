@@ -6,13 +6,17 @@ Yz.social lets you report an immediate concern to the public by tapping its loca
 The locations are shared over anonymous p2p with other users in your area, then fade away over 10 minutes. 
 There is no login and no global tracking of your Internet address or physical location.
 
+**_FIXME: The app is not ready public use just yet._**
+
 ## The Implementation
 
 Some apps of this type have been removed from mobile app stores, while others remain. This is implemented as a Web page, so that it does not have to rely on an app store.
 
 Additionally, the source code is available right here so that a mirror can be hosted by anyone.
 
-The cool thing about the implementation, though, is that all the mirrors share the same data through peer-to-peer connections. There is no central database to be taken down. _FIXME: Current version does not work this way yet._
+The cool thing about the implementation, though, is that all the mirrors share the same data through peer-to-peer connections. There is no central database to be taken down. 
+
+**_FIXME: Current version does not work this way yet._**
 
 ## Running a Mirror
 
