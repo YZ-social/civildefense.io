@@ -19,7 +19,7 @@ The cool thing about the implementation, though, is that all the mirrors share t
 
 ## The Bigger Project
 
-YZ.social [is building](./docs/YZ-Brief.pdf) a totally free and open source, fully secure, peer-to-peer network for a new class of applications. The YZ network has no servers, no central database, no single point of failure. It is a true, fully decentralized network constructed, controlled and owned by its users. YZ Alert (Wise Alert) is the first application built on the YZ network.
+YZ.social [is building](https://raw.githubusercontent.com/YZ-social/Yz.social/refs/heads/main/docs/YZ-Brief.pdf) a totally free and open source, fully secure, peer-to-peer network for a new class of applications. The YZ network has no servers, no central database, no single point of failure. It is a true, fully decentralized network constructed, controlled and owned by its users. YZ Alert (Wise Alert) is the first application built on the YZ network.
 
 ## Running a Mirror
 
