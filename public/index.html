@@ -18,7 +18,7 @@
 
     <div class="about-container">
       <div class="about-text">About</div>
-      <button id="about-btn" class="about-button">
+      <button id="aboutButton" class="about-button">
         <img src="images/YZ Owl.png" alt="YZ Owl" class="owl-image">
       </button>
     </div>
@@ -36,32 +36,35 @@
       <div id="qrDisplay"></div>
     </div>
 
-    <template id="aboutContent">
-      <h1>
-	<a href="https://github.com/YZ-social/Yz.social?tab=readme-ov-file#yzsocial" target="yz.mirror">Yz.social</a>
-	<small><small>("wise social")</small></small>
-      </h1>
-      <p>
-	<ul>
-	  <li>Report immediate concerns to the public by tapping their location on the map.</li>
-	  <li>These locations are shared over anonymous p2p with other users in your area.</li>
-	  <li>Reported concerns will fade away over 10 minutes.</li>
-	</ul>
-      </p>
-      <p>
-	A <a href="https://github.com/YZ-social/Yz.social" target="yz.mirror">mirror of this app</a>
-	can be run by anyone, in case this site is taken down.
-      </p>
-      <p>Yz.social gratefully uses open software from:<br/>
-	<a href="https://leafletjs.com/" target="yz.other">Leaflet</a>,
-	<a href="https://www.openstreetmap.org/" target="yz.other">OpenStreetMap</a>,
-	<a href="http://s2geometry.io" target="yz.other">S2Geometry</a>,
-	<a href="https://github.com/kozakdenys/qr-code-styling" target="yz.other">qr-code-styling</a>,
-	<a href="https://expressjs.com/" target="yz.other">Express.js</a>,
-	<a href="https://nodejs.org/" target="yz.other">Node.js</a>,
-	<a href="https://github.com/YZ-social" target="yz.other">Yz</a>
-      </p>
-    </template>
+    <div id="aboutContent" class="hidden">
+      <div class="about-display">
+	<h1>
+	  <a href="https://github.com/YZ-social/Yz.social?tab=readme-ov-file#yzsocial" target="yz.mirror">Yz.social</a>
+	  <small><small>("wise social")</small></small>
+	</h1>
+	  <ul>
+	    <li>Report immediate concerns to the public by tapping their location on the map.</li>
+	    <li>These locations are shared over anonymous p2p with other users in your area.</li>
+	    <li>Reported concerns will fade away over 10 minutes.</li>
+	  </ul>
+	<p>
+	  A <a href="https://github.com/YZ-social/Yz.social" target="yz.mirror">mirror of this app</a>
+	  can be run by anyone, in case this site is taken down.
+	</p>
+	<blockquote>
+	  <i>YZ.social (Wise social) is building a totally free and open source, fully secure, peer-to-peer network for a new class of applications. The YZ network has no servers, no central database, no single point of failure. It is a true, fully decentralized network constructed, controlled and owned by its users. YZ Alert (Wise Alert) is the first application built on the YZ network.</i>
+	</blockquote>
+	<p>Yz.social gratefully uses open software from:<br/>
+	  <a href="https://leafletjs.com/" target="yz.other">Leaflet</a>,
+	  <a href="https://www.openstreetmap.org/" target="yz.other">OpenStreetMap</a>,
+	  <a href="http://s2geometry.io" target="yz.other">S2Geometry</a>,
+	  <a href="https://github.com/kozakdenys/qr-code-styling" target="yz.other">qr-code-styling</a>,
+	  <a href="https://expressjs.com/" target="yz.other">Express.js</a>,
+	  <a href="https://nodejs.org/" target="yz.other">Node.js</a>,
+	  <a href="https://github.com/YZ-social" target="yz.other">Yz</a>
+	</p>
+      </div>
+    </div>
 
   </body>
 </html>

@@ -1,17 +1,9 @@
 import { setupNetwork } from './pubSub.js';
 import { map, showMessage, initMap, defaultInit, updateLocation, recenterMap } from './map.js';
 
-let aboutPopup = L.popup({className: 'tipless', content: document.getElementById('aboutContent').innerHTML});
-document.getElementById('about-btn').onclick = () => {
-  let center = map.getCenter();
-  if (aboutPopup.isShowing) {
-    aboutPopup.close();
-  } else {
-    aboutPopup.setLatLng(center);
-    map.openPopup(aboutPopup);
-  }
-  aboutPopup.isShowing = !aboutPopup.isShowing;
-};
+var aboutContent = document.getElementById('aboutContent');
+document.getElementById('aboutButton').onclick = () => aboutContent.classList.toggle('hidden', false);
+aboutContent.onclick = () => aboutContent.classList.toggle('hidden', true);
 
 var qrDisplayContainer = document.getElementById('qrDisplayContainer');
 var qrDisplay = document.getElementById('qrDisplay');

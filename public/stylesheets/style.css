@@ -106,11 +106,7 @@ body {
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-.tipless .leaflet-popup-tip {
-    display: none;
-}
-
-#qrDisplayContainer {
+#qrDisplayContainer, #aboutContent {
     width: 100vw;
     height: 100vh;
     background: transparent;
@@ -120,11 +116,28 @@ body {
     justify-content: center; /* Centers horizontally */
     align-items: center;    /* Centers vertically */
 }
-#qrDisplay {
+#qrDisplay, .about-display {
     background: white;
     position: relative;
+}
+#qrDisplay {
     width: 300px;
     height: 300px;
+}
+.about-display {
+    width: 350px;
+    margin: 20px;
+    border-radius: 12px;
+    box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
+}
+.about-display > * {
+    margin: 10px;
+}
+blockquote {
+    padding: 15px;
+}
+.about-display ul {
+    margin-left: 20px;
 }
 .hidden {
     display: none !important;
