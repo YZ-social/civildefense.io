@@ -1,5 +1,6 @@
 import uuid4 from './uuid4.js';
 import { showMessage } from './map.js';
+const { WebSocket } = globalThis; // For linters.
 const WEBSOCKET_URI = location.origin.replace('^http', 'ws') + '/ws'; // Falsey to debug locally
 
 const handlers = {}; // Mapping key => function(messageData) for all active subcriptions

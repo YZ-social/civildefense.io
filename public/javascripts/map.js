@@ -1,6 +1,7 @@
 import { s2 } from 'https://esm.sh/s2js';
 import { publish, subscribe } from './pubSub.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
+const { L } = globalThis; // For linters.
 
 export let map; // Leaflet map object.
 const ttl = 10 * 10e3;
@@ -28,7 +29,7 @@ export function showMarker({position, expiration, _level}, key) { // Add marker 
   const now = Date.now(),
         remaining = expiration - now;
   if (remaining < 0) return;  // expired.
-  const marker = L.marker(position, {icon}).addTo(map);
+  const marker = L.marker(position, {icon, autoPan: false}).addTo(map);
   // TODO: use css transitions?
   const interval = 1000, // milliseconds per adjustment (a tiny increment at a time)
         fade = interval / ttl; // Change in opacity per adjustment.
@@ -80,7 +81,34 @@ function updateSubscriptions() { // Update current subscriptions to the new map 
   subscriptions = newKeys;
 }
 
-var yourLocation;
+let yourLocation; // marker
+let lastLatitude, lastLongitude;
+
+export function updateLocation(lat, lng) {
+  // Can't call getCurrentPosition while watching. So set it here for use in recenterMap.
+  lastLatitude = lat;
+  lastLongitude = lng;
+
+  if (!map) {
+    initMap(lat, lng);
+    return;
+  }
+
+  // setLatLng can cause the map to autoPan to make put the marker within bounds.
+  // It seems like that shouldn't happen with autoPan:false, above, but it does.
+  // So let's not even update it if it is outside the displayed area.
+  // However, that means we will need to updateLocation from the last position on map moveend.
+  if (!map.getBounds().contains(L.latLng(lat, lng))) return;
+
+  const latLng = [lat, lng];
+  yourLocation.setLatLng(latLng);
+}
+
+export function recenterMap() {
+  const latLng = [lastLatitude, lastLongitude];
+  map.flyTo(latLng);
+}
+
 export function initMap(lat, lng) { // Set up appropriate zoomed initial map and handlers for this position.
   // Initialize map centered on user's location
   map = L.map('map', { // Ensuring the default values, in case they have changed in some library version.
@@ -97,10 +125,18 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
   }).addTo(map);
 
   // Add a marker at user's current location
-  yourLocation = L.marker([lat, lng], {autoPanOnFocus: false})
+  yourLocation = L.marker([lat, lng], {autoPan: false})
     .addTo(map)
     .bindPopup('Your Location')
     .openPopup();
+  // We close the popup on move, because the map will try to keep an open popup from straddling the bounds,
+  // which can be confusing. It also closes when another marker is made, so it's nice to just close it
+  // upon interaction.
+  map.on('movestart', () => map.closePopup(yourLocation.getPopup()));
+  map.on('moveend', () => {
+    updateSubscriptions();
+    updateLocation(lastLatitude, lastLongitude); // Might now be within map.
+  });
 
   // Add click event to note position
   map.on('click', function(e) {
@@ -114,24 +150,8 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
     }
   });
 
-  map.on('moveend', updateSubscriptions);
-
   updateSubscriptions();
   showMessage('Tap anywhere to mark a concern. Markers fade after 10 min.', 'instructions');
-}
-
-export function updateLocation(lat, lng) {
-  if (!map) {
-    initMap(lat, lng);
-    return;
-  }
-  const latLng = [lat, lng];
-  yourLocation.setLatLng(latLng);
-}
-
-export function recenterMap(lat, lng) {
-  const latLng = [lat, lng];
-  map.flyTo(latLng);
 }
 
 export function defaultInit() { // After two seconds, show San Fransisco.
