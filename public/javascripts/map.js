@@ -1,7 +1,8 @@
+import { Int } from './translations.js';
 import { s2 } from 'https://esm.sh/s2js';
 import { publish, subscribe } from './pubSub.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
-const { L } = globalThis; // For linters.
+const { L } = globalThis; // Leaflet namespace, for linters.
 
 export let map; // Leaflet map object.
 const ttl = 10 * 10e3;
@@ -111,6 +112,8 @@ export function recenterMap() {
 
 export function initMap(lat, lng) { // Set up appropriate zoomed initial map and handlers for this position.
   // Initialize map centered on user's location
+  showMessage(Int`Getting your location...`);
+
   map = L.map('map', { // Ensuring the default values, in case they have changed in some library version.
     worldCopyJump: false,
     maxBounds: null
@@ -127,7 +130,7 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
   // Add a marker at user's current location
   yourLocation = L.marker([lat, lng], {autoPan: false})
     .addTo(map)
-    .bindPopup('Your Location')
+    .bindPopup(Int`Your Location`)
     .openPopup();
   // We close the popup on move, because the map will try to keep an open popup from straddling the bounds,
   // which can be confusing. It also closes when another marker is made, so it's nice to just close it
@@ -151,7 +154,7 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
   });
 
   updateSubscriptions();
-  showMessage('Tap anywhere to mark a concern. Markers fade after 10 min.', 'instructions');
+  showMessage(Int`Tap anywhere to mark a concern. Markers fade after 10 min.`, 'instructions');
 }
 
 export function defaultInit() { // After two seconds, show San Fransisco.

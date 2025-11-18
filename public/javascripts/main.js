@@ -1,3 +1,4 @@
+import { Int } from './translations.js';
 import { setupNetwork } from './pubSub.js';
 import { map, showMessage, initMap, defaultInit, updateLocation, recenterMap } from './map.js';
 const { QRCodeStyling, GeolocationPositionError } = globalThis; // For linters.
@@ -51,7 +52,7 @@ function initializeGeolocation() {
       console.warn(`Gelocation code ${error.code}.`);
       if (navigator.onLine) {
 	if (error.code === GeolocationPositionError.PERMISSION_DENIED) {
-	  showMessage('Location access denied. Using default location.', 'error', error);
+	  showMessage(Int`Location access denied. Using default location.`, 'error', error);
 	  defaultInit();
 	} else {
 	  geolocation.clearWatch(positionWatch);
@@ -59,7 +60,7 @@ function initializeGeolocation() {
 	  initializeGeolocation();
 	}
       } else {
-	showMessage('No network connection.', 'error');
+	showMessage(Int`No network connection.`, 'error');
       }
     }, {
       enableHighAccuracy: true,
@@ -80,7 +81,7 @@ async function initialize(doDelay) { // Setup everything, or reset things.
     console.log('initializing', document.visibilityState, navigator.onLine ? 'online' : 'offline');
     if (document.visibilityState !== 'visible') return;
     if (!navigator.onLine) {
-      showMessage('No network connection.', 'error');
+      showMessage(Int`No network connection.`, 'error');
       return;
     }
 
@@ -88,7 +89,7 @@ async function initialize(doDelay) { // Setup everything, or reset things.
     if ('geolocation' in navigator) {
       initializeGeolocation();
     } else {
-      showMessage('Geolocation not supported. Using default location.', 'error', 'fail');
+      showMessage(Int`Geolocation not supported. Using default location.`, 'error', 'fail');
       defaultInit();
     }
   } finally {
@@ -97,4 +98,20 @@ async function initialize(doDelay) { // Setup everything, or reset things.
 }
 document.addEventListener('visibilitychange', initialize);
 window.addEventListener('online', initialize);
+
+function initText(selector, content = selector) {
+  const element = document.querySelector(selector);
+  const text = Int([content]);
+  console.log({selector, content, element, text});
+  element.textContent = text;
+}
+initText('div.about-text', 'About');
+initText('#aboutReport');
+initText('#aboutShared');
+initText('#aboutFade');
+initText('#aboutMirror');
+initText('#aboutAnyone');
+initText('#aboutYz');
+initText('#aboutAcknowledge');
+initText('#version');
 initialize();

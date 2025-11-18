@@ -1,4 +1,5 @@
 import uuid4 from './uuid4.js';
+import { Int } from './translations.js';
 import { showMessage } from './map.js';
 const { WebSocket } = globalThis; // For linters.
 const WEBSOCKET_URI = location.origin.replace('^http', 'ws') + '/ws'; // Falsey to debug locally
@@ -37,7 +38,7 @@ export async function setupNetwork() { // Establish or re-establish a connection
       return;
     }
     const more = event.reason ? ' ' + event.reason : '';
-    showMessage('The server connection has closed. Please reload.' + more, 'error');
+    showMessage(Int`The server connection has closed. Please reload.` + more, 'error');
   };
 
   connection.onmessage = event => { // Call the handler previously set using subscribe, if any.
