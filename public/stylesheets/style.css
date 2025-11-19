@@ -19,7 +19,7 @@ body {
 
 .info-banner {
     position: absolute;
-    top: 10px;
+    top: 20px;
     left: 50%;
     transform: translateX(-50%);
     background: rgba(255, 255, 255, 0.95);
@@ -71,8 +71,8 @@ body {
 }
 .about-container {
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: 0px;
+    right: 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -81,7 +81,7 @@ body {
 .button-container {
     z-index: 400;
     bottom: 0;
-    left: 0;
+    left: 5px;
     position: fixed;
     display: flex;
     gap: 15px;
