@@ -8,6 +8,7 @@ const translations = {
   ['No network connection.']: {es: "Sin conexión de red."},
   ['Geolocation not supported. Using default location.']: {es: "Geolocalización no compatible. Se utilizará la ubicación predeterminada."},
   ['The server connection has closed. Please reload.']: {es: "La conexión con el servidor se ha cerrado. Por favor, recargue la página."},
+  ['Connection closed due to inactivity. Will reconnect on use.']: {es: "Conexión cerrada por inactividad. Se reconectará al usarla."},
   ['Getting your location...']: {es: "Obteniendo tu ubicación..."},
   ['Server unavailable. Retrying in ']: {es: "Servidor no disponible. Reintentando en "},
   [' seconds, or reload.']: {es: " segundos o recargando la página."},

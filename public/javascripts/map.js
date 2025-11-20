@@ -1,6 +1,6 @@
 import { Int } from './translations.js';
 import { s2 } from 'https://esm.sh/s2js';
-import { publish, subscribe } from './pubSub.js';
+import { publish, subscribe, resetInactivityTimer } from './pubSub.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 const { L } = globalThis; // Leaflet namespace, for linters.
 
@@ -107,6 +107,7 @@ export function updateLocation(lat, lng) {
 }
 
 export function recenterMap() {
+  resetInactivityTimer();
   const latLng = [lastLatitude, lastLongitude];
   map.flyTo(latLng);
 }
@@ -136,17 +137,21 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
   // We close the popup on move, because the map will try to keep an open popup from straddling the bounds,
   // which can be confusing. It also closes when another marker is made, so it's nice to just close it
   // upon interaction.
-  map.on('movestart', () => map.closePopup(yourLocation.getPopup()));
+  map.on('movestart', () => {
+    resetInactivityTimer();
+    map.closePopup(yourLocation.getPopup());
+  });
   map.on('moveend', () => {
+    resetInactivityTimer();
     updateSubscriptions();
     updateLocation(lastLatitude, lastLongitude); // Might now be within map.
   });
 
   // Add click event to note position
   map.on('click', function(e) {
+    resetInactivityTimer();
     const { lat, lng } = e.latlng;
     const position = [lat, lng];
-    //showMarker({position, expiration: Date.now() + ttl}); // To debug by showing immediately.
     const cells = getContainingCells(lat, lng);
     for (const cell of cells) {
       // add _level for debug only

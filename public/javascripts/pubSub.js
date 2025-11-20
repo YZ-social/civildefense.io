@@ -3,6 +3,8 @@ import { Int } from './translations.js';
 import { showMessage } from './map.js';
 const { WebSocket } = globalThis; // For linters.
 const WEBSOCKET_URI = location.origin.replace('^http', 'ws') + '/ws'; // Falsey to debug locally
+const RETRY_SECONDS = 90;
+const INACTIVITY_SECONDS = 5 * 60;
 
 const handlers = {}; // Mapping key => function(messageData) for all active subcriptions
 
@@ -34,11 +36,12 @@ export async function setupNetwork() { // Establish or re-establish a connection
   // onerror is of no help, as the event is generic.
   connection.onclose = event => {
     console.warn('websocket close', event.code, event.wasClean, event.reason);
+    if (event.reason === 'inactivity') return;
     if (document.visibilityState === 'visible') {
-      let counter = 90;
+      let counter = RETRY_SECONDS;
       countdown = setInterval(() => {
 	if (counter > 1) {
-	  showMessage(Int`Server unavailable. Retrying in ` + counter-- + Int` seconds, or reload.`);
+	  showMessage(Int`Server unavailable. Retrying in ` + counter-- + Int` seconds, or reload.`, 'error');
 	} else {
 	  showMessage('');
 	  setupNetwork();
@@ -71,6 +74,17 @@ export async function setupNetwork() { // Establish or re-establish a connection
   for (const key in handlers) { // If this is reconnecting, re-establish the subscriptions on the new socket.
     await subscribe(key, handlers[key]);
   }
+}
+
+let inactivityTimer;
+export function resetInactivityTimer() { // Start a timer that will release the websocket after the given period.
+  showMessage('');
+  clearTimeout(inactivityTimer);
+  setupNetwork();
+  inactivityTimer = setTimeout(() => {
+    showMessage(Int`Connection closed due to inactivity. Will reconnect on use.`, 'error');
+    connection.close(3000, 'inactivity');
+  }, INACTIVITY_SECONDS * 1e3);
 }
 
 const inFlight = [];

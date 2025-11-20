@@ -1,15 +1,22 @@
 import { Int } from './translations.js';
-import { setupNetwork } from './pubSub.js';
+import { resetInactivityTimer } from './pubSub.js';
 import { map, showMessage, defaultInit, updateLocation, recenterMap } from './map.js';
 const { QRCodeStyling, GeolocationPositionError } = globalThis; // For linters.
 
 var aboutContent = document.getElementById('aboutContent');
-document.getElementById('aboutButton').onclick = () => aboutContent.classList.toggle('hidden', false);
-aboutContent.onclick = () => aboutContent.classList.toggle('hidden', true);
+document.getElementById('aboutButton').onclick = () => {
+  resetInactivityTimer();
+  aboutContent.classList.toggle('hidden', false);
+};
+aboutContent.onclick = () => {
+  resetInactivityTimer();
+  aboutContent.classList.toggle('hidden', true);
+};
 
 var qrDisplayContainer = document.getElementById('qrDisplayContainer');
 var qrDisplay = document.getElementById('qrDisplay');
 document.getElementById('qrButton').onclick = () => { // generate (and display) qr code on-demand (in case url changes)
+  resetInactivityTimer();
   const qr = new QRCodeStyling({
     width: 300,
     height: 300,
@@ -32,7 +39,10 @@ document.getElementById('qrButton').onclick = () => { // generate (and display) 
   qr.append(qrDisplay);
   qrDisplayContainer.classList.toggle('hidden', false);
 }
-qrDisplayContainer.onclick = () => qrDisplayContainer.classList.toggle('hidden', true);
+qrDisplayContainer.onclick = () => {
+  resetInactivityTimer();
+  qrDisplayContainer.classList.toggle('hidden', true);
+}
 
 document.getElementById('recenterButton').onclick = recenterMap;
 
@@ -85,7 +95,7 @@ async function initialize(doDelay) { // Setup everything, or reset things.
       return;
     }
 
-    setupNetwork(); // No-op if already open.
+    resetInactivityTimer();
     if ('geolocation' in navigator) {
       initializeGeolocation();
     } else {
