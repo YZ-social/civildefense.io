@@ -1,6 +1,6 @@
 import { Int } from './translations.js';
 import { setupNetwork } from './pubSub.js';
-import { map, showMessage, initMap, defaultInit, updateLocation, recenterMap } from './map.js';
+import { map, showMessage, defaultInit, updateLocation, recenterMap } from './map.js';
 const { QRCodeStyling, GeolocationPositionError } = globalThis; // For linters.
 
 var aboutContent = document.getElementById('aboutContent');
@@ -102,7 +102,6 @@ window.addEventListener('online', initialize);
 function initText(selector, content = selector) {
   const element = document.querySelector(selector);
   const text = Int([content]);
-  console.log({selector, content, element, text});
   element.textContent = text;
 }
 initText('div.about-text', 'About');

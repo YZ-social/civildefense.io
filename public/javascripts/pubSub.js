@@ -6,8 +6,9 @@ const WEBSOCKET_URI = location.origin.replace('^http', 'ws') + '/ws'; // Falsey 
 
 const handlers = {}; // Mapping key => function(messageData) for all active subcriptions
 
-let connection, promise;
+let connection, promise, countdown;
 export async function setupNetwork() { // Establish or re-establish a connection
+  clearInterval(countdown);
   const existing = await connection;
   if (existing?.readyState === WebSocket.OPEN) {
     console.log('already connected');
@@ -34,7 +35,15 @@ export async function setupNetwork() { // Establish or re-establish a connection
   connection.onclose = event => {
     console.warn('websocket close', event.code, event.wasClean, event.reason);
     if (document.visibilityState === 'visible') {
-      setupNetwork();
+      let counter = 90;
+      countdown = setInterval(() => {
+	if (counter > 1) {
+	  showMessage(Int`Server unavailable. Retrying in ` + counter-- + Int` seconds, or reload.`);
+	} else {
+	  showMessage('');
+	  setupNetwork();
+	}
+      }, 1e3);
       return;
     }
     const more = event.reason ? ' ' + event.reason : '';

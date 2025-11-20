@@ -15,9 +15,10 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
     return;
   }
 
-  infoBanner.style = '';
+  if (infoBanner.style) infoBanner.style = '';
   infoBanner.textContent = message;
-  infoBanner.className = `info-banner ${type}`;
+  const className = `info-banner ${type}`;
+  if (infoBanner.className !== className) infoBanner.className = className;
 
   if (type === 'instructions') {
     setTimeout(() => infoBanner.style.display = 'none', 4000);
@@ -95,7 +96,7 @@ export function updateLocation(lat, lng) {
     return;
   }
 
-  // setLatLng can cause the map to autoPan to make put the marker within bounds.
+  // setLatLng can cause the map to autoPan to put the marker within bounds.
   // It seems like that shouldn't happen with autoPan:false, above, but it does.
   // So let's not even update it if it is outside the displayed area.
   // However, that means we will need to updateLocation from the last position on map moveend.

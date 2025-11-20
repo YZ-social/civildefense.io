@@ -9,6 +9,8 @@ const translations = {
   ['Geolocation not supported. Using default location.']: {es: "Geolocalización no compatible. Se utilizará la ubicación predeterminada."},
   ['The server connection has closed. Please reload.']: {es: "La conexión con el servidor se ha cerrado. Por favor, recargue la página."},
   ['Getting your location...']: {es: "Obteniendo tu ubicación..."},
+  ['Server unavailable. Retrying in ']: {es: "Servidor no disponible. Reintentando en "},
+  [' seconds, or reload.']: {es: " segundos o recargando la página."},
   ['#aboutReport']: {en: "Report immediate concerns to the public by tapping their location on the map.", es: "Informa de cualquier problema inmediato al público pulsando su ubicación en el mapa."},
   ['#aboutShared']: {en: "These locations are shared over anonymous p2p with other users in your area.", es: "Estas ubicaciones se comparten a través de redes P2P anónimas con otros usuarios de tu zona."},
   ['#aboutFade']: {en: "Reported concerns will fade away over 10 minutes.", es: "Las preocupaciones manifestadas se disiparán en 10 minutos."},
@@ -22,5 +24,5 @@ const translations = {
 
 export function Int([string]) {
   let content = translations[string];
-  return content[lang] || content["en"] || string;
+  return content?.[lang] || content?.["en"] || string;
 }
