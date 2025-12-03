@@ -40,6 +40,11 @@ export async function setupNetwork() { // Establish or re-establish a connection
     if (document.visibilityState === 'visible') {
       let counter = RETRY_SECONDS;
       countdown = setInterval(() => {
+	if (document.visibilityState !== 'visible') {
+	  console.log("Abandoning retry timeout for invisible tab.");
+	  clearInterval(countdown);
+	  return;
+	}
 	if (counter > 1) {
 	  showMessage(Int`Server unavailable. Retrying in ` + counter-- + Int` seconds, or reload.`, 'error');
 	} else {
