@@ -1,6 +1,7 @@
 import { Int } from './translations.js';
 import { s2 } from 'https://esm.sh/s2js';
-import { publish, subscribe, resetInactivityTimer } from './pubSub.js';
+import uuid4 from './uuid4.js';
+import { publish, subscribe, unpublishLast, resetInactivityTimer } from './pubSub.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 const { L } = globalThis; // Leaflet namespace, for linters.
 
@@ -31,10 +32,11 @@ class Marker { // A wrapper around L.marker
   // sticky data. We don't want to change the marker. Fortunately, the publication to each
   // of the cells (at different scales) are all published with the same data.
   static markers = {}; // We keep track by stringified position.
-  static ensure(data) { // Add market at position with appropriate fade if not already present.
+  static ensure(data, method) { // Add market at position with appropriate fade if not already present.
     const { position, messageTag, expiration } = data;
     const alertKey = JSON.stringify({position, messageTag}); // Does not include any cell-specified data such as _level or key.
     const existing = this.markers[alertKey]; // We are relying on the "same" data hashing in the same way as a property indicator.
+    if (method === 'unpublish') return existing?.destroy();
     if (existing) return existing; // No need to be glitchy and create a new one.
     const now = Date.now(),
           remaining = expiration - now;
@@ -70,7 +72,7 @@ function updateSubscriptions() { // Update current subscriptions to the new map 
   const newKeys = newCells.map(cell => `s2:${cell}`);
 
   // For each entry in the new subscription set that was not previously subscribed,/ subscribe now.
-  for (const key of newKeys) subscriptions.includes(key) || subscribe(key, (data, key) => Marker.ensure(data));
+  for (const key of newKeys) subscriptions.includes(key) || subscribe(key, (data, key, method) => Marker.ensure(data, method));
 
   // For each existing subscription, if it does not appear in the new set then unsubscribe.
   for (const key of subscriptions) newKeys.includes(key) || subscribe(key, null);
@@ -145,12 +147,14 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
   // Add click event to note position
   map.on('click', function(e) {
     resetInactivityTimer();
+    unpublishLast();
     const { lat, lng } = e.latlng;
     const position = [lat, lng];
     const cells = getContainingCells(lat, lng);
+    const messageTag = uuid4(); // Added to data to be round-tripped. Not a user tag!
     for (const cell of cells) {
       // add _level for debug only
-      publish(`s2:${cell}`, {position, _level: s2.cellid.level(cell), expiration: Date.now() + ttl}, ttl);
+      publish(`s2:${cell}`, {position, _level: s2.cellid.level(cell), expiration: Date.now() + ttl, messageTag}, ttl);
     }
   });
 

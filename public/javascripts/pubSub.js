@@ -1,4 +1,3 @@
-import uuid4 from './uuid4.js';
 import { Int } from './translations.js';
 import { showMessage } from './map.js';
 const { WebSocket } = globalThis; // For linters.
@@ -87,6 +86,13 @@ export async function subscribe(key, handler) { // Assign handler for key, or re
     await send({method: 'unsubscribe', key});
   }
 }
+
+let last = [];
+export function unpublishLast() { // Unpublish everything from the previous click, if any, and reset for new publication.
+  for (const {data, key} of last.slice()) send({method: 'unpublish', key, data});
+  last = [];
+}
+
 const inFlight = [];
 export async function publish(key, data) { // Publish data to subscribers of key.
   key = key.toString();
@@ -94,18 +100,16 @@ export async function publish(key, data) { // Publish data to subscribers of key
   // IFF this client has a handler for this key, evaluate it immediately and tag the
   // publish with a recognizable value so that we can ignore its receipt.
   const publishData = { ...data };
-  if (handlers[key]) {
-    const messageTag = uuid4(); // Added to data to be round-tripped. Not a user tag!
-    publishData.messageTag = messageTag;
-    // Make note of inFlight uuid and execute immediately.
-    inFlight.push(messageTag);
+  if (handlers[key]) { // Execute immediately.
+    inFlight.push(publishData.messageTag);
     handlers[key](data, key);
   }
 
+  last.push({key, data: publishData});
   await send({method: 'publish', key, data: publishData});
 }
 function receive(message) {  // Call the handler previously set using subscribe, if any.
-  const {key, data} = message;
+  const {method, key, data} = message;
   const handler = handlers[key];
   if (!handler) return;
 
@@ -118,5 +122,5 @@ function receive(message) {  // Call the handler previously set using subscribe,
     }
   }
 
-  handler(data, key);
+  handler(data, key, method);
 };

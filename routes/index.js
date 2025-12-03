@@ -27,11 +27,18 @@ const PUBLISH_TIMEOUT = 10 * 60e3;      // Delete after 10 minutes.
 
 const subscriptions = {}; // key => ws. Entries purged after SUBSCRIPTION_TIMEOUT.
 const sticky = {};        // key => data. Entries purged after PUBLISH_TIMEOUT.
-function setSticky(key, string) { // Associate string key, for use by getSticky.
+function setSticky(key, string, remove = false) { // Associate string key, for use by getSticky.
   const bucket = sticky[key] ||= new Set();
   function removeMessage() { bucket.delete(string); if (!bucket.size) delete sticky[key]; }
-  bucket.add(string);
-  setTimeout(removeMessage, PUBLISH_TIMEOUT);
+  if (remove) removeMessage();
+  else {
+    bucket.add(string);
+    setTimeout(removeMessage, PUBLISH_TIMEOUT);
+  }
+}
+function deleteSticky(key, string) { // Associate string key, for use by getSticky.
+  const bucket = sticky[key] ||= new Set();
+  function removeMessage() { bucket.delete(string); if (!bucket.size) delete sticky[key]; }
 }
 function getSticky(key) { // Answer array of previously set strings that are still associated with key.
   return sticky[key] || [];
@@ -55,11 +62,9 @@ router.ws('/ws', function(ws, req, next) {
     let keySubs = subscriptions[key] ||= new Set();
     switch (method) {
     case 'publish':
-      const string = JSON.stringify({key, data});
-      for (const ws of keySubs) {
-	ws.send(string);
-      }
-      setSticky(key, string);
+    case 'unpublish':
+      for (const ws of keySubs) ws.send(message);
+      setSticky(key, JSON.stringify({method: 'publish', key, data}), method === 'unpublish');
       break;
     case 'subscribe':
       subscriptions[key].add(ws);
