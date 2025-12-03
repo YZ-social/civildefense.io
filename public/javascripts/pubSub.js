@@ -88,7 +88,7 @@ export async function subscribe(key, handler) { // Assign handler for key, or re
   }
 }
 const inFlight = [];
-export async function publish(key, data, timeToLive = 10 * 60e3) { // Publish data to subscribers of key.
+export async function publish(key, data) { // Publish data to subscribers of key.
   key = key.toString();
 
   // IFF this client has a handler for this key, evaluate it immediately and tag the
@@ -102,7 +102,7 @@ export async function publish(key, data, timeToLive = 10 * 60e3) { // Publish da
     handlers[key](data, key);
   }
 
-  await send({method: 'publish', key, data: publishData, timeToLive});
+  await send({method: 'publish', key, data: publishData});
 }
 function receive(message) {  // Call the handler previously set using subscribe, if any.
   const {key, data} = message;
