@@ -25,27 +25,40 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   }
 }
 
-let markers = []; // array of { marker, key }
-const icon = L.icon({iconUrl: "images/Achtung.png", iconSize: [40, 35]});
-export function showMarker({position, expiration, _level}, key) { // Add marker at position, completing a fade out at expiration.  key is the subscription key that triggered the call.
-  const now = Date.now(),
-        remaining = expiration - now;
-  if (remaining < 0) return;  // expired.
-  const marker = L.marker(position, {icon, autoPan: false}).addTo(map);
-  // TODO: use css transitions?
-  const interval = 1000, // milliseconds per adjustment (a tiny increment at a time)
-        fade = interval / ttl; // Change in opacity per adjustment.
-  let opacity = remaining / ttl; // Do not start at 1 if it was reported some time ago.
-  marker.setOpacity(opacity);
-  const timer = setInterval(() => {
-    marker.setOpacity(opacity -= fade);
-    if (opacity > 0) return;
-    clearInterval(timer);
-    marker.removeFrom(map);
-    markers = markers.filter(mObj => mObj.marker !== marker);
-  }, interval);
-
-  markers.push({ marker, key }); // TODO: use a weak map to hold against gc instead?
+class Marker { // A wrapper around L.marker
+  static icon = L.icon({iconUrl: "images/Achtung.png", iconSize: [40, 35]});
+  // When we resubscribe to different cells covering the same place, we will get the same
+  // sticky data. We don't want to change the marker. Fortunately, the publication to each
+  // of the cells (at different scales) are all published with the same data.
+  static markers = {}; // We keep track by stringified position.
+  static ensure(data) { // Add market at position with appropriate fade if not already present.
+    const { position, messageTag, expiration } = data;
+    const alertKey = JSON.stringify({position, messageTag}); // Does not include any cell-specified data such as _level or key.
+    const existing = this.markers[alertKey]; // We are relying on the "same" data hashing in the same way as a property indicator.
+    if (existing) return existing; // No need to be glitchy and create a new one.
+    const now = Date.now(),
+          remaining = expiration - now;
+    if (remaining < 0) return null;  // expired.
+    const marker = L.marker(position, {icon: this.icon, autoPan: false}).addTo(map);
+    // It would be nice to use CSS transitions, but, that's not the API presented by L.marker.
+    const interval = 1000, // milliseconds per adjustment (a tiny increment at a time)
+          fade = interval / ttl; // Change in opacity per adjustment.
+    let opacity = remaining / ttl; // Do not start at 1 if it was reported some time ago.
+    marker.setOpacity(opacity);
+    const fader = setInterval(() => {
+      marker.setOpacity(opacity -= fade);
+      if (opacity > 0) return;
+      wrapper.destroy();
+    }, interval);
+    const wrapper = this.markers[alertKey] = new this();
+    Object.assign(wrapper, {marker, data, fader});
+    return wrapper;
+  }
+  destroy() {
+    clearInterval(this.fader);
+    this.marker.removeFrom(map);
+    delete this.constructor.markers[this.data];
+  }
 }
 
 let subscriptions = []; // array of stringy keys s2:<cellID>
@@ -56,29 +69,11 @@ function updateSubscriptions() { // Update current subscriptions to the new map 
   const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
   const newKeys = newCells.map(cell => `s2:${cell}`);
 
-  // For each entry in the new subscription set that was not previously subscribed,
-  // subscribe now.
-  for (const key of newKeys) subscriptions.includes(key) || subscribe(key, showMarker);
+  // For each entry in the new subscription set that was not previously subscribed,/ subscribe now.
+  for (const key of newKeys) subscriptions.includes(key) || subscribe(key, (data, key) => Marker.ensure(data));
 
-  // For each existing subscription, if it does not appear in the new set then
-  // unsubscribe, and after a small pause (to allow the new subscriptions' stickies
-  // to arrive) remove all markers that were placed by that sub.
-  for (const key of subscriptions) {
-    if (!newKeys.includes(key)) {
-      subscribe(key, null);
-      const newMarkers = [];
-      for (const mObj of markers) {
-        const { marker, key: mKey } = mObj;
-        if (mKey === key) {
-          // first fade, then after a while remove.  TODO: smooth this.
-          marker.setOpacity(marker.options.opacity / 2);
-          setTimeout(() => marker.removeFrom(map), 1000);
-        }
-        else newMarkers.push(mObj);
-      }
-      markers = newMarkers;
-    }
-  }
+  // For each existing subscription, if it does not appear in the new set then unsubscribe.
+  for (const key of subscriptions) newKeys.includes(key) || subscribe(key, null);
 
   subscriptions = newKeys;
 }
