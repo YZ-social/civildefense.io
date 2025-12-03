@@ -33,6 +33,7 @@ async function setupNetwork() { // Establish or re-establish a connection.
 
     // onerror is of no help, as the event is generic.
     connection.onclose = event => {
+      clearInterval(countdown);
       resolve(connectionPromise = null); // If anyone is waiting or will wait.
       console.warn('websocket close', event.code, event.wasClean, event.reason);
       if (event.reason === 'inactivity') return;
