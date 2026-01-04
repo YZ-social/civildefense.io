@@ -1,5 +1,5 @@
-var express = require('express');
-var router = express.Router();
+import express from 'express';
+export var router = express.Router();
 
 // The DHT runs a hook here to connect nodes to each other, which uses WebSockets during
 // the connection and then gets out of the way.
@@ -93,6 +93,4 @@ router.ws('/ws', function(ws, req, next) {
     deleteWS();
   });
 });
-
-module.exports = router;
 

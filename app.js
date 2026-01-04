@@ -1,11 +1,18 @@
-const path = require('path');
-const express = require('express');
-const expressWs = require('express-ws');
-const logger = require('morgan');
-const app = express();
+import process from 'node:process';
+import path from 'node:path';
+import express from 'express';
+import expressWs from 'express-ws';
+import logger from 'morgan';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+export const app = express();
 
+// We must allow expressWs to bach the internals of app before
+// pulling in routes/index.js. Thus a dynamic import is used so that
+// we can control when routes/index.js is processed.
 expressWs(app);
-const Yz = require('./routes/index'); // Must be after expressWs() call.
+const Yz = await import('./routes/index.js');
 
 process.title = 'yz.social';
 app.use(logger('dev'));
@@ -18,8 +25,4 @@ app.use(logger('dev'));
 
 app.use('/images', express.static(path.join(__dirname, 'public/images'), {maxAge: '1d', immutable: true}));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/', Yz);
-
-module.exports = app;
-
-
+app.use('/', Yz.router);
