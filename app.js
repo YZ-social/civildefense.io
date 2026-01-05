@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import process from 'node:process';
 import cluster from 'node:cluster';
 import path from 'node:path';
@@ -6,13 +7,48 @@ import express from 'express';
 import expressWs from 'express-ws';
 import logger from 'morgan';
 import { fileURLToPath } from 'url';
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 
-const port = 3000;
+const argv = yargs(hideBin(process.argv))
+      .usage("Start an http server for Alert and with nPortals nodes to connect through.")
+      .option('nPortals', {
+	alias: 'p',
+	type: 'number',
+	default: 5,
+	description: "The number of steady nodes that handle initial connections."
+      })
+      .option('baseURL', {
+	type: 'string',
+	default: 'http://localhost:3000/kdht',
+	description: "The base URL of the portal server through which to bootstrap."
+      })
+      .option('externalBaseURL', {
+	type: 'string',
+	default: '',
+	description: "The base URL of the some other portal server to which we should connect ours, if any."
+      })
+      .option('fixedSpacing', {
+	type: 'number',
+	default: 2,
+	description: "Minimum seconds to add between each portal."
+      })
+      .options('variableSpacing', {
+	type: 'number',
+	default: 5,
+	description: "Additional variable seconds (+/- variableSpacing/2) to add to fixedSpacing between each portal."
+      })
+      .option('verbose', {
+	alias: 'v',
+	type: 'boolean',
+	description: "Run with verbose logging."
+      })
+      .parse();
 
 if (cluster.isPrimary) { // Parent process with portal webserver through which clienta can bootstrap
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
-  const nPortals = 5;
+  const port = parseInt((new URL(argv.baseURL)).port || '80');
   process.title = 'yz.social';
   const app = express();
   app.use(logger('dev'));
@@ -23,7 +59,7 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   expressWs(app);
   const Yz = await import('./routes/index.js');
 
-  for (let i = 0; i < nPortals; i++) cluster.fork();
+  for (let i = 0; i < argv.nPortals; i++) cluster.fork();
   app.use(express.json());
   const portalServer = await import('@yz-social/kdht/router');
 
@@ -37,8 +73,6 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
 
 } else {
   const portalNode = await import('@yz-social/kdht/portal');
-  //const {fixedSpacing, variableSpacing, verbose} = argv;
-  const fixedSpacing = 3, variableSpacing = 5, verbose = false;
-  const baseURL = `http://localhost:${port}/kdht`;
-  portalNode.setup({baseURL, fixedSpacing, variableSpacing, verbose});
+  const {baseURL, externalBaseURL, fixedSpacing, variableSpacing, verbose} = argv;
+  portalNode.setup({baseURL, externalBaseURL, fixedSpacing, variableSpacing, verbose});
 }
