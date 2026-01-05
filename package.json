@@ -4,19 +4,21 @@
   "keywords": [
     "map",
     "browser",
-    "sightings"
+    "alert"
   ],
   "scripts": {
-    "start": "node ./bin/www",
+    "start": "node ./app.js",
     "stop": "pkill yz.social",
     "background": "npm stop; (npm start 1>server.log 2>&1 &); sleep 1"
   },
   "type": "module",
   "dependencies": {
+    "@yz-social/kdht": "^0.1.0",
+    "@yz-social/webrtc": "^0.1.0",
     "express": "^4.22.1",
     "express-ws": "^5.0.2",
     "morgan": "^1.10.1",
-    "uuid4": "^2.0.3",
+    "uuid": "^13.0.0",
     "ws": "^8.18.3"
   }
 }

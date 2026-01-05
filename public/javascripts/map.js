@@ -1,6 +1,6 @@
 import { Int } from './translations.js';
 import { s2 } from 'https://esm.sh/s2js';
-import uuid4 from './uuid4.js';
+import { v4 as uuidv4 } from 'uuid';
 import { publish, subscribe, unpublishLast, resetInactivityTimer } from './pubSub.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 const { L } = globalThis; // Leaflet namespace, for linters.
@@ -151,7 +151,7 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
     const { lat, lng } = e.latlng;
     const position = [lat, lng];
     const cells = getContainingCells(lat, lng);
-    const messageTag = uuid4(); // Added to data to be round-tripped. Not a user tag!
+    const messageTag = uuidv4(); // Added to data to be round-tripped. Not a user tag!
     for (const cell of cells) {
       // add _level for debug only
       publish(`s2:${cell}`, {position, _level: s2.cellid.level(cell), expiration: Date.now() + ttl, messageTag}, ttl);
