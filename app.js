@@ -62,6 +62,7 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   expressWs(app);
   const Yz = await import('./routes/index.js');
 
+  console.log(`${cpus()[0].model}, ${logicalCores} logical cores. Starting ${argv.nPortals}.`);
   for (let i = 0; i < argv.nPortals; i++) cluster.fork();
   app.use(express.json());
   const portalServer = await import('@yz-social/kdht/router');
