@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import process from 'node:process';
+import {cpus, availableParallelism } from 'node:os';
 import cluster from 'node:cluster';
 import path from 'node:path';
 import http from 'node:http';
@@ -10,12 +11,14 @@ import { fileURLToPath } from 'url';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
+const logicalCores = availableParallelism();
+
 const argv = yargs(hideBin(process.argv))
-      .usage("Start an http server for Alert and with nPortals nodes to connect through.")
+      .usage(`Start an http server for Alert and with nPortals nodes to connect through. Model description "${cpus()[0].model}", ${logicalCores} logical cores.`)
       .option('nPortals', {
 	alias: 'p',
 	type: 'number',
-	default: 5,
+	default: Math.max(logicalCores, 2),
 	description: "The number of steady nodes that handle initial connections."
       })
       .option('baseURL', {
@@ -51,7 +54,7 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   const port = parseInt((new URL(argv.baseURL)).port || '80');
   process.title = 'yz.social';
   const app = express();
-  app.use(logger('dev'));
+  app.use(logger(':date[iso] :status :method :url :res[content-length] - :response-time ms'));
 
   // We must allow expressWs to bach the internals of app before
   // pulling in routes/index.js. Thus a dynamic import is used so that

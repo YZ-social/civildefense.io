@@ -13,8 +13,8 @@
   },
   "type": "module",
   "dependencies": {
-    "@yz-social/kdht": "^0.1.3",
-    "@yz-social/webrtc": "^0.1.0",
+    "@yz-social/kdht": "^0.1.4",
+    "@yz-social/webrtc": "^0.1.1",
     "express": "^4.22.1",
     "express-ws": "^5.0.2",
     "morgan": "^1.10.1",
