@@ -1,19 +1,19 @@
 {
   "name": "yz.social",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "keywords": [
     "map",
     "browser",
     "alert"
   ],
   "scripts": {
-    "start": "node ./app.js",
+    "start": "node ./app.js --externalBaseURL https://yz.social/kdht",
     "stop": "pkill yz.social",
     "background": "npm stop; (npm start 1>server.log 2>&1 &); sleep 1"
   },
   "type": "module",
   "dependencies": {
-    "@yz-social/kdht": "^0.1.4",
+    "@yz-social/kdht": "^0.1.5",
     "@yz-social/webrtc": "^0.1.1",
     "express": "^4.22.1",
     "express-ws": "^5.0.2",
