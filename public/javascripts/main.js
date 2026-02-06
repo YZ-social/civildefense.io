@@ -23,13 +23,13 @@ document.getElementById('qrButton').onclick = () => { // generate (and display) 
     type: "svg",
     data: location.href,
     dotsOptions: {
-      color: "#bf5107",
+      color: "#0A2E7C",
       type: "rounded"
     },
     backgroundOptions: {
       color: "#e9ebee",
     },
-    image: "images/YZ Owl.png",
+    image: "images/civil-defense-240.png",
     imageOptions: {
       crossOrigin: "anonymous",
       margin: 10
