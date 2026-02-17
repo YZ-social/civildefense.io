@@ -155,8 +155,6 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
     const issuedTime = Date.now();
     for (const cell of cells) {
       // add _level for debug only
-      const removeMeLevel = s2.cellid.level(cell);
-      if (removeMeLevel < 5 || removeMeLevel > 10) continue;
       publish({eventName: `s2:${cell}`, payload: position, _level: s2.cellid.level(cell), issuedTime, subject});
     }
   });
