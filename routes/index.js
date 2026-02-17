@@ -25,60 +25,59 @@ export var router = express.Router();
 const SUBSCRIPTION_TIMEOUT = 60 * 60e3; // Delete after an hour. Must be renewed by app.
 const PUBLISH_TIMEOUT = 10 * 60e3;      // Delete after 10 minutes.
 
-const subscriptions = {}; // key => ws. Entries purged after SUBSCRIPTION_TIMEOUT.
-const sticky = {};        // key => data. Entries purged after PUBLISH_TIMEOUT.
-function setSticky(key, string, remove = false) { // Associate string key, for use by getSticky.
-  const bucket = sticky[key] ||= new Set();
-  function removeMessage() { bucket.delete(string); if (!bucket.size) delete sticky[key]; }
-  if (remove) removeMessage();
+const subscriptions = {}; // eventName => ws. Entries purged after SUBSCRIPTION_TIMEOUT.
+const sticky = {};        // eventName => {[subject]: storageItem, ...}. Entries purged after PUBLISH_TIMEOUT.
+function setSticky(eventName, storageItem) { // Associate string eventName, for use by getSticky.
+  const {payload, subject} = storageItem;
+  const bucket = sticky[eventName] ||= {};
+  function removeMessage() { delete bucket[subject]; if (!Object.keys(bucket).length) delete sticky[eventName]; }
+  if (!payload) removeMessage();
   else {
-    bucket.add(string);
+    bucket[subject] = JSON.stringify(storageItem);
     setTimeout(removeMessage, PUBLISH_TIMEOUT);
   }
 }
-function deleteSticky(key, string) { // Associate string key, for use by getSticky.
-  const bucket = sticky[key] ||= new Set();
-  function removeMessage() { bucket.delete(string); if (!bucket.size) delete sticky[key]; }
-}
-function getSticky(key) { // Answer array of previously set strings that are still associated with key.
-  return sticky[key] || [];
+function getSticky(eventName) { // Answer array of previously set strings that are still associated with eventName.
+  return Object.values(sticky[eventName] || {});
 }
 
 router.ws('/ws', function(ws, req, next) {
   // no on('connection') needed; connection is already made
-  function deleteFromKeySubs(key, keySubs = subscriptions[key]) {
+  function deleteFromKeySubs(eventName, subject, keySubs = subscriptions[eventName]) {
+    if (subject && ws?.subject !== subject) console.error(new Date(), "Sanity check for subscription subject failed. DHT-based pubsub would fail.", !!ws, ws?.subject, {eventName, subject});
     if (!keySubs) return;
     keySubs.delete(ws);
-    if (!keySubs.size) delete subscriptions[key];
+    if (!keySubs.size) delete subscriptions[eventName];
   }
   function deleteWS() {
-    for (const key in subscriptions)  {
-      deleteFromKeySubs(key);
+    for (const eventName in subscriptions)  {
+      deleteFromKeySubs(eventName);
     }
   }
   let heartbeat = setInterval(() => ws.ping(), 10e3);
   ws.on('message', message => {
-    const {method, key, data} = JSON.parse(message);
-    let keySubs = subscriptions[key] ||= new Set();
-    switch (method) {
-    case 'publish':
-    case 'unpublish':
+    const {eventName, type, subject, payload, ...rest} = JSON.parse(message);
+    let keySubs = subscriptions[eventName] ||= new Set();
+    switch (type) {
+    case 'pub':
       for (const ws of keySubs) ws.send(message);
-      setSticky(key, JSON.stringify({method: 'publish', key, data}), method === 'unpublish');
+      setSticky(eventName, {eventName, subject, payload, ...rest, type: 'event'});
       break;
-    case 'subscribe':
-      subscriptions[key].add(ws);
-      for (const string of getSticky(key)) {
-	console.log('sending sticky', string);
-	ws.send(string);
+    case 'sub':
+      if (payload) {
+	ws.subject = subject;
+	subscriptions[eventName].add(ws);
+	for (const string of getSticky(eventName)) {
+	  console.log('sending sticky', string);
+	  ws.send(string);
+	}
+	setTimeout(() => deleteFromKeySubs(eventName, subject), SUBSCRIPTION_TIMEOUT);
+      } else {
+	deleteFromKeySubs(eventName, subject, keySubs);
       }
-      setTimeout(() => deleteFromKeySubs(key), SUBSCRIPTION_TIMEOUT);
-      break;
-    case 'unsubscribe':
-      deleteFromKeySubs(key, keySubs);
       break;
     default:
-      console.error(`Unrecognized method ${method}`, message);
+      console.error(`Unrecognized type ${type}`, message);
     }
   });
 

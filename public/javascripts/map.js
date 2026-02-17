@@ -31,17 +31,17 @@ class Marker { // A wrapper around L.marker
   // When we resubscribe to different cells covering the same place, we will get the same
   // sticky data. We don't want to change the marker. Fortunately, the publication to each
   // of the cells (at different scales) are all published with the same data.
-  static markers = {}; // We keep track by stringified position.
-  static ensure(data, method) { // Add market at position with appropriate fade if not already present.
-    const { position, messageTag, expiration } = data;
-    const alertKey = JSON.stringify({position, messageTag}); // Does not include any cell-specified data such as _level or key.
-    const existing = this.markers[alertKey]; // We are relying on the "same" data hashing in the same way as a property indicator.
-    if (method === 'unpublish') return existing?.destroy();
+  static markers = {}; // We keep track by subject UUID.
+  static ensure(data) { // Add market at position with appropriate fade if not already present.
+    const { payload, subject, issuedTime } = data;
+    const existing = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
+    if (!payload) return existing?.destroy();
     if (existing) return existing; // No need to be glitchy and create a new one.
     const now = Date.now(),
+	  expiration = issuedTime + ttl,
           remaining = expiration - now;
     if (remaining < 0) return null;  // expired.
-    const marker = L.marker(position, {icon: this.icon, autoPan: false}).addTo(map);
+    const marker = L.marker(payload, {icon: this.icon, autoPan: false}).addTo(map);
     // It would be nice to use CSS transitions, but, that's not the API presented by L.marker.
     const interval = 1000, // milliseconds per adjustment (a tiny increment at a time)
           fade = interval / ttl; // Change in opacity per adjustment.
@@ -52,7 +52,7 @@ class Marker { // A wrapper around L.marker
       if (opacity > 0) return;
       wrapper.destroy();
     }, interval);
-    const wrapper = this.markers[alertKey] = new this();
+    const wrapper = this.markers[subject] = new this();
     Object.assign(wrapper, {marker, data, fader});
     return wrapper;
   }
@@ -72,7 +72,7 @@ function updateSubscriptions() { // Update current subscriptions to the new map 
   const newKeys = newCells.map(cell => `s2:${cell}`);
 
   // For each entry in the new subscription set that was not previously subscribed,/ subscribe now.
-  for (const key of newKeys) subscriptions.includes(key) || subscribe(key, (data, key, method) => Marker.ensure(data, method));
+  for (const key of newKeys) subscriptions.includes(key) || subscribe(key, data => Marker.ensure(data));
 
   // For each existing subscription, if it does not appear in the new set then unsubscribe.
   for (const key of subscriptions) newKeys.includes(key) || subscribe(key, null);
@@ -151,10 +151,13 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
     const { lat, lng } = e.latlng;
     const position = [lat, lng];
     const cells = getContainingCells(lat, lng);
-    const messageTag = uuidv4(); // Added to data to be round-tripped. Not a user tag!
+    const subject = uuidv4(); // Added to data to be round-tripped. Not a user tag!
+    const issuedTime = Date.now();
     for (const cell of cells) {
       // add _level for debug only
-      publish(`s2:${cell}`, {position, _level: s2.cellid.level(cell), expiration: Date.now() + ttl, messageTag}, ttl);
+      const removeMeLevel = s2.cellid.level(cell);
+      if (removeMeLevel < 5 || removeMeLevel > 10) continue;
+      publish({eventName: `s2:${cell}`, payload: position, _level: s2.cellid.level(cell), issuedTime, subject});
     }
   });
 
