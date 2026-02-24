@@ -1,16 +1,16 @@
 import { Int } from './translations.js';
 import { s2 } from 'https://esm.sh/s2js';
 import { v4 as uuidv4 } from 'uuid';
-import { publish, subscribe, unpublishLast, resetInactivityTimer } from './pubSub.js';
+import { networkPromise, resetInactivityTimer } from './main.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 const { L } = globalThis; // Leaflet namespace, for linters.
 
 export let map; // Leaflet map object.
-const ttl = 10 * 10e3;
+const ttl = 10 * 60e3; // Ten minutes
 
 const infoBanner = document.getElementById('info');
 export function showMessage(message, type = 'loading', errorObject) { // Show loading/instructions/error message.
-  if (errorObject) console.error(message, errorObject);
+  if (errorObject || errorObject) console.error(message, errorObject);
   if (!message) {
     infoBanner.style.display = 'none';
     return;
@@ -64,18 +64,22 @@ class Marker { // A wrapper around L.marker
 }
 
 let subscriptions = []; // array of stringy keys s2:<cellID>
-function updateSubscriptions() { // Update current subscriptions to the new map bounds.
+export function updateSubscriptions(oldKeys = subscriptions) { // Update current subscriptions to the new map bounds.
+  // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
+  console.log('updateSubscriptions', networkPromise);
   const center = map.getCenter();
   const bounds = map.getBounds();
   const northEast = bounds.getNorthEast();
   const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
   const newKeys = newCells.map(cell => `s2:${cell}`);
+  const subscribe = (key, value, autoRenewal = false) =>
+	networkPromise.then(async contact => contact.subscribe({eventName: key, handler: value, autoRenewal}));
 
-  // For each entry in the new subscription set that was not previously subscribed,/ subscribe now.
-  for (const key of newKeys) subscriptions.includes(key) || subscribe(key, data => Marker.ensure(data));
+  // For each entry in the new subscription set that was not previously subscribed, subscribe now.
+  for (const key of newKeys) oldKeys.includes(key) || subscribe(key, data => Marker.ensure(data), true);
 
   // For each existing subscription, if it does not appear in the new set then unsubscribe.
-  for (const key of subscriptions) newKeys.includes(key) || subscribe(key, null);
+  for (const key of oldKeys) newKeys.includes(key) || subscribe(key, null);
 
   subscriptions = newKeys;
 }
@@ -83,7 +87,8 @@ function updateSubscriptions() { // Update current subscriptions to the new map 
 let yourLocation; // marker
 let lastLatitude, lastLongitude;
 
-export function updateLocation(lat, lng) {
+export function updateLocation(lat, lng) { // initMap if necessary, and set our position.
+  //console.log('updateLocation', lat, lng);
   // Can't call getCurrentPosition while watching. So set it here for use in recenterMap.
   lastLatitude = lat;
   lastLongitude = lng;
@@ -109,8 +114,10 @@ export function recenterMap() {
   map.flyTo(latLng);
 }
 
+let lastPublishedEvents = [], subject = '';
 export function initMap(lat, lng) { // Set up appropriate zoomed initial map and handlers for this position.
-  // Initialize map centered on user's location
+  // Then show initial message and updateSubscriptions.
+
   showMessage(Int`Getting your location...`);
 
   map = L.map('map', { // Ensuring the default values, in case they have changed in some library version.
@@ -139,7 +146,6 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
     map.closePopup(yourLocation.getPopup());
   });
   map.on('moveend', () => {
-    resetInactivityTimer();
     updateSubscriptions();
     updateLocation(lastLatitude, lastLongitude); // Might now be within map.
   });
@@ -147,20 +153,29 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
   // Add click event to note position
   map.on('click', function(e) {
     resetInactivityTimer();
-    unpublishLast();
-    const { lat, lng } = e.latlng;
-    const position = [lat, lng];
-    const cells = getContainingCells(lat, lng);
-    const subject = uuidv4(); // Added to data to be round-tripped. Not a user tag!
     const issuedTime = Date.now();
+    const unpublishTime = issuedTime - 1;
+    const immediate = true; // whether to act locally before sending
+    const debug = false;
+    const events = []; // gather all events instead of referencing, e.g., subject asynchronously (as that has side-effect).
+    // App-specific: null out previous entry from us, if any.
+    for (const eventName of lastPublishedEvents) events.push({eventName, subject, payload: null, issuedTime: unpublishTime, immediate, debug});
+    const { lat, lng } = e.latlng;
+    const payload = [lat, lng];
+    const cells = getContainingCells(lat, lng);
+    subject = uuidv4(); // For recognizing locally executed events and for cancelling. Not a user tag!
+    lastPublishedEvents = [];
     for (const cell of cells) {
-      // add _level for debug only
-      publish({eventName: `s2:${cell}`, payload: position, _level: s2.cellid.level(cell), issuedTime, subject});
+      const eventName = `s2:${cell}`;
+      const _level = s2.cellid.level(cell); // add _level for debug only
+      events.push({eventName, subject, payload, issuedTime, immediate, _level, debug});
+      lastPublishedEvents.push(eventName);
     }
+    for (const event of events) networkPromise.then(contact => contact.publish(event));
   });
 
-  updateSubscriptions();
-  showMessage(Int`Tap anywhere to mark a concern. Markers fade after 10 min.`, 'instructions');
+  //fixme updateSubscriptions();
+  showMessage(Int`Tap anywhere to mark a concern. Markers fade after 10 minutes.`, 'instructions');
 }
 
 export function defaultInit() { // After two seconds, show San Fransisco.

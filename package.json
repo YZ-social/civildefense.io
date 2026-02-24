@@ -15,7 +15,7 @@
   },
   "type": "module",
   "dependencies": {
-    "@yz-social/kdht": "^0.1.17",
+    "@yz-social/kdht": "^0.1.18",
     "@yz-social/webrtc": "^0.1.4",
     "express": "^4.22.1",
     "express-ws": "^5.0.2",

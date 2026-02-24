@@ -1,132 +1,107 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Int } from './translations.js';
-import { showMessage } from './map.js';
-const { WebSocket } = globalThis; // For linters.
-const WEBSOCKET_URI = location.origin.replace('^http', 'ws') + '/ws'; // Falsey to debug locally
-const RETRY_SECONDS = 90;
-const INACTIVITY_SECONDS = 5 * 60;
+import { Node, WebContact } from '@yz-social/kdht';
+const { WebSocket, URLSearchParams } = globalThis; // For linters.
 
-let connectionPromise = null, countdown;
-async function close(...rest) { // Close network connection, if any.
-  (await connectionPromise)?.close(...rest);
-}
-async function setupNetwork() { // Establish or re-establish a connection.
-  clearInterval(countdown);
-  if ((await connectionPromise)?.readyState === WebSocket.OPEN) {
-    console.log('already connected');
-    return;
-  }
-  connectionPromise = new Promise(resolve => { // Resolves to connection when open, b/c sending over a still-opening socket gives error.
-    const connection = new WebSocket(WEBSOCKET_URI);
-    connection.onmessage = event => receive(JSON.parse(event.data));
-    connection.onopen = () => {
-      if (connection.readyState !== WebSocket.OPEN) return; // You would think that can't happen, but...
-      console.log('connection open');
-      resolve(connection);
-      for (const eventName in handlers) { // If this is reconnecting, re-establish the subscriptions on the new socket.
-	subscribe(eventName, handlers[eventName]);
-      }
-    };
+let NetworkClass;
+if (new URLSearchParams(location.search).has('dht')) {
 
-    // onerror is of no help, as the event is generic.
-    connection.onclose = event => {
-      clearInterval(countdown);
-      resolve(connectionPromise = null); // If anyone is waiting or will wait.
-      console.warn('websocket close', event.code, event.wasClean, event.reason);
-      if (event.reason === 'inactivity') return;
-      if (document.visibilityState === 'visible') { // Set up reconnect with countdown.
-	let counter = RETRY_SECONDS;
-	countdown = setInterval(() => {
-	  if (document.visibilityState !== 'visible') {
-	    console.log("Abandoning retry timeout for invisible tab.");
-	    clearInterval(countdown);
-	  } else if (counter > 1) {
-	    showMessage(Int`Server unavailable. Retrying in ` + counter-- + Int` seconds, or reload.`, 'error');
-	  } else {
-	    showMessage('');
-	    setupNetwork();
-	  }
-	}, 1e3);
-	return;
-      }
-      const more = event.reason ? ' ' + event.reason : '';
-      showMessage(Int`The server connection has closed. Please reload.` + more, 'error');
-    };
-  });
-}
+  NetworkClass = WebContact;
 
+} else {
 
-let inactivityTimer;
-export function resetInactivityTimer() { // Start a timer that will release the websocket after the given period.
-  showMessage('');
-  clearTimeout(inactivityTimer);
-  setupNetwork();
-  inactivityTimer = setTimeout(() => {
-    showMessage(Int`Connection closed due to inactivity. Will reconnect on use.`, 'error');
-    close(3000, 'inactivity');
-  }, INACTIVITY_SECONDS * 1e3);
-}
-
-
-// pub, sub, and receive
-let nodeTag = uuidv4();
-const handlers = {}; // Mapping eventName => function(messageData) for all active subcriptions
-const renewals = {};
-export async function subscribe(eventName, handler) { // Assign handler for eventName, or remove any handler if falsy.
-  eventName = eventName.toString();
-  if (handler) {
-    handlers[eventName] = handler;
-    await send(eventName, {type: 'sub', subject: nodeTag, payload: nodeTag});
-    renewals[eventName] = setTimeout(() => renewals[eventName] && subscribe(eventName, handler), 55 * 60e3);
-  } else {
-    delete handlers[eventName];
-    clearTimeout(renewals[eventName]);
-    delete renewals[eventName];
-    await send(eventName, {type: 'sub', subject: nodeTag, payload: null});
-  }
-}
-
-let last = [];
-export function unpublishLast() { // Unpublish everything from the previous click, if any, and reset for new publication.
-  for (const {eventName, payload, subject} of last.slice())
-    send(eventName, {type: 'pub', subject, payload: null, issuedTime: Date.now()});
-  last = [];
-}
-
-const inFlight = [];
-export async function publish({eventName, subject, ...rest}) { // Publish data to subscribers of eventName.
-  eventName = eventName.toString();
-
-  // IFF this client has a handler for this eventName, evaluate it immediately and tag the
-  // publish with a recognizable value so that we can ignore its receipt.
-  if (handlers[eventName]) { // Execute immediately.
-    inFlight.push(subject);
-    handlers[eventName]({subject, ...rest}, eventName);
-  }
-
-  last.push({eventName, subject, ...rest, type: 'pub'});
-  await send(eventName, {subject, ...rest, type: 'pub'});
-}
-
-// In the DHT, there is storeValue(key, storageItems).
-// For server-based pubsub, the eventName string is embedded within each storageItem in each sent/received message.
-
-async function send(eventName, messageObject) { // Send serialized message when ready, or nothing if no connection.
-  (await connectionPromise)?.send(JSON.stringify({eventName, ...messageObject}));
-}
-function receive(message) {  // Call the handler previously set using subscribe, if any.
-  const {eventName, subject, ...rest} = message;
-  const handler = handlers[eventName];
-  if (!handler) return;
-
-  // If the publish was tagged for filtering by its publisher, check to see if the publisher was here.
-  if (subject) {
-    const index = inFlight.indexOf(subject);
-    if (index >= 0) {
-      inFlight.splice(index, 1);
-      return;
+  NetworkClass = class WebSocketPubSubClient { // A websocket-baed emulation of KDHT WebContact's connect/disconnect/subscribe/publish
+    static async create({name = uuidv4()} = {}) {
+      const contact = new this();
+      const {promise:attachment, resolve:attached} = Promise.withResolvers();
+      const {promise:detachment, resolve:detached} = Promise.withResolvers();
+      Object.assign(contact, {attachment, detachment, attached, detached, name});
+      return Promise.resolve(contact); // WebContact returns a Promise, so we do, too.
     }
-  }
+    async disconnect() { // Close network connection, if any.
+      const socket = await this.connection;
+      socket?.close(3000, 'inactivity');
+      this.connection = null;
+    };
+    connection = null; // Promise established at start of connect(), that resolves to socket/channel when open.
+    attachment = null; // In the DHT, this promise resolves to self when joined, but here it happens at the same time as connection.
+    detachment = null; // Promise established at start of connect(), that resolves when closed.
+    async connect(baseURL = globalThis.location.origin.replace('^http', 'ws') + '/ws') { // Establish or re-establish a connection.
+      if ((await this.connection)?.readyState === WebSocket.OPEN) {
+	console.log('already connected');
+	return this;
+      }
+      this.connection = new Promise(resolveConnection => { // Resolves to connection when open, b/c sending over a still-opening socket gives error.
+	const socket = new WebSocket(baseURL); // baseURL falsey to debug locally
+	socket.onmessage = event => this.receive(JSON.parse(event.data));
+	socket.onopen = () => {
+	  if (socket.readyState !== WebSocket.OPEN) return; // You would think that can't happen, but...
+	  console.log('connection open');
+	  resolveConnection(socket);
+	  this.attached(this);
+	};
 
-  handler({subject, ...rest}, eventName);
-};
+	// onerror is of no help, as the event is generic.
+	socket.onclose = event => {
+	  console.warn('websocket close', event.code, event.wasClean, event.reason);
+	  this.detached(event.reason || (event.wasClean ? 'closed' : 'failed'));
+	  this.attached(this);
+	  resolveConnection( null); // If anyone is waiting or will wait.
+	  this.connection = this.attachment = this.detachment = null;
+	};
+      });
+      await this.connection;
+      return this;
+    }
+
+    // In the DHT, there is storeValue(key, storageItems).
+    // For server-based pubsub, the eventName string is embedded within each storageItem in each sent/received message.
+
+    async send(eventName, messageObject) { // Send serialized message when ready, or nothing if no connection.
+      //console.log('send', eventName, messageObject);
+      (await this.connection)?.send(JSON.stringify({eventName, ...messageObject}));
+    };
+    receive(message) {  // Call the handler previously set using subscribe, if any.
+      const {eventName, subject, ...rest} = message;
+      //console.log('receive', eventName, {subject, ...rest});
+      const handler = this.handlers[eventName];
+      if (!handler) return;
+
+      // If the publish was tagged for filtering by its publisher, check to see if the publisher was here.
+      if (subject) {
+	const index = this.inFlight.indexOf(subject);
+	if (index >= 0) {
+	  this.inFlight.splice(index, 1);
+	  return;
+	}
+      }
+
+      handler({subject, ...rest}, eventName);
+    }
+    handlers = {}; // Mapping eventName => function(messageData) for all active subcriptions
+    inFlight = [];    
+    async subscribe({eventName, handler}) { // Assign handler for eventName, or remove any handler if falsy.
+      eventName = eventName.toString();
+      if (handler) {
+	this.handlers[eventName] = handler;
+	await this.send(eventName, {type: 'sub', subject: this.name, payload: this.name});
+      } else {
+	delete this.handlers[eventName];
+	await this.send(eventName, {type: 'sub', subject: this.name, payload: null});
+      }
+    }
+    async publish({eventName, subject, immediate = false, ...rest}) { // Publish data to subscribers of eventName.
+      eventName = eventName.toString();
+
+      // IFF this client has a handler for this eventName, evaluate it immediately and tag the
+      // publish with a recognizable value so that we can ignore its receipt.
+      if (immediate && this.handlers[eventName]) { // Execute immediately.
+	this.inFlight.push(subject);
+	this.handlers[eventName]({subject, ...rest}, eventName);
+      }
+
+      await this.send(eventName, {subject, ...rest, type: 'pub'});
+    }
+  };
+}
+
+export { NetworkClass };
