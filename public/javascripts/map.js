@@ -3,7 +3,7 @@ import { s2 } from 'https://esm.sh/s2js';
 import { v4 as uuidv4 } from 'uuid';
 import { networkPromise, resetInactivityTimer } from './main.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
-const { L } = globalThis; // Leaflet namespace, for linters.
+const { L, URLSearchParams } = globalThis; // Leaflet namespace, for linters.
 
 export let map; // Leaflet map object.
 const ttl = 10 * 60e3; // Ten minutes
@@ -68,6 +68,8 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
   // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
   console.log('updateSubscriptions', networkPromise);
   const center = map.getCenter();
+  const zoom = map.getZoom();
+  history.replaceState(null, '', `?lat=${center.lat}&lng=${center.lng}&z=${zoom}`);
   const bounds = map.getBounds();
   const northEast = bounds.getNorthEast();
   const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
@@ -120,12 +122,19 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
 
   showMessage(Int`Getting your location...`);
 
+  // Map will be centered at the given current location marker, unless overriden by query parameters.
+  let center = {lat, lng}, zoom = 14;
+  const queryParameters = new URLSearchParams(location.search);
+  if (queryParameters.has('lat')) center.lat = queryParameters.get('lat');
+  if (queryParameters.has('lng')) center.lng = queryParameters.get('lng');
+  if (queryParameters.has('z')) zoom = queryParameters.get('z');
+
   map = L.map('map', { // Ensuring the default values, in case they have changed in some library version.
     worldCopyJump: false,
+    center,
+    zoom,
     maxBounds: null
-  })
-    .setView([lat, lng], 14)
-    .stopLocate(); // Just in case some library version initates this.
+  }).stopLocate(); // Just in case some library version initates this.
 
   // Add OpenStreetMap tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
