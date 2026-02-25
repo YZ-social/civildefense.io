@@ -46,6 +46,14 @@ qrDisplayContainer.onclick = () => {
   resetInactivityTimer();
   qrDisplayContainer.classList.toggle('hidden', true);
 }
+document.getElementById('share').onclick = () => { // Invoke platform share API
+  navigator.share({
+    title: "CivilDefense.io",
+    text: "CivilDefense.io",
+    url: location.href
+  });
+};
+
 
 document.getElementById('recenterButton').onclick = recenterMap;
 

@@ -84,7 +84,7 @@ body {
     left: 5px;
     position: fixed;
     display: flex;
-    gap: 15px;
+    gap: 5px;
 }
 .button-container button {
     background: none;
