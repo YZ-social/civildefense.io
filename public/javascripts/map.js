@@ -26,43 +26,6 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   }
 }
 
-class Marker { // A wrapper around L.marker
-  static icon = L.icon({iconUrl: "images/Achtung.png", iconSize: [40, 35]});
-  // When we resubscribe to different cells covering the same place, we will get the same
-  // sticky data. We don't want to change the marker. Fortunately, the publication to each
-  // of the cells (at different scales) are all published with the same data.
-  static markers = {}; // We keep track by subject UUID.
-  static ensure(data) { // Add market at position with appropriate fade if not already present.
-    const { payload, subject, issuedTime } = data;
-    const existing = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
-    if (!payload) return existing?.destroy();
-    if (existing) return existing; // No need to be glitchy and create a new one.
-    const now = Date.now(),
-	  expiration = issuedTime + ttl,
-          remaining = expiration - now;
-    if (remaining < 0) return null;  // expired.
-    const marker = L.marker(payload, {icon: this.icon, autoPan: false}).addTo(map);
-    // It would be nice to use CSS transitions, but, that's not the API presented by L.marker.
-    const interval = 1000, // milliseconds per adjustment (a tiny increment at a time)
-          fade = interval / ttl; // Change in opacity per adjustment.
-    let opacity = remaining / ttl; // Do not start at 1 if it was reported some time ago.
-    marker.setOpacity(opacity);
-    const fader = setInterval(() => {
-      marker.setOpacity(opacity -= fade);
-      if (opacity > 0) return;
-      wrapper.destroy();
-    }, interval);
-    const wrapper = this.markers[subject] = new this();
-    Object.assign(wrapper, {marker, data, fader});
-    return wrapper;
-  }
-  destroy() {
-    clearInterval(this.fader);
-    this.marker.removeFrom(map);
-    delete this.constructor.markers[this.data];
-  }
-}
-
 let subscriptions = []; // array of stringy keys s2:<cellID>
 export function updateSubscriptions(oldKeys = subscriptions) { // Update current subscriptions to the new map bounds.
   // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
@@ -84,6 +47,100 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
   for (const key of oldKeys) newKeys.includes(key) || subscribe(key, null);
 
   subscriptions = newKeys;
+}
+
+let last = null; // Last published lat, lng, subject
+function publish({lat, lng, message, // Publish the given data to all applicable eventNames.
+		  subject  = uuidv4(), // For recognizing locally executed events and for cancelling. Not a user tag!
+		  cancel = last, // First unpublish the specified data.
+		  issuedTime = Date.now(),
+		  immediate = true,  // Whether to act locally before sending.
+		  debug = false
+		 }) {
+
+  if (cancel) {
+    const {lat, lng, subject} = cancel;
+    const time = issuedTime - 1;
+    for (const cell of getContainingCells(lat, lng)) {
+      networkPromise.then(contact =>
+	contact.publish({eventName: `s2:${cell}`, subject, payload: null, issuedTime: time, immediate, debug}));
+    }
+  }
+
+  last = {lat, lng, subject}; // Capture the new subject and eventNames for next time.
+  const payload = {lat, lng, message};
+  for (const cell of getContainingCells(lat, lng)) {
+    const _level = s2.cellid.level(cell); // add _level for debug only
+    networkPromise.then(contact =>
+      contact.publish({eventName: `s2:${cell}`, subject, payload, _level, issuedTime, immediate, debug}));
+  }
+}
+
+class Marker { // A wrapper around L.marker
+  static icon = L.icon({iconUrl: "images/Achtung.png", iconSize: [40, 35]});
+  // When we resubscribe to different cells covering the same place, we will get the same
+  // sticky data. We don't want to change the marker. Fortunately, the publication to each
+  // of the cells (at different scales) are all published with the same data.
+  static markers = {}; // We keep track by subject UUID.
+  static ensure(data) { // Add marker at position with appropriate fade if not already present.
+    const { payload, subject, issuedTime } = data;
+    let wrapper = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
+    console.log('received event', {wrapper, subject, payload, data});
+
+    if (!payload) return wrapper?.destroy();
+    const now = Date.now(),
+	  expiration = issuedTime + ttl,
+          remaining = expiration - now;
+    if (remaining < 0) return wrapper?.destroy();  // expired.
+
+    wrapper ||= this.markers[subject] = new this();
+    const {lat, lng, message} = payload;
+    const content =
+	  `${new Date(issuedTime).toLocaleString()}<br><p contenteditable>${message || Marker.noMessage}</p>`;
+    let {marker} = wrapper;
+    let popup = marker?.getPopup();
+    if (!marker) {
+      marker = L.marker([lat, lng], {icon: this.icon, autoPan: false}).addTo(map);
+      marker.bindPopup(content)
+	.on('popupclose', event => wrapper.maybeUpdate(event.popup.getElement()))
+	.openPopup();
+    } else if (content !== popup.getContent()) {
+      popup.setContent(content);
+    }
+
+    // Set up or update fader.
+    // It would be nice to use CSS transitions, but, that's not the API presented by L.marker.
+    const interval = 1000, // milliseconds per adjustment (a tiny increment at a time)
+          fade = interval / ttl; // Change in opacity per adjustment.
+    let opacity = remaining / ttl; // Do not start at 1 if it was reported some time ago.
+    marker.setOpacity(opacity);
+    clearInterval(wrapper.fader);
+    const fader = setInterval(() => {
+      marker.setOpacity(opacity -= fade);
+      if (opacity > 0) return;
+      wrapper.destroy();
+    }, interval);
+
+    Object.assign(wrapper, {marker, lat, lng, subject, message, issuedTime, fader});
+    return wrapper;
+  }
+  static noMessage = `No additional information.`; // fixme Int
+  maybeUpdate(displayElement) { // If data has changed, republish.
+    const {lat, lng, subject, message} = this;
+    const messageElement = displayElement.querySelector('p');
+    let newMessage = messageElement.textContent;
+    if (newMessage === Marker.noMessage) newMessage = undefined;
+    let update = newMessage !== message;
+    console.log('maybeUpdate', {update, lat, lng, subject, message, messageElement, newMessage});
+    if (update) {
+      publish({lat, lng, subject, message: newMessage, cancel: null});
+    }
+  }
+  destroy() {
+    clearInterval(this.fader);
+    this.marker.removeFrom(map);
+    delete this.constructor.markers[this.data];
+  }
 }
 
 let yourLocation; // marker
@@ -116,7 +173,6 @@ export function recenterMap() {
   map.flyTo(latLng);
 }
 
-let lastPublishedEvents = [], subject = '';
 export function initMap(lat, lng) { // Set up appropriate zoomed initial map and handlers for this position.
   // Then show initial message and updateSubscriptions.
 
@@ -162,28 +218,10 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
   // Add click event to note position
   map.on('click', function(e) {
     resetInactivityTimer();
-    const issuedTime = Date.now();
-    const unpublishTime = issuedTime - 1;
-    const immediate = true; // whether to act locally before sending
-    const debug = false;
-    const events = []; // gather all events instead of referencing, e.g., subject asynchronously (as that has side-effect).
-    // App-specific: null out previous entry from us, if any.
-    for (const eventName of lastPublishedEvents) events.push({eventName, subject, payload: null, issuedTime: unpublishTime, immediate, debug});
     const { lat, lng } = e.latlng;
-    const payload = [lat, lng];
-    const cells = getContainingCells(lat, lng);
-    subject = uuidv4(); // For recognizing locally executed events and for cancelling. Not a user tag!
-    lastPublishedEvents = [];
-    for (const cell of cells) {
-      const eventName = `s2:${cell}`;
-      const _level = s2.cellid.level(cell); // add _level for debug only
-      events.push({eventName, subject, payload, issuedTime, immediate, _level, debug});
-      lastPublishedEvents.push(eventName);
-    }
-    for (const event of events) networkPromise.then(contact => contact.publish(event));
+    publish({lat, lng});
   });
 
-  //fixme updateSubscriptions();
   showMessage(Int`Tap anywhere to mark a concern. Markers fade after 10 minutes.`, 'instructions');
 }
 

@@ -54,7 +54,6 @@ document.getElementById('share').onclick = () => { // Invoke platform share API
   });
 };
 
-
 document.getElementById('recenterButton').onclick = recenterMap;
 
 function delay(ms = 1e3) {
@@ -64,7 +63,7 @@ function delay(ms = 1e3) {
 let inactivityTimer, reconnectCountdown, networkPromise = null;
 export { networkPromise };
 export async function resetInactivityTimer() { // if !network, initialize(false), else disconnect after INACTIVITY_SECONDSif not restarted
-  console.log('resetInactivityTimer, networkPromise:', networkPromise);
+  //console.log('resetInactivityTimer, networkPromise:', networkPromise);
   showMessage(''); // Clearing any messages
   clearTimeout(inactivityTimer);
   clearInterval(reconnectCountdown);
@@ -76,7 +75,7 @@ export async function resetInactivityTimer() { // if !network, initialize(false)
 }
 
 function checkOnline() { //true if online and visible, else cancel reconnectCountdown and inactivityTimeout, and show "offline"
-  console.log('checkOnline', navigator.onLine && !document.hidden);
+  //console.log('checkOnline', navigator.onLine && !document.hidden);
   if (navigator.onLine && !document.hidden) return true;
   clearTimeout(inactivityTimer);
   clearInterval(reconnectCountdown);

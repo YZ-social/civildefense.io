@@ -62,14 +62,14 @@ router.ws('/ws', function(ws, req, next) {
     let keySubs = subscriptions[eventName] ||= {};
     switch (type) {
     case 'pub':
-      console.log('sending to', keySubs);
-      for (const ws of Object.values(keySubs)) ws.send(message);
+      const subscribedSockets = Object.values(keySubs);
+      for (const ws of subscribedSockets) ws.send(message);
       setSticky(eventName, {eventName, subject, payload, ...rest, type: 'event'});
       break;
     case 'sub':
       if (payload) {
 	subscriptions[eventName][subject] = ws;
-	console.log('subscriptions', eventName, subscriptions[eventName]);
+	//console.log('subscriptions', eventName, subscriptions[eventName]);
 	for (const string of getSticky(eventName)) {
 	  console.log('sending sticky', string);
 	  ws.send(string);
