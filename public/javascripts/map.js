@@ -52,6 +52,7 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
 let last = null; // Last published lat, lng, subject
 function publish({lat, lng, message, // Publish the given data to all applicable eventNames.
 		  subject  = uuidv4(), // For recognizing locally executed events and for cancelling. Not a user tag!
+		  payload = {lat, lng, message}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
 		  cancel = last, // First unpublish the specified data.
 		  issuedTime = Date.now(),
 		  immediate = true,  // Whether to act locally before sending.
@@ -67,12 +68,11 @@ function publish({lat, lng, message, // Publish the given data to all applicable
     }
   }
 
-  last = {lat, lng, subject}; // Capture the new subject and eventNames for next time.
-  const payload = {lat, lng, message};
+  last = payload && {lat, lng, subject}; // Capture the new subject and eventNames for next time.
   for (const cell of getContainingCells(lat, lng)) {
     const _level = s2.cellid.level(cell); // add _level for debug only
     networkPromise.then(contact =>
-      contact.publish({eventName: `s2:${cell}`, subject, payload, _level, issuedTime, immediate, debug}));
+      contact.publish({eventName: `s2:${cell}`, subject, payload, _level, issuedTime, act: contact.name, immediate, debug}));
   }
 }
 
@@ -83,9 +83,10 @@ class Marker { // A wrapper around L.marker
   // of the cells (at different scales) are all published with the same data.
   static markers = {}; // We keep track by subject UUID.
   static ensure(data) { // Add marker at position with appropriate fade if not already present.
-    const { payload, subject, issuedTime } = data;
+    const { payload, subject, issuedTime, act } = data;
+    const ourTag = globalThis.contact.name;
     let wrapper = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
-    console.log('received event', {wrapper, subject, payload, data});
+    console.log('received event', {wrapper, subject, payload, act, ourTag, data});
 
     if (!payload) return wrapper?.destroy();
     const now = Date.now(),
@@ -95,14 +96,22 @@ class Marker { // A wrapper around L.marker
 
     wrapper ||= this.markers[subject] = new this();
     const {lat, lng, message} = payload;
-    const content =
-	  `${new Date(issuedTime).toLocaleString()}<br><p contenteditable>${message || Marker.noMessage}</p>`;
+    const isOurs = act === ourTag;
+    const timestamp = new Date(issuedTime).toLocaleString();
+    const content = isOurs ?
+	  `${timestamp}<br>you (${ourTag})<br><p contenteditable>${message || Marker.noMessage}</p><button>cancel alert</button>` :
+	  `${timestamp}<br>node ${ourTag}<br><p">${message || Marker.noMessage}</p>`;
     let {marker} = wrapper;
     let popup = marker?.getPopup();
     if (!marker) {
       marker = L.marker([lat, lng], {icon: this.icon, autoPan: false}).addTo(map);
       marker.bindPopup(content)
-	.on('popupclose', event => wrapper.maybeUpdate(event.popup.getElement()))
+	.on('popupopen', event => isOurs && (event.popup.getElement().querySelector('button').onclick =
+					     event=> {
+					       event.stopPropagation();
+					       publish({lat, lng, subject, payload: null, cancel: null});
+					     }))
+	.on('popupclose', event => isOurs && wrapper.maybeUpdate(event.popup.getElement()))
 	.openPopup();
     } else if (content !== popup.getContent()) {
       popup.setContent(content);
@@ -131,7 +140,6 @@ class Marker { // A wrapper around L.marker
     let newMessage = messageElement.textContent;
     if (newMessage === Marker.noMessage) newMessage = undefined;
     let update = newMessage !== message;
-    console.log('maybeUpdate', {update, lat, lng, subject, message, messageElement, newMessage});
     if (update) {
       publish({lat, lng, subject, message: newMessage, cancel: null});
     }
