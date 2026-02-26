@@ -26,6 +26,7 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   }
 }
 
+let hashtags = ['all'];
 let subscriptions = []; // array of stringy keys s2:<cellID>
 export function updateSubscriptions(oldKeys = subscriptions) { // Update current subscriptions to the new map bounds.
   // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
@@ -137,7 +138,7 @@ class Marker { // A wrapper around L.marker
   maybeUpdate(displayElement) { // If data has changed, republish.
     const {lat, lng, subject, message} = this;
     const messageElement = displayElement.querySelector('p');
-    let newMessage = messageElement.textContent;
+    let newMessage = messageElement.innerHTML;
     if (newMessage === Marker.noMessage) newMessage = undefined;
     let update = newMessage !== message;
     if (update) {
