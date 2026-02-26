@@ -27,7 +27,7 @@ if (new URLSearchParams(location.search).has('dht')) {
     detachment = null; // Promise established at start of connect(), that resolves when closed.
     async connect(baseURL = globalThis.location.origin.replace('^http', 'ws') + '/ws') { // Establish or re-establish a connection.
       if ((await this.connection)?.readyState === WebSocket.OPEN) {
-	console.log('already connected');
+	//console.log('already connected');
 	return this;
       }
       this.connection = new Promise(resolveConnection => { // Resolves to connection when open, b/c sending over a still-opening socket gives error.
@@ -61,21 +61,21 @@ if (new URLSearchParams(location.search).has('dht')) {
       (await this.connection)?.send(JSON.stringify({eventName, ...messageObject}));
     };
     receive(message) {  // Call the handler previously set using subscribe, if any.
-      const {eventName, subject, ...rest} = message;
-      //console.log('receive', eventName, {subject, ...rest});
+      const {eventName, subject, issuedTime, ...rest} = message;
+      //console.log('receive', {eventName, subject, issuedTime, ...rest});
       const handler = this.handlers[eventName];
       if (!handler) return;
 
       // If the publish was tagged for filtering by its publisher, check to see if the publisher was here.
       if (subject) {
-	const index = this.inFlight.indexOf(subject);
+	const index = this.inFlight.indexOf(subject + issuedTime);
 	if (index >= 0) {
 	  this.inFlight.splice(index, 1);
 	  return;
 	}
       }
 
-      handler({subject, ...rest}, eventName);
+      handler({subject, issuedTime, ...rest}, eventName);
     }
     handlers = {}; // Mapping eventName => function(messageData) for all active subcriptions
     inFlight = [];    
@@ -89,17 +89,18 @@ if (new URLSearchParams(location.search).has('dht')) {
 	await this.send(eventName, {type: 'sub', subject: this.name, payload: null});
       }
     }
-    async publish({eventName, subject, immediate = false, ...rest}) { // Publish data to subscribers of eventName.
+    async publish({eventName, subject, immediate = false, issuedTime, ...rest}) { // Publish data to subscribers of eventName.
       eventName = eventName.toString();
 
       // IFF this client has a handler for this eventName, evaluate it immediately and tag the
       // publish with a recognizable value so that we can ignore its receipt.
       if (immediate && this.handlers[eventName]) { // Execute immediately.
-	this.inFlight.push(subject);
-	this.handlers[eventName]({subject, ...rest}, eventName);
+	//console.log('acting immediately on', {eventName, subject, issuedTime, ...rest});
+	this.inFlight.push(subject + issuedTime);
+	this.handlers[eventName]({subject, issuedTime, ...rest, immediateLocalAction: true}, eventName);
       }
 
-      await this.send(eventName, {subject, ...rest, type: 'pub'});
+      await this.send(eventName, {subject, issuedTime, ...rest, type: 'pub'});
     }
   };
 }
