@@ -235,8 +235,8 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
     worldCopyJump: false,
     center,
     zoom,
-    //zoomSnap: 0,
-    maxBounds: null
+    minZoom: 2,
+    maxBounds: [[90, 180], [-90, -180]]
   }).stopLocate(); // Just in case some library version initates this.
 
   // Add OpenStreetMap tiles
