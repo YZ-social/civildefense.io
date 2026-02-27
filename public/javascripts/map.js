@@ -236,6 +236,7 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
     center,
     zoom,
     minZoom: 2,
+    zoomControl: navigator.maxTouchPoints === 1, // Only when no multi-touch.
     maxBounds: [[90, 180], [-90, -180]]
   }).stopLocate(); // Just in case some library version initates this.
 
