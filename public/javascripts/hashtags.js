@@ -1,0 +1,107 @@
+import { updateQueryParameters, updateSubscriptions } from './map.js';
+const { URLSearchParams } = globalThis; // For linters.
+
+// We subscribe to the cartesian product of the list of non-overlapping cells and all hashes.
+// We publish to just the first of these.
+export const Hashtags = {
+  hashtags: {["🍰cake"]: true, ["🔥fire"]: 'pub', ["🌊flood"]: false, ["🧊ice"]: true},
+  add(label) { // Ensure label is an active hashtag.
+   this. hashtags[label] ||= true; // If it's 'pub', let it remain so.
+  },
+  getAll() { // List of all the user's hashtags.
+    return Object.keys(this.hashtags);
+  },
+  getSubscribe() { // Return a list of the hashtags to which the user intendeds to subscribe.
+    return this.getAll().filter(tag => this.hashtags[tag]);
+  },
+  getPublish() { // Return the one hashtag to which the user intends to publish.
+    return this.getAll().find(key => this.hashtags[key] === 'pub');
+  },
+  stripLeadingEmoji(string) { // Return string without any leading emoji (which might be of varying length).
+    return string.replace(/^\p{Extended_Pictographic}/u, '') || string;
+  },
+  chipset: document.body.querySelector('.watching-hashtags'), // Element containing the user's chips.
+  chipHTML(label) {
+    const active = this.hashtags[label];
+    return `<md-filter-chip label="${label}" elevated
+        ${active === 'pub' ? 'class="pub"' : ''}
+        ${active ? ' selected' : 'removable'}
+      ></md-filter-chip>`;
+  },
+  resetSubscriberDisplay() { // Lay out all the hashtag chips display, including the input for adding new ones.
+    this.chipset.innerHTML = '';
+    const tags = this.getAll();
+    // Sort alphabetically, ignoring any leading emoji, as these have unexpected orderings.
+    tags.sort((a, b) => this.stripLeadingEmoji(a).localeCompare(this.stripLeadingEmoji(b)));
+    tags.forEach(label => { // Elements are displayed from the bottom up.
+      this.chipset.insertAdjacentHTML("afterbegin", this.chipHTML(label));
+    });
+    [...this.chipset.children].forEach(element => {
+      // Material design will update the displays. We have to handle the data changes.
+      element.addEventListener('remove', event => {
+	const chip = event.target;
+	console.log('remove', chip);
+	delete this.hashtags[chip.label];
+	updateQueryParameters();
+	updateSubscriptions();
+      });
+      element.onclick = event => {
+	const chip = event.target;
+	const label = chip.label;
+	const altPub = (label === this.getPublish()) && this.getSubscribe().find(tag => tag != label);
+	if (altPub) this.setPublish([...chip.parentElement.children].find(child => child.label === altPub));
+	this.hashtags[label] = chip.selected;
+	chip.removable = !chip.selected;
+	updateQueryParameters();
+	updateSubscriptions();
+      };
+    });
+    this.chipset.insertAdjacentHTML("afterbegin",
+				    `<md-filled-text-field class="newtag" placeholder="new searchtag">
+                                       <md-icon class="material-icons" slot="leading-icon">add</md-icon>
+                                     </md-filled-text-field>`
+				     );
+    this.chipset.firstChild.onchange = event => { // Add the new hashtag.
+      this.add(event.target.value);
+      this.resetSubscriberDisplay();
+      updateQueryParameters();
+    };
+  },
+  setPublish(chip) { // Set chip to be the new publishing tag, return the label.
+    // If newTag is falsy, find one that isn't the current one if possible.
+    const newTag = chip.label;
+    const oldTag = this.getPublish();
+    console.log({chip, newTag, oldTag});
+    this.hashtags[oldTag] = true;
+    this.hashtags[newTag] = 'pub';
+    [...chip.parentElement.children].find(chip => chip.label === oldTag).classList.remove('pub');
+    chip.classList.add('pub');
+    return newTag;
+  },
+  resetPublisherDisplay(chipset, cancel) { // Lay out the choices for what to publish to, including the option to cancle the alert.
+    chipset.innerHTML = this.getSubscribe()
+      .map(tag => this.chipHTML(tag))
+      .join('') + `<md-filter-chip label="cancel alert" class="cancel"></md-filter-chip>`;
+    chipset.querySelector('.cancel').onclick = event=> {
+      event.stopPropagation();
+      cancel();
+    };
+    chipset.querySelectorAll(':not(.cancel)').forEach(element => element.onclick = event=> {
+      event.stopPropagation();
+      const chip = event.target;
+      this.setPublish(chip);
+      chip.selected = true;
+      this.resetSubscriberDisplay();
+      console.log({chip, hashtags:this.hashtags});
+    });
+  }//,
+  // updateHashtags(newTag, oldTag = null) { // Add newTag as the first, and remove oldTag if present. Update url.
+  //   this.hashtags = [newTag, ...this.hashtags.filter(tag => ![newTag, oldTag].includes(tag))];
+  //   updateQueryParameters();
+  //   updateSubscriptions();
+  // }
+}
+
+// Populate hashtags data and display.
+new URLSearchParams(location.search).get('tags')?.split(',').forEach(tag => Hashtags.add(tag));
+Hashtags.resetSubscriberDisplay();

@@ -119,28 +119,28 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
   positionWatch = geolocation.watchPosition(
     position => {
       const {latitude, longitude} = position.coords;
-      //console.log('geolocation ready. map:', !!map, 'subscribeOneShot:', subscribeOneShot);
+      console.log('geolocation ready. map:', !!map, 'subscribeOneShot:', subscribeOneShot);
       updateLocation(latitude, longitude);
       if (!subscribeOneShot) return;
       subscribeOneShot = false;
       resetInactivityTimer();
       updateSubscriptions([]); // This was for a new node, so supply and empty oldSubscriptions.
     }, async error => {
-      console.warn(`Geolocation code ${error.code}.`);
+      console.warn(`Geolocation code ${error.code}. online:`, navigator.onLine, 'code:', error.code);
       if (navigator.onLine) {
 	if (error.code === GeolocationPositionError.PERMISSION_DENIED) {
 	  showMessage(Int`Location access denied. Using default location.`, 'error', error);
 	  defaultInit();
 	} else {
 	  geolocation.clearWatch(positionWatch);
-	  await delay();
-	  initializeGeolocation();
+	  await delay(2e3);
+	  initializeGeolocation(subscribe);
 	}
       } else {
 	showMessage(Int`No network connection.`, 'error');
       }
     }, {
-      enableHighAccuracy: true,
+      enableHighAccuracy: false,
       timeout: 10000,
       maximumAge: 0
     }

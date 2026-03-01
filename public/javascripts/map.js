@@ -1,7 +1,8 @@
-import { Int } from './translations.js';
-import { s2 } from 'https://esm.sh/s2js';
 import { v4 as uuidv4 } from 'uuid';
+import { s2 } from 's2js';
+import { Int } from './translations.js';
 import { networkPromise, resetInactivityTimer } from './main.js';
+import { Hashtags } from './hashtags.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 const { L, URLSearchParams } = globalThis; // Leaflet namespace, for linters.
 
@@ -26,19 +27,12 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   }
 }
 
-// We subscribe to the cartesian product of the list of non-overlapping cells and all hashes.
-// We publish to just the first of these.
-let hashtags = new URLSearchParams(location.search).get('tags')?.split(',') || ['all'];
-function updateHashtags(newTag, oldTag = null) { // Add newTag as the first, and remove oldTag if present. Update url.
-  hashtags = [newTag, ...hashtags.filter(tag => ![newTag, oldTag].includes(tag))];
-  updateQueryParameters();
-  updateSubscriptions();
-}
-function makeEventName(cell, hash = hashtags[0]) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
+
+function makeEventName(cell, hash = Hashtags.getPublish()) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
   return `s2:${cell}:${hash}`;
 }
-function updateQueryParameters({params = new URLSearchParams(location.search), lat = params.get('lat'), lng = params.get('lng'), zoom = params.get('z')} = {}) { // Update url to reflect application state.
-  params.set('tags', hashtags.toString());
+export function updateQueryParameters({params = new URLSearchParams(location.search), lat = params.get('lat'), lng = params.get('lng'), zoom = params.get('z')} = {}) { // Update url to reflect application state.
+  params.set('tags', Hashtags.getSubscribe().toString());
   if (lat !== null) params.set('lat', lat);
   if (lng !== null) params.set('lng', lng);
   if (zoom !== null) params.set('z', zoom);    
@@ -54,8 +48,8 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
   const bounds = map.getBounds();
   const northEast = bounds.getNorthEast();
   const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
-  const newKeys = newCells.flatMap(cell => hashtags.map(hash => makeEventName(cell, hash)));
-  console.log('subscribing to', newKeys, 'and dropping', oldKeys);
+  const newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => makeEventName(cell, hash)));
+  console.log('subscribing', {newKeys, oldKeys});
   const subscribe = (key, value, autoRenewal = false) =>
 	networkPromise.then(async contact => contact.subscribe({eventName: key, handler: value, autoRenewal}));
 
@@ -78,18 +72,19 @@ function publish({lat, lng, message, // Publish the given data to all applicable
 		  ...rest
 		 }) {
 
+  let oldCells = null, oldHash, oldSubject = null;
   if (cancel) {
     const {lat, lng, hashtag, subject} = cancel;
     const time = issuedTime - 1;
-    const cells = getContainingCells(lat, lng);
-    for (const cell of cells) {
+    oldCells = getContainingCells(lat, lng);
+    oldHash = hashtag; oldSubject = subject;
+    for (const cell of oldCells) {
       networkPromise.then(contact =>
 	contact.publish({eventName: makeEventName(cell, hashtag), subject, payload: null, issuedTime: time, hashtag, act: contact.name, immediate, ...rest}));
     }
-    console.log('revoking (e.g.)', {cell: cells[0], hashtag, subject});
   }
 
-  const hashtag = hashtags[0];
+  const hashtag = Hashtags.getPublish();
   const cells = getContainingCells(lat, lng);
   last = payload && {lat, lng, hashtag, subject}; // Capture the new subject and eventName data for next time.
   for (const cell of cells) {
@@ -98,7 +93,7 @@ function publish({lat, lng, message, // Publish the given data to all applicable
     networkPromise.then(contact =>
       contact.publish({eventName, subject, payload, _level, issuedTime, hashtag, act: contact.name, immediate, ...rest}));
   }
-  console.log('publishing to (e.g.)', {cell: cells[0], hashtag, subject, payload});
+  console.log('publishing', {cells, hashtag, subject, payload, oldCells, oldHash, oldSubject});
 }
 
 class Marker { // A wrapper around L.marker
@@ -124,27 +119,23 @@ class Marker { // A wrapper around L.marker
     const {lat, lng, message} = payload;
     const isOurs = act === ourTag;
     const timestamp = new Date(issuedTime).toLocaleString();
-    const messageText = message || Marker.noMessage;
     const content = isOurs ?
-	  `${timestamp}<br>you (${act})<br><p contenteditable>${messageText}</p>#<span contenteditable>${hashtags[0]}</span> <button>cancel alert</button>` :
-	  `${timestamp}<br>node ${act}<br><p>${messageText}</p>#${hashtag}`;
+	  `${timestamp}<br>you (${act})<br><p><md-outlined-text-field label="message"${message ? `value="${message}"` : ''}></md-outlined-text-field></p>
+	  <md-chip-set></md-chip-set>` :
+	  `${timestamp}<br>node ${act}<br><p>${message || Marker.noMessage}</p><span>${hashtag}</span>`;
     let {marker} = wrapper;
     let existingPopup = marker?.getPopup();
     if (!marker) {
       marker = L.marker([lat, lng], {icon: this.icon, autoPan: false}).addTo(map);
-      marker.bindPopup(content)
-	.on('popupopen', event => { // Set up handlers.
-	  if (!isOurs) return;
-	  const popupElement = event.popup.getElement();
-	  popupElement.querySelector('button').onclick = event=> {
-	    event.stopPropagation();
-	    publish({lat, lng, subject, payload: null, cancel: null});
-	  };
-	})
-	.on('popupclose', event => isOurs && wrapper.maybeUpdate(event.popup.getElement()));
+      marker.bindPopup(content, {className: 'alert'})
+	.on('popupopen',
+	    event => isOurs && Hashtags.resetPublisherDisplay(event.popup.getElement().querySelector('md-chip-set'),
+							      () => publish({lat, lng, subject, payload: null, cancel: null})))
+	.on('popupclose',
+	    event => isOurs && wrapper.maybeUpdate(event.popup.getElement()));
       console.log({subject, hashtag, last});
-      if (!(isOurs && suppressReopen)) marker.openPopup(); // hack guard to not re-open what we just closed when changing hashtags
-    } else if (content !== existingPopup.getContent()) {
+      if (!(isOurs && suppressReopen)) marker.openPopup(); // Hack guard to not re-open what we just closed when changing hashtags.
+    } else if (content !== existingPopup.getContent()) { // If changed after creation.
       existingPopup.setContent(content);
     }
 
@@ -166,20 +157,20 @@ class Marker { // A wrapper around L.marker
   }
   maybeUpdate(displayElement) { // If data has changed, republish.
     const {lat, lng, hashtag, subject, message} = this;
-    let newMessage = displayElement.querySelector('p').innerHTML;
+    let newMessage = displayElement.querySelector('md-outlined-text-field').value;
     if (newMessage === Marker.noMessage) newMessage = undefined;
-    const newHashtag = displayElement.querySelector('span').textContent;
+    const newHashtag = Hashtags.getPublish();
     const isNewHashtag = newHashtag !== hashtag;
-    //console.log({lat, lng, subject, message, newMessage, hashtag, newHashtag, isNewHashtag});
+    console.log({lat, lng, subject, message, newMessage, hashtag, newHashtag, isNewHashtag});
     if (newMessage === message && !isNewHashtag) return;
     let cancel = null;
     if (isNewHashtag) {
-      updateHashtags(newHashtag); // Don't rememove the old hashtag until we cancel old alert.
+      updateQueryParameters();
       cancel = {lat, lng, hashtag, subject};
     }
     publish({lat, lng, subject, message: newMessage, cancel, suppressReopen: isNewHashtag}); // immediate for canceled and new, before we remove old hash
     if (isNewHashtag) {
-      updateHashtags(newHashtag, hashtag); // Now remove old hashtag.
+      updateSubscriptions();
     }
   }
   destroy() {
@@ -210,6 +201,7 @@ export function updateLocation(lat, lng) { // initMap if necessary, and set our 
   if (!map.getBounds().contains(L.latLng(lat, lng))) return;
 
   const latLng = [lat, lng];
+  //console.log({latLng, yourLocation, bounds: map.getBounds(), map});
   yourLocation.setLatLng(latLng);
 }
 
@@ -249,7 +241,7 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
   // Add a marker at user's current location
   yourLocation = L.marker([lat, lng], {autoPan: false})
     .addTo(map)
-    .bindPopup(Int`Your Location`)
+    .bindPopup(Int`Your Location`, {className: 'alert'})
     .openPopup();
   // We close the popup on move, because the map will try to keep an open popup from straddling the bounds,
   // which can be confusing. It also closes when another marker is made, so it's nice to just close it
