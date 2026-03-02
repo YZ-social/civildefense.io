@@ -64,7 +64,6 @@ let inactivityTimer, reconnectCountdown, networkPromise = null;
 export { networkPromise };
 export async function resetInactivityTimer() { // if !network, initialize(false), else disconnect after INACTIVITY_SECONDSif not restarted
   //console.log('resetInactivityTimer, networkPromise:', networkPromise);
-  showMessage(''); // Clearing any messages
   clearTimeout(inactivityTimer);
   clearInterval(reconnectCountdown);
   if (!networkPromise) return initialize(false);
@@ -161,7 +160,6 @@ async function initialize(fromHandler) { // Ensure there is a network promise an
     const subscribe = !networkPromise;
     console.log('initialize fromHandler:', !!fromHandler, 'subscribe:', !!subscribe);
     if (!checkOnline()) return;
-    showMessage('');
     if (!networkPromise) {
       console.log('creating');
       networkPromise = NetworkClass.create();
