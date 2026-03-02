@@ -96,6 +96,19 @@ body {
     flex-wrap: wrap-reverse;
     align-items: flex-end;
 }
+.emoji {
+    text-shadow: 8px -3px 10px rgb(0 0 0 / 60%);
+    font-size: 40px;
+    position: relative;
+    left: -15px;
+    top: -35px;
+    z-index: 450;
+}
+.alert .leaflet-popup-close-button {
+    width: unset !important;
+    height: unset !important;
+    margin: 4px;
+}
 .alert p, .alert span {
     font-size: 18px;
 }

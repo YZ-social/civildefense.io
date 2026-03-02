@@ -1,10 +1,10 @@
+const { L } = globalThis; // Leaflet namespace, for linters.
 import { v4 as uuidv4 } from 'uuid';
 import { s2 } from 's2js';
 import { Int } from './translations.js';
 import { networkPromise, resetInactivityTimer } from './main.js';
 import { Hashtags } from './hashtags.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
-const { L, URLSearchParams } = globalThis; // Leaflet namespace, for linters.
 
 export let map; // Leaflet map object.
 const ttl = 10 * 60e3; // Ten minutes
@@ -97,7 +97,7 @@ function publish({lat, lng, message, // Publish the given data to all applicable
 }
 
 class Marker { // A wrapper around L.marker
-  static icon = L.icon({iconUrl: "images/Achtung.png", iconSize: [40, 35]});
+  //static icon = L.icon({iconUrl: "images/Achtung.png", iconSize: [40, 35]});
   // When we resubscribe to different cells covering the same place, we will get the same
   // sticky data. We don't want to change the marker. Fortunately, the publication to each
   // of the cells (at different scales) are all published with the same data.
@@ -126,11 +126,11 @@ class Marker { // A wrapper around L.marker
     let {marker} = wrapper;
     let existingPopup = marker?.getPopup();
     if (!marker) {
-      marker = L.marker([lat, lng], {icon: this.icon, autoPan: false}).addTo(map);
+      marker = L.marker([lat, lng], {icon: L.divIcon({html: Hashtags.firstEmoji(hashtag), className: 'emoji'}), autoPan: false}).addTo(map);
       marker.bindPopup(content, {className: 'alert'})
 	.on('popupopen',
-	    event => isOurs && Hashtags.resetPublisherDisplay(event.popup.getElement().querySelector('md-chip-set'),
-							      () => publish({lat, lng, subject, payload: null, cancel: null})))
+	    event => Hashtags.resetPublisherDisplay(isOurs, event.popup.getElement(),
+						    () => publish({lat, lng, subject, payload: null, cancel: null})))
 	.on('popupclose',
 	    event => isOurs && wrapper.maybeUpdate(event.popup.getElement()));
       console.log({subject, hashtag, last});
@@ -163,6 +163,7 @@ class Marker { // A wrapper around L.marker
     const isNewHashtag = newHashtag !== hashtag;
     console.log({lat, lng, subject, message, newMessage, hashtag, newHashtag, isNewHashtag});
     if (newMessage === message && !isNewHashtag) return;
+    resetInactivityTimer();
     let cancel = null;
     if (isNewHashtag) {
       updateQueryParameters();

@@ -140,7 +140,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
 	showMessage(Int`No network connection.`, 'error');
       }
     }, {
-      enableHighAccuracy: false,
+      enableHighAccuracy: true,
       timeout: 10000,
       maximumAge: 0
     }
