@@ -62,8 +62,9 @@ function delay(ms = 1e3) {
 
 let inactivityTimer, reconnectCountdown, networkPromise = null;
 export { networkPromise };
-export async function resetInactivityTimer() { // if !network, initialize(false), else disconnect after INACTIVITY_SECONDSif not restarted
+export async function resetInactivityTimer(clearMessage = true) { // if !network, initialize(false), else disconnect after INACTIVITY_SECONDSif not restarted
   //console.log('resetInactivityTimer, networkPromise:', networkPromise);
+  if (clearMessage) showMessage('');
   clearTimeout(inactivityTimer);
   clearInterval(reconnectCountdown);
   if (!networkPromise) return initialize(false);
@@ -122,7 +123,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
       updateLocation(latitude, longitude);
       if (!subscribeOneShot) return;
       subscribeOneShot = false;
-      resetInactivityTimer();
+      resetInactivityTimer(false);
       updateSubscriptions([]); // This was for a new node, so supply and empty oldSubscriptions.
     }, async error => {
       console.warn(`Geolocation code ${error.code}. online:`, navigator.onLine, 'code:', error.code);
