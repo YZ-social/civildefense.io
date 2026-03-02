@@ -64,8 +64,9 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
 
 let last = null; // Last published lat, lng, subject
 function publish({lat, lng, message, // Publish the given data to all applicable eventNames.
+		  originalPosting = undefined,
 		  subject  = uuidv4(), // For recognizing locally executed events and for cancelling. Not a user tag!
-		  payload = {lat, lng, message}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
+		  payload = {lat, lng, message, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
 		  cancel = last, // First unpublish the specified data, if any.
 		  issuedTime = Date.now(),
 		  immediate = true,  // Whether to act locally before sending.
@@ -116,9 +117,10 @@ export class Marker { // A wrapper around L.marker
     if (remaining < 0) return wrapper?.destroy();  // expired.
 
     wrapper ||= this.markers[subject] = new this();
-    const {lat, lng, message} = payload;
+    const {lat, lng, message, originalPosting} = payload;
     const isOurs = act === ourTag;
-    const timestamp = new Date(issuedTime).toLocaleString();
+    let timestamp = new Date(originalPosting || issuedTime).toLocaleString();
+    if (originalPosting) timestamp += `<br>updated ${new Date(issuedTime).toLocaleString()}`;
     const content = isOurs ?
 	  `${timestamp}<br>you (${act})<br><p><md-outlined-text-field label="message"${message ? `value="${message}"` : ''}></md-outlined-text-field></p>
 	  <md-chip-set></md-chip-set>` :
@@ -151,11 +153,11 @@ export class Marker { // A wrapper around L.marker
       wrapper.destroy();
     }, interval);
 
-    Object.assign(wrapper, {marker, lat, lng, subject, message, issuedTime, hashtag, fader});
+    Object.assign(wrapper, {marker, lat, lng, subject, message, originalPosting, issuedTime, hashtag, fader});
     return wrapper;
   }
   maybeUpdate(displayElement) { // If data has changed, republish.
-    const {lat, lng, hashtag, subject, message} = this;
+    const {lat, lng, hashtag, subject, message, issuedTime, originalPosting = issuedTime} = this;
     let newMessage = displayElement.querySelector('md-outlined-text-field').value;
     if (newMessage === Marker.noMessage) newMessage = undefined;
     const newHashtag = Hashtags.getPublish();
@@ -168,7 +170,7 @@ export class Marker { // A wrapper around L.marker
       updateQueryParameters();
       cancel = {lat, lng, hashtag, subject};
     }
-    publish({lat, lng, subject, message: newMessage, cancel, suppressReopen: true}); // immediate for canceled and new, before we remove old hash
+    publish({lat, lng, subject, message: newMessage, originalPosting, cancel, suppressReopen: true}); // immediate for canceled and new, before we remove old hash
     if (isNewHashtag) {
       updateSubscriptions();
     }
