@@ -93,7 +93,6 @@ export const Hashtags = {
     if (!isOurs) return;
 
     const close = popup.querySelector('.leaflet-popup-close-button');
-    console.log({close});
     close.innerHTML = `<md-outlined-icon-button><md-icon class="material-icons">check</md-icon></md-outlined-icon-button>`;
 
     const chipset = popup.querySelector('md-chip-set');

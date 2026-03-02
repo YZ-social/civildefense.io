@@ -130,10 +130,9 @@ class Marker { // A wrapper around L.marker
       marker.bindPopup(content, {className: 'alert'})
 	.on('popupopen',
 	    event => Hashtags.resetPublisherDisplay(isOurs, event.popup.getElement(),
-						    () => publish({lat, lng, subject, payload: null, cancel: null})))
+						    () => publish({lat, lng, subject, payload: null, cancel: null, suppressReopen: true})))
 	.on('popupclose',
 	    event => isOurs && wrapper.maybeUpdate(event.popup.getElement()));
-      console.log({subject, hashtag, last});
       if (!(isOurs && suppressReopen)) marker.openPopup(); // Hack guard to not re-open what we just closed when changing hashtags.
     } else if (content !== existingPopup.getContent()) { // If changed after creation.
       existingPopup.setContent(content);
@@ -169,7 +168,7 @@ class Marker { // A wrapper around L.marker
       updateQueryParameters();
       cancel = {lat, lng, hashtag, subject};
     }
-    publish({lat, lng, subject, message: newMessage, cancel, suppressReopen: isNewHashtag}); // immediate for canceled and new, before we remove old hash
+    publish({lat, lng, subject, message: newMessage, cancel, suppressReopen: true}); // immediate for canceled and new, before we remove old hash
     if (isNewHashtag) {
       updateSubscriptions();
     }
