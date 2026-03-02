@@ -96,7 +96,7 @@ function publish({lat, lng, message, // Publish the given data to all applicable
   console.log('publishing', {cells, hashtag, subject, payload, oldCells, oldHash, oldSubject});
 }
 
-class Marker { // A wrapper around L.marker
+export class Marker { // A wrapper around L.marker
   //static icon = L.icon({iconUrl: "images/Achtung.png", iconSize: [40, 35]});
   // When we resubscribe to different cells covering the same place, we will get the same
   // sticky data. We don't want to change the marker. Fortunately, the publication to each

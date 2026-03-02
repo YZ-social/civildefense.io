@@ -1,5 +1,5 @@
 const { URLSearchParams, localStorage } = globalThis; // For linters.
-import { updateQueryParameters, updateSubscriptions } from './map.js';
+import { updateQueryParameters, updateSubscriptions, Marker } from './map.js';
 import { resetInactivityTimer } from './main.js';
 
 // We subscribe to the cartesian product of the list of non-overlapping cells and all hashes.
@@ -28,8 +28,8 @@ export const Hashtags = {
   onchange(redisplaySubscribers = true) {
     if (redisplaySubscribers) this.resetSubscriberDisplay();
     localStorage.setItem('hashtags', JSON.stringify(this.hashtags));
-    console.log({updateQueryParameters, location, URLSearchParams});
     updateQueryParameters();
+    Object.values(Marker.markers).forEach(wrapper => this.hashtags[wrapper.hashtag] || wrapper.destroy());
   },
   setPublish(chip) { // Set chip to be the new publishing tag, return the label.
     // If newTag is falsy, find one that isn't the current one if possible.
@@ -114,5 +114,7 @@ export const Hashtags = {
 };
 
 // Populate hashtags data and display.
-new URLSearchParams(location.search).get('tags')?.split(',').forEach(tag => Hashtags.add(tag));
-Hashtags.onchange();
+setTimeout(() => {
+  new URLSearchParams(location.search).get('tags')?.split(',').forEach(tag => Hashtags.add(tag));
+  Hashtags.onchange();
+});
