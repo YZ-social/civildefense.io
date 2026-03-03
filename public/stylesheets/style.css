@@ -137,7 +137,8 @@ body {
   --md-sys-color-surface-container-low: #B8C2D7; /* non-selected elevated filter chip */
   --md-sys-color-secondary-container: white; /* selected filter chip */
   --md-sys-color-surface-container-highest: white; /* filled text field */
-  --md-filled-text-field-container-shape: 8px;
+  --md-filled-text-field-container-shape: 16px;
+  --md-filter-chip-container-shape: 16px;
   /* --md-sys-color-tertiary-container: blue; */
   /* --md-sys-color-background: yellow; */
   /* --md-sys-color-primary-container: green; /\* #B8C2D7; /\* #cce8e7;*\/ */
