@@ -81,10 +81,7 @@ export const Hashtags = {
       };
     });
     this.chipset.insertAdjacentHTML("afterbegin",
-				    `<md-filled-text-field class="newtag" placeholder="new searchtag">
-                                       <md-icon class="material-icons" slot="leading-icon">add</md-icon>
-                                     </md-filled-text-field>`
-				     );
+				    `<md-filled-text-field class="newtag" placeholder="➕add hashtag"></md-filled-text-field>`);
     this.chipset.firstChild.onchange = event => { // Add the new hashtag.
       resetInactivityTimer();
       this.add(event.target.value);

@@ -96,6 +96,15 @@ body {
     flex-wrap: wrap-reverse;
     align-items: flex-end;
 }
+.watching-hashtags md-filled-text-field.newtag {
+    --md-filled-field-top-space: 0px;
+    --md-filled-field-bottom-space: 0px;
+    --md-filled-text-field-leading-space: 5px;
+    --md-filled-text-field-trailing-space: 0px;
+    --md-filled-text-field-input-text-placeholder-color: grey;
+    width: 125px;
+    height: 34px;
+}
 .emoji {
     text-shadow: 8px -3px 10px rgb(0 0 0 / 60%);
     font-size: 40px;
@@ -137,10 +146,6 @@ body {
   /* --md-sys-color-surface-container-high: blue; */
   /* --md-sys-color-surface-container-highest: purple;   */
   /* --md-sys-color-surface-container-lowest: purple;       */
-}
-.newtag {
-    width: 232px;
-    height: 49px;
 }
 .button-container button {
     background: none;
