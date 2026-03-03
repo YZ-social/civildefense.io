@@ -133,7 +133,8 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
 	  defaultInit();
 	} else {
 	  geolocation.clearWatch(positionWatch);
-	  await delay(2e3);
+	  showMessage(Int`Unable to get location.`, 'error', error);
+	  await delay(4e3);
 	  initializeGeolocation(subscribe);
 	}
       } else {
