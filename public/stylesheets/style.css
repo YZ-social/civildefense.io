@@ -110,7 +110,7 @@ body {
     font-size: 40px;
     position: relative;
     left: -15px;
-    top: -35px;
+    top: -30px;
     z-index: 450;
 }
 .alert .leaflet-popup-close-button {

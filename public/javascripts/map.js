@@ -63,7 +63,7 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
 }
 
 let last = null; // Last published lat, lng, subject
-function publish({lat, lng, message, // Publish the given data to all applicable eventNames.
+async function publish({lat, lng, message, // Publish the given data to all applicable eventNames.
 		  originalPosting = undefined,
 		  subject  = uuidv4(), // For recognizing locally executed events and for cancelling. Not a user tag!
 		  payload = {lat, lng, message, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
@@ -72,16 +72,15 @@ function publish({lat, lng, message, // Publish the given data to all applicable
 		  immediate = true,  // Whether to act locally before sending.
 		  ...rest
 		 }) {
-
-  let oldCells = null, oldHash, oldSubject = null;
+  const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
+  let oldCells = null, oldHash, oldSubject = null, act = contact.name;
   if (cancel) {
     const {lat, lng, hashtag, subject} = cancel;
     const time = issuedTime - 1;
     oldCells = getContainingCells(lat, lng);
     oldHash = hashtag; oldSubject = subject;
     for (const cell of oldCells) {
-      networkPromise.then(contact =>
-	contact.publish({eventName: makeEventName(cell, hashtag), subject, payload: null, issuedTime: time, hashtag, act: contact.name, immediate, ...rest}));
+      contact.publish({eventName: makeEventName(cell, hashtag), subject, payload: null, issuedTime: time, hashtag, act, immediate, ...rest});
     }
   }
 
@@ -91,8 +90,7 @@ function publish({lat, lng, message, // Publish the given data to all applicable
   for (const cell of cells) {
     const _level = s2.cellid.level(cell); // add _level for debugging
     const eventName = makeEventName(cell, hashtag);
-    networkPromise.then(contact =>
-      contact.publish({eventName, subject, payload, _level, issuedTime, hashtag, act: contact.name, immediate, ...rest}));
+    contact.publish({eventName, subject, payload, _level, issuedTime, hashtag, act, immediate, ...rest});
   }
   console.log('publishing', {cells, hashtag, subject, payload, oldCells, oldHash, oldSubject});
 }
