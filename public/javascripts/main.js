@@ -203,6 +203,5 @@ initText('#aboutAnyone1');
 initText('#aboutAnyone2');
 initText('#aboutAnyone3');
 initText('#learnMore');
-initText('#aboutAcknowledge');
 initText('#version');
 initialize(false);
