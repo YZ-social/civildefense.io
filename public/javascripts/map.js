@@ -159,11 +159,10 @@ export class Marker { // A wrapper around L.marker
   maybeUpdate(displayElement) { // If data has changed, republish.
     const {lat, lng, hashtag, subject, message, issuedTime, originalPosting = issuedTime} = this;
     let newMessage = displayElement.querySelector('md-outlined-text-field').value;
-    if (newMessage === Marker.noMessage) newMessage = undefined;
     const newHashtag = Hashtags.getPublish();
     const isNewHashtag = newHashtag !== hashtag;
     console.log({lat, lng, subject, message, newMessage, hashtag, newHashtag, isNewHashtag});
-    if (newMessage === message && !isNewHashtag) return;
+    if (newMessage === (message || '') && !isNewHashtag) return;
     resetInactivityTimer();
     let cancel = null;
     if (isNewHashtag) {
