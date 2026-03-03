@@ -25,7 +25,6 @@ const translations = {
   ['#aboutAnyone2']: {en: "run by anyone,", es: "administrado por cualquier persona,"},
   ['#aboutAnyone3']: {en: "in case this site is taken down.", es: "en caso de que este sitio sea dado de baja."},
   ['#learnMore']: {en: 'Learn More', es: "Más Información"},
-  ['#aboutAcknowledge']: {en: "Yz.social gratefully uses open software from:", es: "Yz.social utiliza con gratitud software libre de:"},
   ['#version']: {en: "Version", es: "Versión"}
 };
 
