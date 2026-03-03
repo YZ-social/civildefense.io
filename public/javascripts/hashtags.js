@@ -67,11 +67,13 @@ export const Hashtags = {
 	updateSubscriptions();
       });
       element.onclick = event => {
-	resetInactivityTimer();	
+	resetInactivityTimer();
 	const chip = event.target;
 	const label = chip.label;
-	const altPub = (label === this.getPublish()) && this.getSubscribe().find(tag => tag != label);
+	const isPub = label === this.getPublish();
+	const altPub = isPub && this.getSubscribe().find(tag => tag != label);
 	if (altPub) this.setPublish([...chip.parentElement.children].find(child => child.label === altPub));
+	else if (isPub && !chip.selected) { chip.selected = true; return; } // Don't allow deselecting the only pub tag.
 	this.hashtags[label] = chip.selected;
 	chip.removable = !chip.selected;
 	this.onchange(false);
