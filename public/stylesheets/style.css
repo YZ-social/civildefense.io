@@ -99,7 +99,7 @@ body {
 .watching-hashtags md-filled-text-field.newtag {
     --md-filled-field-top-space: 0px;
     --md-filled-field-bottom-space: 0px;
-    --md-filled-text-field-leading-space: 5px;
+    --md-filled-text-field-leading-space: 8px;
     --md-filled-text-field-trailing-space: 0px;
     --md-filled-text-field-input-text-placeholder-color: grey;
     width: 125px;

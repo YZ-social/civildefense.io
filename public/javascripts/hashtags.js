@@ -25,7 +25,8 @@ export const Hashtags = {
   firstEmoji(string) {
     return string.match(/\p{Extended_Pictographic}/u)?.[0] || "⚠️";
   },
-  onchange(redisplaySubscribers = true) {
+  onchange(redisplaySubscribers = true) { // Update and persist internal data, and update visuals.
+    // If redisplaySubscribers, the presence/order may have changed.
     if (redisplaySubscribers) this.resetSubscriberDisplay();
     localStorage.setItem('hashtags', JSON.stringify(this.hashtags));
     updateQueryParameters();
@@ -52,11 +53,18 @@ export const Hashtags = {
   resetSubscriberDisplay() { // Lay out all the hashtag chips display, including the input for adding new ones.
     this.chipset.innerHTML = '';
     const tags = this.getAll();
+
     // Sort alphabetically, ignoring any leading emoji, as these have unexpected orderings.
     tags.sort((a, b) => this.stripLeadingEmoji(a).localeCompare(this.stripLeadingEmoji(b)));
+    const reordered = {};
+    tags.forEach(tag => reordered[tag] = this.hashtags[tag]);
+    this.hashtags = reordered;
+
+    // Add a chip for each hashtag.
     tags.forEach(label => { // Elements are displayed from the bottom up.
       this.chipset.insertAdjacentHTML("afterbegin", this.chipHTML(label));
     });
+    // IWBNI we just added handlers once to the chipset and relied on bubbling up, but there's something not working about that.
     [...this.chipset.children].forEach(element => {
       // Material design will update the displays. We have to handle the data changes.
       element.addEventListener('remove', event => {
@@ -80,11 +88,13 @@ export const Hashtags = {
 	updateSubscriptions();
       };
     });
-    this.chipset.insertAdjacentHTML("afterbegin",
+    this.chipset.insertAdjacentHTML("afterbegin",  // Chip to add a new hashtag.
 				    `<md-filled-text-field class="newtag" placeholder="➕add hashtag"></md-filled-text-field>`);
     this.chipset.firstChild.onchange = event => { // Add the new hashtag.
       resetInactivityTimer();
-      this.add(event.target.value);
+      const tag = event.target.value.trim();
+      if (!tag);
+      this.add(tag);
       this.onchange();
     };
   },
