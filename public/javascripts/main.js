@@ -1,6 +1,6 @@
 import { Int } from './translations.js';
 import { NetworkClass } from './pubSub.js';
-import { map, showMessage, defaultInit, updateLocation, updateSubscriptions, recenterMap } from './map.js';
+import { Marker, map, showMessage, defaultInit, updateLocation, updateSubscriptions, recenterMap } from './map.js';
 const { QRCodeStyling, GeolocationPositionError } = globalThis; // For linters.
 
 const RETRY_SECONDS = 90;
@@ -9,6 +9,7 @@ const INACTIVITY_SECONDS = 5 * 60; // five minutes
 var aboutContent = document.getElementById('aboutContent');
 document.getElementById('aboutButton').onclick = () => {
   resetInactivityTimer();
+  Marker.closePopup();
   aboutContent.classList.toggle('hidden', false);
 };
 aboutContent.onclick = () => {

@@ -88,6 +88,7 @@ export const Hashtags = {
       const tag = event.target.value.trim();
       if (!tag);
       this.add(tag);
+      Marker.closePopup();
       this.onchange();
     };
   },

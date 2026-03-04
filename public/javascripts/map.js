@@ -1,4 +1,4 @@
-const { L } = globalThis; // Leaflet namespace, for linters.
+const { L, jdenticon } = globalThis; // Leaflet namespace, for linters.
 import { v4 as uuidv4 } from 'uuid';
 import { s2 } from 's2js';
 import { Int } from './translations.js';
@@ -120,10 +120,8 @@ export class Marker { // A wrapper around L.marker
     wrapper ||= this.markers[subject] = new this();
     const {lat, lng, message, originalPosting} = payload;
     const isOurs = act === ourTag;
-    let timestamp = new Date(originalPosting || issuedTime).toLocaleString();
-    if (originalPosting) timestamp += `<br>updated ${new Date(issuedTime).toLocaleString()}`;
     const content = isOurs ?
-	  `${timestamp}<br>you (${act})<br>
+	  `${wrapper.attribution({act, issuedTime, originalPosting})}
 <div class="post-input">
   <md-outlined-text-field type="textarea" label="message"${message ? `value="${message}"` : ''}></md-outlined-text-field>
   <form></form>
@@ -133,7 +131,7 @@ export class Marker { // A wrapper around L.marker
   <md-outlined-button><md-icon slot="icon" class="material-icons">delete</md-icon> remove</md-outlined-button>
   <md-filled-button><md-icon slot="icon" class="material-icons">check</md-icon> update</md-filled-button>
 </div>` :
-	  `${timestamp}<br>node ${act}<br><p>${message || Marker.noMessage}</p><span>${hashtag}</span>`;
+	  `${wrapper.attribution({act, issuedTime, originalPosting})}<p>${message || Marker.noMessage}</p><span>${hashtag}</span>`;
     let {marker} = wrapper;
     let existingPopup = marker?.getPopup();
     if (!marker) {
@@ -141,9 +139,10 @@ export class Marker { // A wrapper around L.marker
       marker.bindPopup(content, {className: 'alert'})
 	.on('popupopen',
 	    event => {
-	      if (!isOurs) return;
 	      const popup = event.popup;
 	      const popupElement = popup.getElement();
+	      jdenticon.updateSvg(popupElement.querySelector('[data-jdenticon-value]'));
+	      if (!isOurs) return;
 	      Hashtags.resetPublisherDisplay(popupElement); // Lay out publishing hashtag buttons
 	      popupElement.querySelector('md-outlined-button').onclick = event=> { // Cancel button clicked.
 		event.stopPropagation();
@@ -175,6 +174,16 @@ export class Marker { // A wrapper around L.marker
 
     Object.assign(wrapper, {marker, lat, lng, subject, message, originalPosting, issuedTime, hashtag, fader});
     return wrapper;
+  }
+  attribution({act, issuedTime, originalPosting}) {
+    console.log({act, issuedTime, originalPosting});
+    return `<div class="attribution">
+  <svg width="40" height="40" data-jdenticon-value="${act}"></svg>
+  <div class="times">
+    <div>${new Date(originalPosting || issuedTime).toLocaleString()}</div>
+    ${originalPosting ? `<div>updated ${new Date(issuedTime).toLocaleString()}</div>` : ''}
+  </div>
+</div>`; // //`<div>updated ${new Date(issuedTime).toLocaleString()}</div>`
   }
   maybeUpdate(displayElement) { // If data has changed, republish.
     const {lat, lng, hashtag, subject, message = '', issuedTime, originalPosting = issuedTime} = this;
@@ -226,6 +235,7 @@ export function updateLocation(lat, lng) { // initMap if necessary, and set our 
 
 export function recenterMap() {
   resetInactivityTimer();
+  Marker.closePopup();
   const latLng = [lastLatitude, lastLongitude];
   map.flyTo(latLng);
 }
