@@ -116,7 +116,7 @@ body {
 .alert form {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 10px;
 }
 .alert div.post-input {
     display: flex;
