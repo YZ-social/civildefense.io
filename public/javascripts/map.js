@@ -65,7 +65,7 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
 }
 
 let last = null; // Last published lat, lng, subject
-async function publish({lat, lng, message, // Publish the given data to all applicable eventNames.
+async function publish({lat, lng, message, // Publish the given data to all applicable eventNames, promising subject.
 		  originalPosting = undefined,
 		  subject  = uuidv4(), // For recognizing locally executed events and for cancelling. Not a user tag!
 		  payload = {lat, lng, message, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
@@ -95,6 +95,7 @@ async function publish({lat, lng, message, // Publish the given data to all appl
     contact.publish({eventName, subject, payload, _level, issuedTime, hashtag, act, immediate, ...rest});
   }
   console.log('publishing', {cells, hashtag, subject, payload, oldCells, oldHash, oldSubject});
+  return subject;
 }
 
 export class Marker { // A wrapper around L.marker
@@ -107,8 +108,12 @@ export class Marker { // A wrapper around L.marker
   static closePopup() { // Close any open popup.
     map.closePopup();
   }
+  static openPopup(subject) { // Open the marker specified by subject.
+    const wrapper = this.markers[subject];
+    wrapper?.marker.openPopup();
+  }
   static ensure(data) { // Add marker at position with appropriate fade if not already present.
-    const { payload, subject, issuedTime, act, hashtag, immediateLocalAction = false, suppressReopen = false } = data;
+    const { payload, subject, issuedTime, act, hashtag, immediateLocalAction = false } = data;
     let wrapper = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
     console.log('handling event', {wrapper, subject, payload, act, usertag, immediateLocalAction, data});
 
@@ -146,7 +151,7 @@ export class Marker { // A wrapper around L.marker
 	      Hashtags.resetPublisherDisplay(popupElement); // Lay out publishing hashtag buttons
 	      popupElement.querySelector('md-outlined-button').onclick = event=> { // Cancel button clicked.
 		event.stopPropagation();
-		publish({lat, lng, subject, payload: null, cancel: null, suppressReopen: true});
+		publish({lat, lng, subject, payload: null, cancel: null});
 	      };
 	      popupElement.querySelector('md-filled-button').onclick = event=> { // Update button clicked.
 		event.stopPropagation();
@@ -154,7 +159,6 @@ export class Marker { // A wrapper around L.marker
 		wrapper.maybeUpdate(popupElement);
 	      };
 	    });
-      if (!(isOurs && suppressReopen)) marker.openPopup(); // Hack guard to not re-open what we just closed when changing hashtags.
     } else if (content !== existingPopup.getContent()) { // If changed after creation.
       existingPopup.setContent(content);
     }
@@ -186,7 +190,7 @@ export class Marker { // A wrapper around L.marker
       Hashtags.onchange();
       cancel = {lat, lng, hashtag, subject};
     }
-    publish({lat, lng, subject, message: newMessage, originalPosting, cancel, suppressReopen: true}); // immediate for canceled and new, before we remove old hash
+    publish({lat, lng, subject, message: newMessage, originalPosting, cancel}); // immediate for canceled and new, before we remove old hash
   }
   startFader(remaining) {
         // Set up or update fader.
@@ -287,10 +291,10 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
   });
 
   // Add click event to note position
-  map.on('click', function(e) {
+  map.on('click', async function(e) {
     resetInactivityTimer();
     const { lat, lng } = e.latlng;
-    publish({lat, lng});
+    Marker.openPopup(await publish({lat, lng}));
   });
 
   showMessage(Int`Tap anywhere to mark a concern. Markers fade after 10 minutes.`, 'instructions');
