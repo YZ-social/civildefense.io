@@ -136,14 +136,13 @@ export class Marker { // A wrapper around L.marker
     let {marker} = wrapper;
     let existingPopup = marker?.getPopup();
     if (!marker) {
-      marker = L.marker([lat, lng], {icon: L.divIcon({html: Hashtags.firstEmoji(hashtag), className: 'emoji'}), autoPan: false}).addTo(map);
+      marker = L.marker([lat, lng], {icon: L.divIcon({html: Hashtags.markerHTML(hashtag), className: 'emoji'}), autoPan: false}).addTo(map);
       marker.bindPopup(content, {className: 'alert'})
 	.on('popupopen',
 	    event => {
+	      if (!isOurs) return;
 	      const popup = event.popup;
 	      const popupElement = popup.getElement();
-	      jdenticon.updateSvg(popupElement.querySelector('[data-jdenticon-value]'));
-	      if (!isOurs) return;
 	      Hashtags.resetPublisherDisplay(popupElement); // Lay out publishing hashtag buttons
 	      popupElement.querySelector('md-outlined-button').onclick = event=> { // Cancel button clicked.
 		event.stopPropagation();
@@ -159,27 +158,14 @@ export class Marker { // A wrapper around L.marker
     } else if (content !== existingPopup.getContent()) { // If changed after creation.
       existingPopup.setContent(content);
     }
-
-    // Set up or update fader.
-    // It would be nice to use CSS transitions, but, that's not the API presented by L.marker.
-    const interval = 1000, // milliseconds per adjustment (a tiny increment at a time)
-          fade = interval / ttl; // Change in opacity per adjustment.
-    let opacity = remaining / ttl; // Do not start at 1 if it was reported some time ago.
-    marker.setOpacity(opacity);
-    clearInterval(wrapper.fader);
-    const fader = setInterval(() => {
-      marker.setOpacity(opacity -= fade);
-      if (opacity > 0) return;
-      wrapper.destroy();
-    }, interval);
-
-    Object.assign(wrapper, {marker, lat, lng, subject, message, originalPosting, issuedTime, hashtag, fader});
+    Object.assign(wrapper, {marker, lat, lng, subject, message, originalPosting, issuedTime, hashtag});
+    wrapper.startFader(remaining); // After marker is set.
     return wrapper;
   }
   attribution({act, issuedTime, originalPosting}) {
     console.log({act, issuedTime, originalPosting});
     return `<div class="attribution">
-  <svg width="40" height="40" data-jdenticon-value="${act}"></svg>
+  <minidenticon-svg username="${act}"></minidenticon-svg>
   <div class="times">
     <div>${new Date(originalPosting || issuedTime).toLocaleString()}</div>
     ${originalPosting ? `<div>updated ${new Date(issuedTime).toLocaleString()}</div>` : ''}
@@ -201,6 +187,21 @@ export class Marker { // A wrapper around L.marker
       cancel = {lat, lng, hashtag, subject};
     }
     publish({lat, lng, subject, message: newMessage, originalPosting, cancel, suppressReopen: true}); // immediate for canceled and new, before we remove old hash
+  }
+  startFader(remaining) {
+        // Set up or update fader.
+    // It would be nice to use CSS transitions, but, that's not the API presented by L.marker.
+    const interval = 1000, // milliseconds per adjustment (a tiny increment at a time)
+          fade = interval / ttl, // Change in opacity per adjustment.
+	  { marker } = this;
+    let opacity = remaining / ttl; // Do not start at 1 if it was reported some time ago.
+    marker.setOpacity(opacity);
+    clearInterval(this.fader);
+    this.fader = setInterval(() => {
+      marker.setOpacity(opacity -= fade);
+      if (opacity > 0) return;
+      this.destroy();
+    }, interval);
   }
   destroy() {
     clearInterval(this.fader);

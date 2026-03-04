@@ -111,7 +111,6 @@ body {
     position: relative;
     left: -15px;
     top: -30px;
-    z-index: 450;
 }
 .alert form {
     display: flex;
@@ -148,6 +147,18 @@ body {
     display: flex;
     flex-direction: row;
     align-items: center;
+}
+minidenticon-svg {
+    height: 40px;
+    width: 40px;
+}
+.emoji minidenticon-svg {
+    display: inline-block;
+    position: relative;
+    height: 50px;
+    width: 50px;
+    left: -4px;
+    top: 4px;    
 }
 .times {
     display: flex;

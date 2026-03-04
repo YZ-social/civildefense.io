@@ -22,8 +22,12 @@ export const Hashtags = {
   stripLeadingEmoji(string) { // Return string without any leading emoji (which might be of varying length).
     return string.replace(/^\p{Extended_Pictographic}/u, '') || string;
   },
-  firstEmoji(string) {
-    return string.match(/\p{Extended_Pictographic}/u)?.[0] || "⚠️";
+  firstEmoji(tag) { // First emoji that appears in string, else falsy.
+    return tag.match(/\p{Extended_Pictographic}/u)?.[0];
+  },
+  markerHTML(tag) { // HTML (possibly text) to represent tag.
+    return this.firstEmoji(tag) ||
+      `<minidenticon-svg username="${tag}"></minidenticon-svg>`;
   },
   onchange({redisplaySubscribers = true, resetSubscriptions = true} = {}) { // Update and persist internal data, and update visuals.
     // If redisplaySubscribers, the presence/order may have changed.
