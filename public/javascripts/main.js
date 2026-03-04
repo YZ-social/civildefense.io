@@ -71,7 +71,7 @@ export async function resetInactivityTimer(clearMessage = true) { // if !network
   if (!networkPromise) return initialize(false);
   return inactivityTimer = setTimeout(() => {
     showMessage(Int`Connection closed due to inactivity. Will reconnect on use.`, 'error');
-    networkPromise.then(contact => contact.disconnect());
+    networkPromise?.then(contact => contact.disconnect());
   }, INACTIVITY_SECONDS * 1e3);
 }
 
