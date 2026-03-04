@@ -155,10 +155,10 @@ minidenticon-svg {
 .emoji minidenticon-svg {
     display: inline-block;
     position: relative;
-    height: 50px;
-    width: 50px;
-    left: -4px;
-    top: 4px;    
+    height: 40px;
+    width: 40px;
+    top: 7px;
+    background: white;
 }
 .times {
     display: flex;

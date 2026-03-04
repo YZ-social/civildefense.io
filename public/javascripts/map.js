@@ -44,6 +44,7 @@ export function updateQueryParameters({params = new URLSearchParams(location.sea
 let subscriptions = []; // array of stringy keys s2:<cellID>:<hashtag>
 export function updateSubscriptions(oldKeys = subscriptions) { // Update current subscriptions to the new map bounds.
   // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
+  if (!networkPromise) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
   const center = map.getCenter();
   const zoom = map.getZoom();
   updateQueryParameters({zoom, ...center});

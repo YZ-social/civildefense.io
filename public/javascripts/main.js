@@ -182,7 +182,6 @@ async function initialize(fromHandler) { // Ensure there is a network promise an
       });
     }
     if (fromHandler) await delay();
-    //fixme resetInactivityTimer();
     initializeGeolocation(subscribe);
   } finally {
     checking = false;
