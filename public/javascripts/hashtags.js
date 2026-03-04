@@ -91,7 +91,7 @@ export const Hashtags = {
       };
     });
     this.chipset.insertAdjacentHTML("afterbegin",  // Chip to add a new hashtag.
-				    `<md-filled-text-field class="newtag" placeholder="➕add hashtag"></md-filled-text-field>`);
+				    `<md-filled-text-field class="newtag" placeholder="➕add topic"></md-filled-text-field>`);
     this.chipset.firstChild.onchange = event => { // Add the new hashtag.
       resetInactivityTimer();
       const tag = event.target.value.trim();
