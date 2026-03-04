@@ -30,7 +30,7 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
 const usertag = localStorage.getItem('usertag') || uuidv4();
 localStorage.setItem('usertag', usertag);
 
-function makeEventName(cell, hash = Hashtags.getPublish()) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
+function makeEventName(cell, hash) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
   return `s2:${cell}:${hash}`;
 }
 export function updateQueryParameters({params = new URLSearchParams(location.search), lat = params.get('lat'), lng = params.get('lng'), zoom = params.get('z')} = {}) { // Update url to reflect application state.
@@ -128,17 +128,16 @@ export class Marker { // A wrapper around L.marker
     const {lat, lng, message, originalPosting} = payload;
     const isOurs = act === usertag;
     const content = isOurs ?
-	  `${wrapper.attribution({act, issuedTime, originalPosting})}
+	  `${wrapper.attribution({act, issuedTime, originalPosting, hashtag})}
 <div class="post-input">
   <md-outlined-text-field type="textarea" label="message"${message ? `value="${message}"` : ''}></md-outlined-text-field>
   <form></form>
 </div>
-<span>${Hashtags.pubtagHTML(hashtag)}</span>
 <div class="actions">
   <md-outlined-button><md-icon slot="icon" class="material-icons">delete</md-icon> remove</md-outlined-button>
   <md-filled-button><md-icon slot="icon" class="material-icons">check</md-icon> update</md-filled-button>
 </div>` :
-	  `${wrapper.attribution({act, issuedTime, originalPosting})}<p>${message || Marker.noMessage}</p><span>${Hashtags.pubtagHTML(hashtag)}</span>`;
+	  `${wrapper.attribution({act, issuedTime, originalPosting, hashtag})}<p>${message || Marker.noMessage}</p>`;
     let {marker} = wrapper;
     let existingPopup = marker?.getPopup();
     if (!marker) {
@@ -167,15 +166,15 @@ export class Marker { // A wrapper around L.marker
     wrapper.startFader(remaining); // After marker is set.
     return wrapper;
   }
-  attribution({act, issuedTime, originalPosting}) {
-    console.log({act, issuedTime, originalPosting});
+  attribution({act, issuedTime, originalPosting, hashtag = null}) {
     return `<div class="attribution">
   <minidenticon-svg username="${act}"></minidenticon-svg>
   <div class="times">
-    <div>${new Date(originalPosting || issuedTime).toLocaleString()}</div>
+    <div>posted ${new Date(originalPosting || issuedTime).toLocaleString()}</div>
     ${originalPosting ? `<div>updated ${new Date(issuedTime).toLocaleString()}</div>` : ''}
   </div>
-</div>`; // //`<div>updated ${new Date(issuedTime).toLocaleString()}</div>`
+  ${hashtag ? `<div><span>${Hashtags.pubtagHTML(hashtag)}</span></div>` : ''}
+</div>`;
   }
   maybeUpdate(displayElement) { // If data has changed, republish.
     const {lat, lng, hashtag, subject, message = '', issuedTime, originalPosting = issuedTime} = this;

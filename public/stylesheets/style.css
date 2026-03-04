@@ -164,6 +164,7 @@ md-filter-chip minidenticon-svg {
     display: flex;
     flex-direction: row;
     align-items: center;
+    gap: 5px;
 }
 .attribution minidenticon-svg {
     height: 40px;
