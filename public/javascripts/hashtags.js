@@ -6,7 +6,7 @@ import { resetInactivityTimer } from './main.js';
 // We publish to just the first of these.
 export const Hashtags = {
   hashtags: JSON.parse(localStorage.getItem('hashtags') ||
-		       '{"🍰cake": true, "🔥fire": true, "🌊flood": true, "🛟help": "pub", "🧊ice": true}'),
+		       '{"🍰cake": true, "🔥fire": true, "🌊flood": true, "🆘help": "pub", "🧊ice": true}'),
   add(label) { // Ensure label is an active hashtag.
    this. hashtags[label] ||= true; // If it's 'pub', let it remain so.
   },
@@ -69,7 +69,6 @@ export const Hashtags = {
 	const chip = event.target;
 	delete this.hashtags[chip.label];
 	this.onchange({redisplaySubscribers: false, resetSubscriptions: false});
-	updateSubscriptions();
       });
       element.onclick = event => {
 	resetInactivityTimer();
