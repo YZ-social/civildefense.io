@@ -175,9 +175,9 @@ md-filter-chip minidenticon-svg {
     flex-direction: column;
     align-items: end;
 }
-.pub {
-    --md-sys-color-secondary-container: #DE9797;
-}
+/* .pub { */
+/*     --md-sys-color-secondary-container: #DE9797; */
+/* } */
 .alert {
     font-family: roboto;
 }
