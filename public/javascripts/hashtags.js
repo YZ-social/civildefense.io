@@ -28,8 +28,12 @@ export const Hashtags = {
   identicon(tag, slot = '') {
     return `<minidenticon-svg ${slot ? `slot="${slot}"` : ''} username="${tag}"></minidenticon-svg>`;
   },
-  markerHTML(tag) { // HTML (possibly text) to represent tag.
+  markerHTML(tag) { // HTML (possibly text) to represent tag as a marker on map.
     return this.firstEmoji(tag) || this.identicon(tag);
+  },
+  pubtagHTML(tag) { // HTML (possibly text) to represent tag with defaulted icon.
+    const emoji = this.firstEmoji(tag);
+    return emoji ? tag : this.identicon(tag) + tag;
   },
   onchange({redisplaySubscribers = true, resetSubscriptions = true} = {}) { // Update and persist internal data, and update visuals.
     // If redisplaySubscribers, the presence/order may have changed.
@@ -118,7 +122,7 @@ export const Hashtags = {
       .join('');
     chipset.addEventListener('change', event => { // Do not re-publish yet, but do change tag display.
       const tag = event.target.value;
-      const html = this.firstEmoji(tag) ? tag : this.markerHTML(tag) + tag;
+      const html = this.pubtagHTML(tag);
       popup.querySelector('span').innerHTML = html;
     });
   }
