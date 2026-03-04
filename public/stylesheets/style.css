@@ -105,12 +105,29 @@ body {
     width: 125px;
     height: 34px;
 }
-.emoji {
+.alert-pin {
     text-shadow: 8px -3px 10px rgb(0 0 0 / 60%);
     font-size: 40px;
     position: relative;
     left: -15px;
     top: -30px;
+}
+md-filter-chip minidenticon-svg {
+    background: white;
+}
+.alert span minidenticon-svg {
+    display: inline-block;
+    height: 20px;
+    width: 20px;
+    vertical-align: text-bottom;
+}
+.alert-pin minidenticon-svg {
+    display: inline-block;
+    position: relative;
+    height: 40px;
+    width: 40px;
+    top: 7px;
+    background: white;
 }
 .alert form {
     display: flex;
@@ -148,17 +165,9 @@ body {
     flex-direction: row;
     align-items: center;
 }
-minidenticon-svg {
+.attribution minidenticon-svg {
     height: 40px;
     width: 40px;
-}
-.emoji minidenticon-svg {
-    display: inline-block;
-    position: relative;
-    height: 40px;
-    width: 40px;
-    top: 7px;
-    background: white;
 }
 .times {
     display: flex;

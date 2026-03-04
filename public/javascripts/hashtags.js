@@ -25,9 +25,11 @@ export const Hashtags = {
   firstEmoji(tag) { // First emoji that appears in string, else falsy.
     return tag.match(/\p{Extended_Pictographic}/u)?.[0];
   },
+  identicon(tag, slot = '') {
+    return `<minidenticon-svg ${slot ? `slot="${slot}"` : ''} username="${tag}"></minidenticon-svg>`;
+  },
   markerHTML(tag) { // HTML (possibly text) to represent tag.
-    return this.firstEmoji(tag) ||
-      `<minidenticon-svg username="${tag}"></minidenticon-svg>`;
+    return this.firstEmoji(tag) || this.identicon(tag);
   },
   onchange({redisplaySubscribers = true, resetSubscriptions = true} = {}) { // Update and persist internal data, and update visuals.
     // If redisplaySubscribers, the presence/order may have changed.
@@ -45,7 +47,7 @@ export const Hashtags = {
     return `<md-filter-chip label="${label}" elevated
         ${active === 'pub' ? 'class="pub"' : ''}
         ${active ? ' selected' : 'removable'}
-      ></md-filter-chip>`;
+      >${this.firstEmoji(label) ? '' : this.identicon(label, 'selected-icon')}</md-filter-chip>`;
   },
   resetSubscriberDisplay() { // Lay out all the hashtag chips display, including the input for adding new ones.
     this.chipset.innerHTML = '';
@@ -114,8 +116,10 @@ export const Hashtags = {
     chipset.innerHTML = this.getSubscribe()
       .map(tag => `<label><md-radio name="pub" value="${tag}" ${this.hashtags[tag] === 'pub' ? 'checked' : ''}></md-radio> ${tag}</label>`)
       .join('');
-    chipset.addEventListener('change', event => { // Do not re-publish yet, but do change bottom display of hashtag.
-      popup.querySelector('span').textContent = event.target.value;
+    chipset.addEventListener('change', event => { // Do not re-publish yet, but do change tag display.
+      const tag = event.target.value;
+      const html = this.firstEmoji(tag) ? tag : this.markerHTML(tag) + tag;
+      popup.querySelector('span').innerHTML = html;
     });
   }
 };

@@ -142,7 +142,7 @@ export class Marker { // A wrapper around L.marker
     let {marker} = wrapper;
     let existingPopup = marker?.getPopup();
     if (!marker) {
-      marker = L.marker([lat, lng], {icon: L.divIcon({html: Hashtags.markerHTML(hashtag), className: 'emoji'}), autoPan: false}).addTo(map);
+      marker = L.marker([lat, lng], {icon: L.divIcon({html: Hashtags.markerHTML(hashtag), className: 'alert-pin'}), autoPan: false}).addTo(map);
       marker.bindPopup(content, {className: 'alert'})
 	.on('popupopen',
 	    event => {
