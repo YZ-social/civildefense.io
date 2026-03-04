@@ -25,22 +25,15 @@ export const Hashtags = {
   firstEmoji(string) {
     return string.match(/\p{Extended_Pictographic}/u)?.[0] || "⚠️";
   },
-  onchange(redisplaySubscribers = true) { // Update and persist internal data, and update visuals.
+  onchange({redisplaySubscribers = true, resetSubscriptions = true} = {}) { // Update and persist internal data, and update visuals.
     // If redisplaySubscribers, the presence/order may have changed.
     if (redisplaySubscribers) this.resetSubscriberDisplay();
     localStorage.setItem('hashtags', JSON.stringify(this.hashtags));
     updateQueryParameters();
-    Object.values(Marker.markers).forEach(wrapper => this.hashtags[wrapper.hashtag] || wrapper.destroy());
-  },
-  setPublish(chip) { // Set chip to be the new publishing tag, return the label.
-    // If newTag is falsy, find one that isn't the current one if possible.
-    const newTag = chip.label;
-    const oldTag = this.getPublish();
-    this.hashtags[oldTag] = true;
-    this.hashtags[newTag] = 'pub';
-    [...chip.parentElement.children].find(chip => chip.label === oldTag).classList.remove('pub');
-    chip.classList.add('pub');
-    return newTag;
+    if (resetSubscriptions) {
+      updateSubscriptions();
+      Object.values(Marker.markers).forEach(wrapper => this.hashtags[wrapper.hashtag] || wrapper.destroy());
+    }
   },
   chipset: document.body.querySelector('.watching-hashtags'), // Element containing the user's chips.
   chipHTML(label) {
@@ -71,7 +64,7 @@ export const Hashtags = {
 	resetInactivityTimer();
 	const chip = event.target;
 	delete this.hashtags[chip.label];
-	this.onchange(false);
+	this.onchange({redisplaySubscribers: false, resetSubscriptions: false});
 	updateSubscriptions();
       });
       element.onclick = event => {
@@ -80,12 +73,12 @@ export const Hashtags = {
 	const label = chip.label;
 	const isPub = label === this.getPublish();
 	const altPub = isPub && this.getSubscribe().find(tag => tag != label);
-	if (altPub) this.setPublish([...chip.parentElement.children].find(child => child.label === altPub));
+	if (altPub) this.setPublishChip([...chip.parentElement.children].find(child => child.label === altPub));
 	else if (isPub && !chip.selected) { chip.selected = true; return; } // Don't allow deselecting the only pub tag.
 	this.hashtags[label] = chip.selected;
 	chip.removable = !chip.selected;
-	this.onchange(false);
-	updateSubscriptions();
+	Marker.closePopup();
+	this.onchange({redisplaySubscribers: false});
       };
     });
     this.chipset.insertAdjacentHTML("afterbegin",  // Chip to add a new hashtag.
@@ -98,32 +91,31 @@ export const Hashtags = {
       this.onchange();
     };
   },
-  resetPublisherDisplay(isOurs, popup, cancel) { // Lay out the choices for what to publish to, including the option to cancle the alert.
-    if (!isOurs) return;
-
-    const close = popup.querySelector('.leaflet-popup-close-button');
-    close.innerHTML = `<md-outlined-icon-button><md-icon class="material-icons">check</md-icon></md-outlined-icon-button>`;
-
-    const chipset = popup.querySelector('md-chip-set');
+  setPublish(newTag) {
+    const oldTag = this.getPublish();
+    this.hashtags[oldTag] = true;
+    this.hashtags[newTag] = 'pub';
+    return oldTag;
+  },
+  setPublishChip(chip) { // Set chip to be the new publishing tag, return the label.
+    // If newTag is falsy, find one that isn't the current one if possible.
+    const newTag = chip.label;
+    const oldTag = this.setPublish(newTag);
+    [...chip.parentElement.children].find(chip => chip.label === oldTag).classList.remove('pub');
+    chip.classList.add('pub');
+    return newTag;
+  },
+  resetPublisherDisplay(popup) { // Lay out the choices for what to publish to, including the option to cancle the alert.
+    const chipset = popup.querySelector('form');
     chipset.innerHTML = this.getSubscribe()
-      .map(tag => this.chipHTML(tag))
-      .join('') + `<md-filter-chip label="cancel alert" class="cancel"></md-filter-chip>`;
-    chipset.querySelector('.cancel').onclick = event=> { // cancel chip pressed
-      event.stopPropagation();
-      cancel();
-    };
-    chipset.querySelectorAll(':not(.cancel)').forEach(element => element.onclick = event=> { // chip pressed for new publisher
-      event.stopPropagation();
-      const chip = event.target;
-      this.setPublish(chip);
-      chip.selected = true;
-      this.onchange();
+      .map(tag => `<label><md-radio name="pub" value="${tag}" ${this.hashtags[tag] === 'pub' ? 'checked' : ''}></md-radio> ${tag}</label>`)
+      .join('');
+    chipset.addEventListener('change', event => { // Do not re-publish yet, but do change bottom display of hashtag.
+      popup.querySelector('span').textContent = event.target.value;
     });
   }
 };
 
 // Populate hashtags data and display.
-setTimeout(() => {
-  new URLSearchParams(location.search).get('tags')?.split(',').forEach(tag => Hashtags.add(tag));
-  Hashtags.onchange();
-});
+new URLSearchParams(location.search).get('tags')?.split(',').forEach(tag => Hashtags.add(tag));
+Hashtags.onchange({resetSubscriptions: false}); // Too early to subscribe, but will be done during initialization.

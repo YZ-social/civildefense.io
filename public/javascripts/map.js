@@ -102,6 +102,9 @@ export class Marker { // A wrapper around L.marker
   // of the cells (at different scales) are all published with the same data.
   static markers = {}; // subject => Marker
   static noMessage = `No additional information.`; // fixme Int
+  static closePopup() { // Close any open popup.
+    map.closePopup();
+  }
   static ensure(data) { // Add marker at position with appropriate fade if not already present.
     const { payload, subject, issuedTime, act, hashtag, immediateLocalAction = false, suppressReopen = false } = data;
     const ourTag = globalThis.contact.name;
@@ -120,8 +123,16 @@ export class Marker { // A wrapper around L.marker
     let timestamp = new Date(originalPosting || issuedTime).toLocaleString();
     if (originalPosting) timestamp += `<br>updated ${new Date(issuedTime).toLocaleString()}`;
     const content = isOurs ?
-	  `${timestamp}<br>you (${act})<br><p><md-outlined-text-field label="message"${message ? `value="${message}"` : ''}></md-outlined-text-field></p>
-	  <md-chip-set></md-chip-set>` :
+	  `${timestamp}<br>you (${act})<br>
+<div class="post-input">
+  <md-outlined-text-field type="textarea" label="message"${message ? `value="${message}"` : ''}></md-outlined-text-field>
+  <form></form>
+</div>
+<span>${hashtag}</span>
+<div class="actions">
+  <md-outlined-button><md-icon slot="icon" class="material-icons">delete</md-icon> remove</md-outlined-button>
+  <md-filled-button><md-icon slot="icon" class="material-icons">check</md-icon> update</md-filled-button>
+</div>` :
 	  `${timestamp}<br>node ${act}<br><p>${message || Marker.noMessage}</p><span>${hashtag}</span>`;
     let {marker} = wrapper;
     let existingPopup = marker?.getPopup();
@@ -129,10 +140,21 @@ export class Marker { // A wrapper around L.marker
       marker = L.marker([lat, lng], {icon: L.divIcon({html: Hashtags.firstEmoji(hashtag), className: 'emoji'}), autoPan: false}).addTo(map);
       marker.bindPopup(content, {className: 'alert'})
 	.on('popupopen',
-	    event => Hashtags.resetPublisherDisplay(isOurs, event.popup.getElement(),
-						    () => publish({lat, lng, subject, payload: null, cancel: null, suppressReopen: true})))
-	.on('popupclose',
-	    event => isOurs && wrapper.maybeUpdate(event.popup.getElement()));
+	    event => {
+	      if (!isOurs) return;
+	      const popup = event.popup;
+	      const popupElement = popup.getElement();
+	      Hashtags.resetPublisherDisplay(popupElement); // Lay out publishing hashtag buttons
+	      popupElement.querySelector('md-outlined-button').onclick = event=> { // Cancel button clicked.
+		event.stopPropagation();
+		publish({lat, lng, subject, payload: null, cancel: null, suppressReopen: true});
+	      };
+	      popupElement.querySelector('md-filled-button').onclick = event=> { // Update button clicked.
+		event.stopPropagation();
+		popup.close();
+		wrapper.maybeUpdate(popupElement);
+	      };
+	    });
       if (!(isOurs && suppressReopen)) marker.openPopup(); // Hack guard to not re-open what we just closed when changing hashtags.
     } else if (content !== existingPopup.getContent()) { // If changed after creation.
       existingPopup.setContent(content);
@@ -155,22 +177,20 @@ export class Marker { // A wrapper around L.marker
     return wrapper;
   }
   maybeUpdate(displayElement) { // If data has changed, republish.
-    const {lat, lng, hashtag, subject, message, issuedTime, originalPosting = issuedTime} = this;
+    const {lat, lng, hashtag, subject, message = '', issuedTime, originalPosting = issuedTime} = this;
     let newMessage = displayElement.querySelector('md-outlined-text-field').value;
-    const newHashtag = Hashtags.getPublish();
+    const newHashtag = displayElement.querySelector('span').textContent;
     const isNewHashtag = newHashtag !== hashtag;
     console.log({lat, lng, subject, message, newMessage, hashtag, newHashtag, isNewHashtag});
-    if (newMessage === (message || '') && !isNewHashtag) return;
     resetInactivityTimer();
+    if (newMessage === message && !isNewHashtag) return;
     let cancel = null;
     if (isNewHashtag) {
-      updateQueryParameters();
+      Hashtags.setPublish(newHashtag);
+      Hashtags.onchange();
       cancel = {lat, lng, hashtag, subject};
     }
     publish({lat, lng, subject, message: newMessage, originalPosting, cancel, suppressReopen: true}); // immediate for canceled and new, before we remove old hash
-    if (isNewHashtag) {
-      updateSubscriptions();
-    }
   }
   destroy() {
     clearInterval(this.fader);
