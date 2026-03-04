@@ -1,4 +1,4 @@
-const { L, jdenticon } = globalThis; // Leaflet namespace, for linters.
+const { L, jdenticon, localStorage } = globalThis; // Leaflet namespace, for linters.
 import { v4 as uuidv4 } from 'uuid';
 import { s2 } from 's2js';
 import { Int } from './translations.js';
@@ -27,6 +27,8 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   }
 }
 
+const usertag = localStorage.getItem('usertag') || uuidv4();
+localStorage.setItem('usertag', usertag);
 
 function makeEventName(cell, hash = Hashtags.getPublish()) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
   return `s2:${cell}:${hash}`;
@@ -73,7 +75,7 @@ async function publish({lat, lng, message, // Publish the given data to all appl
 		  ...rest
 		 }) {
   const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
-  let oldCells = null, oldHash, oldSubject = null, act = contact.name;
+  let oldCells = null, oldHash, oldSubject = null, act = usertag;
   if (cancel) {
     const {lat, lng, hashtag, subject} = cancel;
     const time = issuedTime - 1;
@@ -107,9 +109,8 @@ export class Marker { // A wrapper around L.marker
   }
   static ensure(data) { // Add marker at position with appropriate fade if not already present.
     const { payload, subject, issuedTime, act, hashtag, immediateLocalAction = false, suppressReopen = false } = data;
-    const ourTag = globalThis.contact.name;
     let wrapper = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
-    console.log('handling event', {wrapper, subject, payload, act, ourTag, immediateLocalAction, data});
+    console.log('handling event', {wrapper, subject, payload, act, usertag, immediateLocalAction, data});
 
     if (!payload) return wrapper?.destroy();
     const now = Date.now(),
@@ -119,7 +120,7 @@ export class Marker { // A wrapper around L.marker
 
     wrapper ||= this.markers[subject] = new this();
     const {lat, lng, message, originalPosting} = payload;
-    const isOurs = act === ourTag;
+    const isOurs = act === usertag;
     const content = isOurs ?
 	  `${wrapper.attribution({act, issuedTime, originalPosting})}
 <div class="post-input">
