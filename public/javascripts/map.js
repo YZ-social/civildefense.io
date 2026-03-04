@@ -135,7 +135,7 @@ export class Marker { // A wrapper around L.marker
 </div>
 <div class="actions">
   <md-outlined-button><md-icon slot="icon" class="material-icons">delete</md-icon> remove</md-outlined-button>
-  <md-filled-button><md-icon slot="icon" class="material-icons">check</md-icon> update</md-filled-button>
+  <md-filled-button disabled><md-icon slot="icon" class="material-icons">check</md-icon> update</md-filled-button>
 </div>` :
 	  `${wrapper.attribution({act, issuedTime, originalPosting, hashtag})}<p>${message || Marker.noMessage}</p>`;
     let {marker} = wrapper;

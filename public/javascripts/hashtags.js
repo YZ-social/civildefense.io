@@ -124,7 +124,17 @@ export const Hashtags = {
       const tag = event.target.value;
       const html = this.pubtagHTML(tag);
       popup.querySelector('span').innerHTML = html;
+      this.enableUpdate(popup);
     });
+    popup.querySelector('md-outlined-text-field').addEventListener('input', event => {
+      this.enableUpdate(popup);
+    });
+  },
+  enableUpdate(popup) { // The user has changed something. Allow update.
+    const button = popup.querySelector('md-filled-button');
+    if (!button.hasAttribute('disabled')) return;
+    button.removeAttribute('disabled');
+    popup.querySelector('.times').insertAdjacentHTML("beforeend", "for update to...");
   }
 };
 
