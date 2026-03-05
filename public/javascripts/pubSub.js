@@ -3,7 +3,8 @@ import { Node, WebContact } from '@yz-social/kdht';
 const { WebSocket, URLSearchParams } = globalThis; // For linters.
 
 let NetworkClass;
-if (new URLSearchParams(location.search).has('dht')) {
+const params = new URLSearchParams(location.search);
+if (params.has('dht') && (params.get('dht') !== '0')) {
 
   NetworkClass = WebContact;
 
