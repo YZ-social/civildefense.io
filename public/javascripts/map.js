@@ -83,7 +83,7 @@ async function publish({lat, lng, message, // Publish the given data to all appl
     oldCells = getContainingCells(lat, lng);
     oldHash = hashtag; oldSubject = subject;
     for (const cell of oldCells) {
-      contact.publish({eventName: makeEventName(cell, hashtag), subject, payload: null, issuedTime: time, hashtag, act, immediate, ...rest});
+      await contact.publish({eventName: makeEventName(cell, hashtag), subject, payload: null, issuedTime: time, hashtag, act, immediate, ...rest});
     }
   }
 
@@ -93,9 +93,9 @@ async function publish({lat, lng, message, // Publish the given data to all appl
   for (const cell of cells) {
     const _level = s2.cellid.level(cell); // add _level for debugging
     const eventName = makeEventName(cell, hashtag);
-    contact.publish({eventName, subject, payload, _level, issuedTime, hashtag, act, immediate, ...rest});
+    await contact.publish({eventName, subject, payload, _level, issuedTime, hashtag, act, immediate, ...rest});
   }
-  console.log('publishing', {cells, hashtag, subject, payload, oldCells, oldHash, oldSubject});
+  console.log('published', {cells, hashtag, subject, payload, oldCells, oldHash, oldSubject});
   return subject;
 }
 
