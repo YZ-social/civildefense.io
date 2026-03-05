@@ -122,52 +122,33 @@ export class Marker { // A wrapper around L.marker
     const now = Date.now(),
 	  expiration = issuedTime + ttl,
           remaining = expiration - now;
-    if (remaining < 0) return wrapper?.destroy();  // expired.
+    if (remaining < 0) return wrapper?.destroy();  // Expired.
 
-    wrapper ||= this.markers[subject] = new this();
+    wrapper ||= this.markers[subject] = new this();    
     const {lat, lng, message, originalPosting} = payload;
+    Object.assign(wrapper, {lat, lng, subject, message, originalPosting, issuedTime, hashtag, act});
     const isOurs = act === usertag;
-    const content = isOurs ?
-	  `${wrapper.attribution({act, issuedTime, originalPosting, hashtag})}
-<div class="post-input">
-  <md-outlined-text-field type="textarea" label="message"${message ? `value="${message}"` : ''}></md-outlined-text-field>
-  <form></form>
-</div>
-<div class="actions">
-  <md-outlined-button><md-icon slot="icon" class="material-icons">delete</md-icon> remove</md-outlined-button>
-  <md-filled-button disabled><md-icon slot="icon" class="material-icons">check</md-icon> update</md-filled-button>
-</div>` :
-	  `${wrapper.attribution({act, issuedTime, originalPosting, hashtag})}<p>${message || Marker.noMessage}</p>`;
+    const content = isOurs ? wrapper.ownerContent() : wrapper.observerContent();
     let {marker} = wrapper;
     let existingPopup = marker?.getPopup();
     if (!marker) {
-      marker = L.marker([lat, lng], {icon: L.divIcon({html: Hashtags.markerHTML(hashtag), className: 'alert-pin'}), autoPan: false}).addTo(map);
+      const icon = L.divIcon({html: Hashtags.markerHTML(hashtag), className: 'alert-pin'});
+      marker = wrapper.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
       marker.bindPopup(content, {className: 'alert'})
 	.on('popupopen',
 	    event => {
 	      if (!isOurs) return;
-	      const popup = event.popup;
-	      const popupElement = popup.getElement();
-	      Hashtags.resetPublisherDisplay(popupElement); // Lay out publishing hashtag buttons
-	      popupElement.querySelector('md-outlined-button').onclick = event=> { // Cancel button clicked.
-		event.stopPropagation();
-		publish({lat, lng, subject, payload: null, cancel: null});
-	      };
-	      popupElement.querySelector('md-filled-button').onclick = event=> { // Update button clicked.
-		event.stopPropagation();
-		popup.close();
-		wrapper.maybeUpdate(popupElement);
-	      };
+	      wrapper.initializeOwnerPopupHandlers({lat, lng, subject, popup: event.popup});
 	    });
     } else if (content !== existingPopup.getContent()) { // If changed after creation.
       existingPopup.setContent(content);
     }
-    Object.assign(wrapper, {marker, lat, lng, subject, message, originalPosting, issuedTime, hashtag});
-    wrapper.startFader(remaining); // After marker is set.
+    wrapper.startFader(remaining); // After marker is set in wrapper.
     return wrapper;
   }
-  attribution({act, issuedTime, originalPosting, hashtag = null}) {
-    return `<div class="attribution">
+  attribution({act, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/optional-hashtag
+    return `
+<div class="attribution">
   <minidenticon-svg username="${act}"></minidenticon-svg>
   <div class="times">
     <div>posted ${new Date(originalPosting || issuedTime).toLocaleString()}</div>
@@ -175,6 +156,36 @@ export class Marker { // A wrapper around L.marker
   </div>
   ${hashtag ? `<div><span>${Hashtags.pubtagHTML(hashtag)}</span></div>` : ''}
 </div>`;
+  }
+  observerContent() { // Popup content HTML for observer.
+    const {issuedTime, originalPosting, hashtag, act, message}  = this;
+    return `${this.attribution({act, issuedTime, originalPosting, hashtag})}<p>${message || Marker.noMessage}</p>`;
+  }
+  ownerContent() { // Popup content HTML for owner.
+    const {issuedTime, originalPosting, hashtag, act, message} = this;
+    const messageValueAttribute = message ? `value="${message}"` : '';
+    return `${this.attribution({act, issuedTime, originalPosting, hashtag})}
+<div class="post-input">
+  <md-outlined-text-field type="textarea" label="message"${messageValueAttribute}></md-outlined-text-field>
+  <form></form>
+</div>
+<div class="actions">
+  <md-outlined-button><md-icon slot="icon" class="material-icons">delete</md-icon> remove</md-outlined-button>
+  <md-filled-button disabled><md-icon slot="icon" class="material-icons">check</md-icon> update</md-filled-button>
+</div>`;
+  }
+  initializeOwnerPopupHandlers({lat, lng, subject, popup}) { // Set up handlers for the owner.
+    const popupElement = popup.getElement();
+    Hashtags.resetPublisherDisplay(popupElement); // Lay out publishing hashtag buttons
+    popupElement.querySelector('md-outlined-button').onclick = event=> { // Cancel button clicked.
+      event.stopPropagation();
+      publish({lat, lng, subject, payload: null, cancel: null});
+    };
+    popupElement.querySelector('md-filled-button').onclick = event=> { // Update button clicked.
+      event.stopPropagation();
+      popup.close();
+      this.maybeUpdate(popupElement);
+    };
   }
   maybeUpdate(displayElement) { // If data has changed, republish.
     const {lat, lng, hashtag, subject, message = '', issuedTime, originalPosting = issuedTime} = this;
@@ -192,8 +203,7 @@ export class Marker { // A wrapper around L.marker
     }
     publish({lat, lng, subject, message: newMessage, originalPosting, cancel}); // immediate for canceled and new, before we remove old hash
   }
-  startFader(remaining) {
-        // Set up or update fader.
+  startFader(remaining) { // Set up or update fader.
     // It would be nice to use CSS transitions, but, that's not the API presented by L.marker.
     const interval = 1000, // milliseconds per adjustment (a tiny increment at a time)
           fade = interval / ttl, // Change in opacity per adjustment.
@@ -207,7 +217,7 @@ export class Marker { // A wrapper around L.marker
       this.destroy();
     }, interval);
   }
-  destroy() {
+  destroy() { // Remove this Marker pin entirely.
     clearInterval(this.fader);
     this.marker.removeFrom(map);
     delete this.constructor.markers[this.subject];
