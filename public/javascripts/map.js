@@ -18,7 +18,7 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   }
 
   if (infoBanner.style) infoBanner.style = '';
-  infoBanner.textContent = message;
+  infoBanner.innerHTML = message;
   const className = `info-banner ${type}`;
   if (infoBanner.className !== className) infoBanner.className = className;
 

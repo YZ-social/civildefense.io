@@ -48,6 +48,10 @@ qrDisplayContainer.onclick = () => {
   qrDisplayContainer.classList.toggle('hidden', true);
 }
 document.getElementById('share').onclick = () => { // Invoke platform share API
+  if (!navigator.share) {
+    showMessage(navigator.userAgent.includes('Firefox') ? `In Firefox, sharing must be explicitly enabled through the <a target="civildefense_help" href="https://developer.mozilla.org/en-US/docs/Mozilla/Firefox/Experimental_features#webshare_api">dom.webshare.enabled</a> preference in about:config.` : `This browser does not support sharing.`);
+    return;
+  }
   navigator.share({
     title: "CivilDefense.io",
     text: "CivilDefense.io",
