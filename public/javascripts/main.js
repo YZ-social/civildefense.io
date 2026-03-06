@@ -124,7 +124,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
   positionWatch = geolocation.watchPosition(
     position => {
       const {latitude, longitude} = position.coords;
-      console.log('geolocation ready. map:', !!map, 'subscribeOneShot:', subscribeOneShot);
+      console.log('geolocation ready, position:', position, 'map:', !!map, 'subscribeOneShot:', subscribeOneShot);
       updateLocation(latitude, longitude);
       if (!subscribeOneShot) return;
       subscribeOneShot = false;

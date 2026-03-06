@@ -67,14 +67,14 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
 
 let last = null; // Last published lat, lng, subject
 async function publish({lat, lng, message, // Publish the given data to all applicable eventNames, promising subject.
-		  originalPosting = undefined,
-		  subject  = uuidv4(), // For recognizing locally executed events and for cancelling. Not a user tag!
-		  payload = {lat, lng, message, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
-		  cancel = last, // First unpublish the specified data, if any.
-		  issuedTime = Date.now(),
-		  immediate = true,  // Whether to act locally before sending.
-		  ...rest
-		 }) {
+			originalPosting = undefined,
+			subject  = uuidv4(), // For recognizing locally executed events and for cancelling. Not a user tag!
+			payload = {lat, lng, message, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
+			cancel = last, // First unpublish the specified data, if any.
+			issuedTime = Date.now(),
+			immediate = true,  // Whether to act locally before sending.
+			...rest
+		       }) {
   const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
   let oldCells = null, oldHash, oldSubject = null, act = usertag;
   if (cancel) {
@@ -100,12 +100,11 @@ async function publish({lat, lng, message, // Publish the given data to all appl
 }
 
 export class Marker { // A wrapper around L.marker
-  //static icon = L.icon({iconUrl: "images/Achtung.png", iconSize: [40, 35]});
   // When we resubscribe to different cells covering the same place, we will get the same
   // sticky data. We don't want to change the marker. Fortunately, the publication to each
   // of the cells (at different scales) are all published with the same data.
   static markers = {}; // subject => Marker
-  static noMessage = `No additional information.`; // fixme Int
+  static noMessage = Int`No additional information.`;
   static closePopup() { // Close any open popup.
     map.closePopup();
   }
@@ -116,6 +115,7 @@ export class Marker { // A wrapper around L.marker
   static ensure(data) { // Add marker at position with appropriate fade if not already present.
     const { payload, subject, issuedTime, act, hashtag, immediateLocalAction = false } = data;
     let wrapper = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
+    const isNew = !wrapper;
     console.log('handling event', {wrapper, subject, payload, act, usertag, immediateLocalAction, data});
 
     if (!payload) return wrapper?.destroy();
@@ -124,68 +124,108 @@ export class Marker { // A wrapper around L.marker
           remaining = expiration - now;
     if (remaining < 0) return wrapper?.destroy();  // Expired.
 
-    wrapper ||= this.markers[subject] = new this();    
+    wrapper ||= this.markers[subject] = new this();
     const {lat, lng, message, originalPosting} = payload;
     Object.assign(wrapper, {lat, lng, subject, message, originalPosting, issuedTime, hashtag, act});
-    const isOurs = act === usertag;
-    const content = isOurs ? wrapper.ownerContent() : wrapper.observerContent();
     let {marker} = wrapper;
-    let existingPopup = marker?.getPopup();
     if (!marker) {
       const icon = L.divIcon({html: Hashtags.markerHTML(hashtag), className: 'alert-pin'});
       marker = wrapper.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
-      marker.bindPopup(content, {className: 'alert'})
-	.on('popupopen',
-	    event => {
-	      if (!isOurs) return;
-	      wrapper.initializeOwnerPopupHandlers({lat, lng, subject, popup: event.popup});
-	    });
-    } else if (content !== existingPopup.getContent()) { // If changed after creation.
-      existingPopup.setContent(content);
+      marker.bindPopup('', {className: 'alert'})
+	.on('popupopen', event => wrapper.ensureContent(event.popup, remaining));
+      // Subscribe to replies to this subject, now that we're set up to receive them.
+      networkPromise.then(async contact => contact.subscribe({eventName: subject, autoRenewal: true, handler: data => wrapper.handleReply(data)}));
+    } else {
+      wrapper.needsRedisplay = true;
+      wrapper.ensureContent();
     }
-    wrapper.startFader(remaining); // After marker is set in wrapper.
+    wrapper.startFader(remaining); // From the new value of remaining, after marker is set in wrapper, regardless of popup/dirty state.
     return wrapper;
   }
-  attribution({act, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/optional-hashtag
+  needsRedisplay = true;
+  ensureContent(popup = this.marker.getPopup()) { // Set content and handlers in popup if/as needed.
+    if (!this.needsRedisplay) return;
+    if (!popup.isOpen()) return;
+    this.needsRedisplay = false;
+    const {act} = this;
+    const isOurs = act === usertag;
+    let content = isOurs ? this.formatOwnerPost() : this.formatObserverPost();
+    content += this.formatReplies();
+    popup.setContent(content);
+    const popupElement = popup.getElement();
+    const replyInput = popupElement.querySelector('.reply-input');
+    replyInput.onchange = event => { resetInactivityTimer(); this.postReply(event); };
+    if (!isOurs) return;
+    this.initializeOwnerPopupHandlers(popup);
+  }
+  formatAttribution({act, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/optional-hashtag
     return `
 <div class="attribution">
   <minidenticon-svg username="${act}"></minidenticon-svg>
   <div class="times">
-    <div>posted ${new Date(originalPosting || issuedTime).toLocaleString()}</div>
-    ${originalPosting ? `<div>updated ${new Date(issuedTime).toLocaleString()}</div>` : ''}
+    <div>${Int`posted`} ${new Date(originalPosting || issuedTime).toLocaleString()}</div>
+    ${originalPosting ? `<div>${Int`updated`} ${new Date(issuedTime).toLocaleString()}</div>` : ''}
   </div>
-  ${hashtag ? `<div><span>${Hashtags.pubtagHTML(hashtag)}</span></div>` : ''}
+  ${hashtag ? `<div><span>${Hashtags.formatPubtag(hashtag)}</span></div>` : ''}
 </div>`;
   }
-  observerContent() { // Popup content HTML for observer.
+  formatObserverPost() { // Answer HTML for the main post as seen by observers (not author).
     const {issuedTime, originalPosting, hashtag, act, message}  = this;
-    return `${this.attribution({act, issuedTime, originalPosting, hashtag})}<p>${message || Marker.noMessage}</p>`;
+    return `${this.formatAttribution({act, issuedTime, originalPosting, hashtag})}<p>${message || Marker.noMessage}</p>`;
   }
-  ownerContent() { // Popup content HTML for owner.
-    const {issuedTime, originalPosting, hashtag, act, message} = this;
+  formatOwnerPost() { // Answer HTML for main post as seen by the author.
+    const {issuedTime, originalPosting, hashtag, act, message, replies} = this;
     const messageValueAttribute = message ? `value="${message}"` : '';
-    return `${this.attribution({act, issuedTime, originalPosting, hashtag})}
+    const radioDisabled = replies.length ? 'disabled' : '';
+    const publishChoices = Hashtags.getSubscribe()
+	  .map(tag => `<label><md-radio ${radioDisabled} name="pub" value="${tag}" ${Hashtags.hashtags[tag] === 'pub' ? 'checked' : ''}></md-radio> ${tag}</label>`)
+	  .join('');
+
+    return `${this.formatAttribution({act, issuedTime, originalPosting, hashtag})}
 <div class="post-input">
-  <md-outlined-text-field type="textarea" label="message"${messageValueAttribute}></md-outlined-text-field>
-  <form></form>
+  <md-outlined-text-field class="post-input" type="textarea" label="${Int`post here`}"${messageValueAttribute}></md-outlined-text-field>
+  <form>${publishChoices}</form>
 </div>
 <div class="actions">
-  <md-outlined-button><md-icon slot="icon" class="material-icons">delete</md-icon> remove</md-outlined-button>
-  <md-filled-button disabled><md-icon slot="icon" class="material-icons">check</md-icon> update</md-filled-button>
+  <md-outlined-button><md-icon slot="icon" class="material-icons">delete</md-icon> ${Int`remove`}</md-outlined-button>
+  <md-filled-button disabled><md-icon slot="icon" class="material-icons">check</md-icon> ${Int`update`}</md-filled-button>
 </div>`;
   }
-  initializeOwnerPopupHandlers({lat, lng, subject, popup}) { // Set up handlers for the owner.
+  initializeOwnerPopupHandlers(popup) { // Set up handlers for the owner.
+    const {lat, lng, subject} = this;
     const popupElement = popup.getElement();
-    Hashtags.resetPublisherDisplay(popupElement); // Lay out publishing hashtag buttons
-    popupElement.querySelector('md-outlined-button').onclick = event=> { // Cancel button clicked.
+    const postInput = popupElement.querySelector('md-outlined-text-field');
+    const publishChoices = popupElement.querySelector('form');
+    const cancelButton = popupElement.querySelector('md-outlined-button');
+    const updateButton = popupElement.querySelector('md-filled-button');
+    postInput.addEventListener('input', event => {
+      resetInactivityTimer();      
+      this.enableUpdate(popupElement);
+    });
+    publishChoices.addEventListener('change', event => { // Do not re-publish yet, but do change tag display.
+      const tag = event.target.value;
+      const html = Hashtags.formatPubtag(tag);
+      popupElement.querySelector('span').innerHTML = html;
+      resetInactivityTimer();
+      this.enableUpdate(popupElement);
+    });
+    cancelButton.onclick = event=> {
+      resetInactivityTimer();
       event.stopPropagation();
       publish({lat, lng, subject, payload: null, cancel: null});
     };
-    popupElement.querySelector('md-filled-button').onclick = event=> { // Update button clicked.
+    updateButton.onclick = event=> {
+      resetInactivityTimer();
       event.stopPropagation();
       popup.close();
       this.maybeUpdate(popupElement);
     };
+  }
+  enableUpdate(popupElement) { // The owner has changed something. Allow update.
+    const button = popupElement.querySelector('md-filled-button');
+    if (!button.hasAttribute('disabled')) return;
+    button.removeAttribute('disabled');
+    popupElement.querySelector('.times').insertAdjacentHTML("beforeend", Int`for update to...`);
   }
   maybeUpdate(displayElement) { // If data has changed, republish.
     const {lat, lng, hashtag, subject, message = '', issuedTime, originalPosting = issuedTime} = this;
@@ -193,7 +233,6 @@ export class Marker { // A wrapper around L.marker
     const newHashtag = displayElement.querySelector('span').textContent;
     const isNewHashtag = newHashtag !== hashtag;
     console.log({lat, lng, subject, message, newMessage, hashtag, newHashtag, isNewHashtag});
-    resetInactivityTimer();
     if (newMessage === message && !isNewHashtag) return;
     let cancel = null;
     if (isNewHashtag) {
@@ -203,6 +242,36 @@ export class Marker { // A wrapper around L.marker
     }
     publish({lat, lng, subject, message: newMessage, originalPosting, cancel}); // immediate for canceled and new, before we remove old hash
   }
+
+  // Each reply is separately published by its author, and only they can modify/unpublish it.
+  replies = [];
+  handleReply(data) { // Add or update reply for this marker.
+    // TODO: handle update/removal.
+    const { replies } = this;
+    replies.push(data);
+    replies.sort((a, b) => a.issuedTime - b.issuedTime); // Could be slightly out of order.
+    this.needsRedisplay = true;
+    this.ensureContent();
+  }
+  postReply(event) { // Post a reply to this marker's subject, in response to a text-field change event.
+    const eventName = this.subject;
+    const reply = event.target.value.trim();
+    event.target.value = '';
+    if (!reply) return;
+    networkPromise.then(async contact => contact.publish({eventName, payload: reply, subject: uuidv4(), act: usertag}));
+  }
+  formatReplies() { // Answer HTML for the replies and input box.
+    const { replies, act, originalPosting } = this;
+    const isEnabled = act !== usertag || originalPosting || replies.length;
+    const formattedReplies = replies
+	  .map(({subject, payload, ...rest}) =>
+	    `<div class="reply ${subject}">${this.formatAttribution(rest)}<span class="message">${payload}</span><div>`)
+	  .join('');
+    return `
+<div class="replies">${formattedReplies}</div>
+<md-outlined-text-field class="reply-input" ${isEnabled ? '' : 'disabled'} label="${Int`reply here`}"></md-outlined-text-field>`;
+  }
+
   startFader(remaining) { // Set up or update fader.
     // It would be nice to use CSS transitions, but, that's not the API presented by L.marker.
     const interval = 1000, // milliseconds per adjustment (a tiny increment at a time)
@@ -219,6 +288,8 @@ export class Marker { // A wrapper around L.marker
   }
   destroy() { // Remove this Marker pin entirely.
     clearInterval(this.fader);
+    // Unsubscribe from replies.
+    networkPromise.then(async contact => contact.subscribe({eventName: this.subject, handler: null}));
     this.marker.removeFrom(map);
     delete this.constructor.markers[this.subject];
   }
@@ -246,7 +317,7 @@ export function updateLocation(lat, lng) { // initMap if necessary, and set our 
 
   const latLng = [lat, lng];
   //console.log({latLng, yourLocation, bounds: map.getBounds(), map});
-  yourLocation.setLatLng(latLng);
+  setTimeout(() => yourLocation.setLatLng(latLng), 100); // It seems that yourLocation can be set, but not yet ready to be moved?
 }
 
 export function recenterMap() {

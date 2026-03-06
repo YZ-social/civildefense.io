@@ -10,6 +10,7 @@ const translations = {
   About: {es: "Acerca de"},
   ['Your Location']: {es: "Tu Ubicación"},
   ['Tap anywhere to mark a concern. Markers fade after 10 min.']: {es: "Toca cualquier punto para marcar una preocupación. Los marcadores desaparecen después de 10 minutos."},
+
   ['Location access denied. Using default location.']: {es: "Acceso a la ubicación denegado. Se utilizará la ubicación predeterminada."},
   ['No network connection.']: {es: "Sin conexión de red."},
   ['Geolocation not supported. Using default location.']: {es: "Geolocalización no compatible. Se utilizará la ubicación predeterminada."},
@@ -19,6 +20,24 @@ const translations = {
   ['Getting your location...']: {es: "Obteniendo tu ubicación..."},
   ['Disconnected. Retrying in ']: {es: "Desconectado. Reintentando en "},
   [' seconds.']: {es: " segundos."},
+
+  ['cake']: {es: "pastel"},
+  ['fire']: {es: "fuego"},
+  ['flood']: {es: "inundación"},
+  ['ice']: {es: "la migra"},
+  ['help']: {es: "ayuda"},
+  ['add topic']: {es: "añadir tema"},
+
+  ['No additional information.']: {es: "No hay información adicional."},
+  ['posted']: {es: "al corriente"},
+  ['updated']: {es: "actualizada"},
+  ['post here']: {es: "publicar aquí"},
+  ['reply here']: {es: "responder aquí"},
+  ['remove']: {es: "eliminar"},
+  ['update']: {es: "actualizar"},
+  ['for update to...']: {es: "para actualizar a..."},
+  
+  
   ['#aboutReport']: {en: "Report immediate concerns to the public by tapping their location on the map.", es: "Informa de cualquier problema inmediato al público pulsando su ubicación en el mapa."},
   ['#aboutShared']: {en: "These locations are shared over anonymous p2p with other users in your area.", es: "Estas ubicaciones se comparten a través de redes P2P anónimas con otros usuarios de tu zona."},
   ['#aboutFade']: {en: "Reported concerns will fade away over 10 minutes.", es: "Las preocupaciones manifestadas se disiparán en 10 minutos."},

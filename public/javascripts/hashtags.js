@@ -1,4 +1,5 @@
 const { URLSearchParams, localStorage } = globalThis; // For linters.
+import { Int } from './translations.js';
 import { updateQueryParameters, updateSubscriptions, Marker } from './map.js';
 import { resetInactivityTimer } from './main.js';
 
@@ -6,7 +7,7 @@ import { resetInactivityTimer } from './main.js';
 // We publish to just the first of these.
 export const Hashtags = {
   hashtags: JSON.parse(localStorage.getItem('hashtags') ||
-		       '{"🍰cake": true, "🔥fire": true, "🌊flood": true, "🆘help": "pub", "🧊ice": true}'),
+		       `{"🍰${Int`cake`}": true, "🔥${Int`fire`}": true, "🌊${Int`flood`}": true, "🆘${Int`help`}": "pub", "🧊${Int`ice`}": true}`),
   add(label) { // Ensure label is an active hashtag.
    this. hashtags[label] ||= true; // If it's 'pub', let it remain so.
   },
@@ -31,7 +32,7 @@ export const Hashtags = {
   markerHTML(tag) { // HTML (possibly text) to represent tag as a marker on map.
     return this.firstEmoji(tag) || this.identicon(tag);
   },
-  pubtagHTML(tag) { // HTML (possibly text) to represent tag with defaulted icon.
+  formatPubtag(tag) { // HTML (possibly text) to represent tag with defaulted icon.
     const emoji = this.firstEmoji(tag);
     return emoji ? tag : this.identicon(tag) + tag;
   },
@@ -91,7 +92,7 @@ export const Hashtags = {
       };
     });
     this.chipset.insertAdjacentHTML("afterbegin",  // Chip to add a new hashtag.
-				    `<md-filled-text-field class="newtag" placeholder="➕add topic"></md-filled-text-field>`);
+				    `<md-filled-text-field class="newtag" placeholder="➕${Int`add topic`}"></md-filled-text-field>`);
     this.chipset.firstChild.onchange = event => { // Add the new hashtag.
       resetInactivityTimer();
       const tag = event.target.value.trim();
@@ -114,27 +115,6 @@ export const Hashtags = {
     [...chip.parentElement.children].find(chip => chip.label === oldTag).classList.remove('pub');
     chip.classList.add('pub');
     return newTag;
-  },
-  resetPublisherDisplay(popup) { // Lay out the choices for what to publish to, including the option to cancle the alert.
-    const chipset = popup.querySelector('form');
-    chipset.innerHTML = this.getSubscribe()
-      .map(tag => `<label><md-radio name="pub" value="${tag}" ${this.hashtags[tag] === 'pub' ? 'checked' : ''}></md-radio> ${tag}</label>`)
-      .join('');
-    chipset.addEventListener('change', event => { // Do not re-publish yet, but do change tag display.
-      const tag = event.target.value;
-      const html = this.pubtagHTML(tag);
-      popup.querySelector('span').innerHTML = html;
-      this.enableUpdate(popup);
-    });
-    popup.querySelector('md-outlined-text-field').addEventListener('input', event => {
-      this.enableUpdate(popup);
-    });
-  },
-  enableUpdate(popup) { // The user has changed something. Allow update.
-    const button = popup.querySelector('md-filled-button');
-    if (!button.hasAttribute('disabled')) return;
-    button.removeAttribute('disabled');
-    popup.querySelector('.times').insertAdjacentHTML("beforeend", "for update to...");
   }
 };
 

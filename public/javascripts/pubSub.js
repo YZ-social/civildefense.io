@@ -90,7 +90,7 @@ if (params.has('dht') && (params.get('dht') !== '0')) {
 	await this.send(eventName, {type: 'sub', subject: this.name, payload: null});
       }
     }
-    async publish({eventName, subject, immediate = false, issuedTime, ...rest}) { // Publish data to subscribers of eventName.
+    async publish({eventName, subject, immediate = false, issuedTime = Date.now(), ...rest}) { // Publish data to subscribers of eventName.
       eventName = eventName.toString();
 
       // IFF this client has a handler for this eventName, evaluate it immediately and tag the
