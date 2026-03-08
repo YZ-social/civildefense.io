@@ -25,13 +25,13 @@ export var router = express.Router();
 const SUBSCRIPTION_TIMEOUT = 60 * 60e3; // Delete after an hour. Must be renewed by app.
 const PUBLISH_TIMEOUT = 10 * 60e3;      // Delete after 10 minutes.
 
-const subscriptions = {}; // eventName => {[subject]: ws, ...}. Entries purged after SUBSCRIPTION_TIMEOUT.
-const sticky = {};        // eventName => {[subject]: storageItem, ...}. Entries purged after PUBLISH_TIMEOUT.
+const subscriptions = {}; // eventName => {[subject]: ws, ...}, where subject is the subscriber id. Entries purged after SUBSCRIPTION_TIMEOUT.
+const sticky = {};        // eventName => {[subject]: storageItem, ...}, where subject is the message id. Entries purged after PUBLISH_TIMEOUT.
 function setSticky(eventName, storageItem) { // Associate string eventName, for use by getSticky.
   const {payload, subject} = storageItem;
   const bucket = sticky[eventName] ||= {};
   function removeMessage() { delete bucket[subject]; if (!Object.keys(bucket).length) delete sticky[eventName]; }
-  if (!payload) removeMessage();
+  if (payload === null) removeMessage();
   else {
     bucket[subject] = JSON.stringify(storageItem);
     setTimeout(removeMessage, PUBLISH_TIMEOUT);
@@ -46,7 +46,7 @@ router.ws('/ws', function(ws, req, next) {
   function deleteFromKeySubs(eventName, subject, keySubs = subscriptions[eventName]) {
     if (!keySubs) return;
     delete keySubs[subject];
-    if (!keySubs.size) delete subscriptions[eventName];
+    if (!Object.keys(keySubs).length) delete subscriptions[eventName];
   }
   function deleteWS() {
     for (const eventName in subscriptions)  {
@@ -63,13 +63,14 @@ router.ws('/ws', function(ws, req, next) {
     switch (type) {
     case 'pub':
       const subscribedSockets = Object.values(keySubs);
+      //if (subscribedSockets.length) console.log('sending', message, 'to', Object.keys(keySubs));
       for (const ws of subscribedSockets) ws.send(message);
       setSticky(eventName, {eventName, subject, payload, ...rest, type: 'event'});
       break;
     case 'sub':
       if (payload) {
-	subscriptions[eventName][subject] = ws;
-	//console.log('subscriptions', eventName, subscriptions[eventName]);
+	//console.log('subscribing', eventName, 'among', Object.keys(keySubs));
+	keySubs[subject] = ws;
 	for (const string of getSticky(eventName)) {
 	  console.log('sending sticky', string);
 	  ws.send(string);
