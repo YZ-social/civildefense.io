@@ -68,6 +68,7 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
 let last = null; // Last published lat, lng, subject
 async function publish({lat, lng, message, // Publish the given data to all applicable eventNames, promising subject.
 			originalPosting = undefined,
+			hashtag = Hashtags.getPublish(),
 			subject  = uuidv4(), // For recognizing locally executed events and for cancelling. Not a user tag!
 			payload = {lat, lng, message, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
 			cancel = last, // First unpublish the specified data, if any.
@@ -87,7 +88,6 @@ async function publish({lat, lng, message, // Publish the given data to all appl
     }
   }
 
-  const hashtag = Hashtags.getPublish();
   const cells = getContainingCells(lat, lng);
   last = payload && {lat, lng, hashtag, subject}; // Capture the new subject and eventName data for next time.
   for (const cell of cells) {
@@ -115,7 +115,6 @@ export class Marker { // A wrapper around L.marker
   static ensure(data) { // Add marker at position with appropriate fade if not already present.
     const { payload, subject, issuedTime, act, hashtag, immediateLocalAction = false } = data;
     let wrapper = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
-    const isNew = !wrapper;
     console.log('handling event', {wrapper, subject, payload, act, usertag, immediateLocalAction, data});
 
     if (!payload) return wrapper?.destroy();
@@ -178,7 +177,7 @@ export class Marker { // A wrapper around L.marker
     const messageValueAttribute = message ? `value="${message}"` : '';
     const radioDisabled = replies.length ? 'disabled' : '';
     const publishChoices = Hashtags.getSubscribe()
-	  .map(tag => `<label><md-radio ${radioDisabled} name="pub" value="${tag}" ${Hashtags.hashtags[tag] === 'pub' ? 'checked' : ''}></md-radio> ${tag}</label>`)
+	  .map(tag => `<label><md-radio ${radioDisabled} name="pub" value="${tag}" ${tag === hashtag ? 'checked' : ''}></md-radio> ${tag}</label>`)
 	  .join('');
 
     return `${this.formatAttribution({act, issuedTime, originalPosting, hashtag})}
@@ -192,7 +191,7 @@ export class Marker { // A wrapper around L.marker
 </div>`;
   }
   initializeOwnerPopupHandlers(popup) { // Set up handlers for the owner.
-    const {lat, lng, subject} = this;
+    const {lat, lng, subject, hashtag} = this;
     const popupElement = popup.getElement();
     const postInput = popupElement.querySelector('md-outlined-text-field');
     const publishChoices = popupElement.querySelector('form');
@@ -212,7 +211,7 @@ export class Marker { // A wrapper around L.marker
     cancelButton.onclick = event=> {
       resetInactivityTimer();
       event.stopPropagation();
-      publish({lat, lng, subject, payload: null, cancel: null});
+      publish({lat, lng, subject, hashtag, payload: null, cancel: null});
     };
     updateButton.onclick = event=> {
       resetInactivityTimer();
@@ -237,7 +236,7 @@ export class Marker { // A wrapper around L.marker
     let cancel = null;
     if (isNewHashtag) {
       Hashtags.setPublish(newHashtag);
-      Hashtags.onchange();
+      Hashtags.onchange({redisplaySubscribers: false, resetSubscriptions: false});
       cancel = {lat, lng, hashtag, subject};
     }
     publish({lat, lng, subject, message: newMessage, originalPosting, cancel}); // immediate for canceled and new, before we remove old hash

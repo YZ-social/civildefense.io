@@ -83,7 +83,7 @@ export const Hashtags = {
 	const label = chip.label;
 	const isPub = label === this.getPublish();
 	const altPub = isPub && this.getSubscribe().find(tag => tag != label);
-	if (altPub) this.setPublishChip([...chip.parentElement.children].find(child => child.label === altPub));
+	if (altPub) this.setPublish(altPub);
 	else if (isPub && !chip.selected) { chip.selected = true; return; } // Don't allow deselecting the only pub tag.
 	this.hashtags[label] = chip.selected;
 	chip.removable = !chip.selected;
@@ -106,15 +106,11 @@ export const Hashtags = {
     const oldTag = this.getPublish();
     this.hashtags[oldTag] = true;
     this.hashtags[newTag] = 'pub';
+    for (const chip of this.chipset.children) {
+      if (chip.label === oldTag) chip.classList.remove('pub');
+      else if (chip.label === newTag) chip.classList.add('pub');
+    }
     return oldTag;
-  },
-  setPublishChip(chip) { // Set chip to be the new publishing tag, return the label.
-    // If newTag is falsy, find one that isn't the current one if possible.
-    const newTag = chip.label;
-    const oldTag = this.setPublish(newTag);
-    [...chip.parentElement.children].find(chip => chip.label === oldTag).classList.remove('pub');
-    chip.classList.add('pub');
-    return newTag;
   }
 };
 
