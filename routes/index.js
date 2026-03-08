@@ -27,14 +27,17 @@ const PUBLISH_TIMEOUT = 10 * 60e3;      // Delete after 10 minutes.
 
 const subscriptions = {}; // eventName => {[subject]: ws, ...}, where subject is the subscriber id. Entries purged after SUBSCRIPTION_TIMEOUT.
 const sticky = {};        // eventName => {[subject]: storageItem, ...}, where subject is the message id. Entries purged after PUBLISH_TIMEOUT.
+const subscribeTimeouts = {};
+const publishTimeout = {};
 function setSticky(eventName, storageItem) { // Associate string eventName, for use by getSticky.
   const {payload, subject} = storageItem;
   const bucket = sticky[eventName] ||= {};
   function removeMessage() { delete bucket[subject]; if (!Object.keys(bucket).length) delete sticky[eventName]; }
+  clearTimeout(publishTimeout[subject]);
   if (payload === null) removeMessage();
   else {
     bucket[subject] = JSON.stringify(storageItem);
-    setTimeout(removeMessage, PUBLISH_TIMEOUT);
+    publishTimeout[subject] = setTimeout(removeMessage, PUBLISH_TIMEOUT);
   }
 }
 function getSticky(eventName) { // Answer array of previously set strings that are still associated with eventName.
@@ -68,6 +71,7 @@ router.ws('/ws', function(ws, req, next) {
       setSticky(eventName, {eventName, subject, payload, ...rest, type: 'event'});
       break;
     case 'sub':
+      clearTimeout(subscribeTimeouts[subject]);
       if (payload) {
 	//console.log('subscribing', eventName, 'among', Object.keys(keySubs));
 	keySubs[subject] = ws;
@@ -75,7 +79,7 @@ router.ws('/ws', function(ws, req, next) {
 	  console.log('sending sticky', string);
 	  ws.send(string);
 	}
-	setTimeout(() => deleteFromKeySubs(eventName, subject), SUBSCRIPTION_TIMEOUT);
+	subscribeTimeouts[subject] = setTimeout(() => deleteFromKeySubs(eventName, subject), SUBSCRIPTION_TIMEOUT);
       } else {
 	deleteFromKeySubs(eventName, subject, keySubs);
       }
