@@ -103,6 +103,10 @@ if (params.has('dht') && (params.get('dht') !== '0')) {
 
       await this.send(eventName, {subject, issuedTime, ...rest, type: 'pub'});
     }
+    async extend({eventName, subject, issuedTime = Date.now(), ...rest}) { // Extend the expiration of a publish by someone else, without changing the payload.
+      eventName = eventName.toString();
+      await this.send(eventName, {subject, issuedTime, ...rest, type: 'ext'});
+    }
   };
 }
 

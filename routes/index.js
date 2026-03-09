@@ -24,36 +24,49 @@ export var router = express.Router();
 
 const SUBSCRIPTION_TIMEOUT = 60 * 60e3; // Delete after an hour. Must be renewed by app.
 const PUBLISH_TIMEOUT = 10 * 60e3;      // Delete after 10 minutes.
+const timeouts = {pub: {}, sub: {}};
+function expire(type, subject, remover, timeout) { // Cancellably schedule remover() to fire at timeout.
+  timeouts[type][subject] = setTimeout(remover, timeout);
+}
+function cancel(type, subject) { // Cancel a sheduled expiration.
+  clearTimeout(timeouts[type][subject]);
+}
 
-const subscriptions = {}; // eventName => {[subject]: ws, ...}, where subject is the subscriber id. Entries purged after SUBSCRIPTION_TIMEOUT.
-const sticky = {};        // eventName => {[subject]: storageItem, ...}, where subject is the message id. Entries purged after PUBLISH_TIMEOUT.
-const subscribeTimeouts = {};
-const publishTimeout = {};
+// pub maps eventName => {[subject]: storageItem, ...}, where subject is the message id. Entries purged after PUBLISH_TIMEOUT.
+// sub maps  eventName => {[subject]: ws, ...}, where subject is the subscriber id. Entries purged after SUBSCRIPTION_TIMEOUT.
+const data = {pub: {}, sub: {}};
+function removeBucket(type, eventName, subject, bucket = data[type][eventName]) { // Remove from data.
+  if (!bucket) return;
+  delete bucket[subject];
+  if (Object.keys(bucket).length) return;
+  delete data[type][eventName];
+}
+
 function setSticky(eventName, storageItem) { // Associate string eventName, for use by getSticky.
   const {payload, subject} = storageItem;
-  const bucket = sticky[eventName] ||= {};
-  function removeMessage() { delete bucket[subject]; if (!Object.keys(bucket).length) delete sticky[eventName]; }
-  clearTimeout(publishTimeout[subject]);
+  const bucket = data.pub[eventName] ||= {};
+  function removeMessage() {
+    removeBucket('pub', eventName, subject, bucket);
+  }
+  cancel('pub', subject);
   if (payload === null) removeMessage();
   else {
     bucket[subject] = JSON.stringify(storageItem);
-    publishTimeout[subject] = setTimeout(removeMessage, PUBLISH_TIMEOUT);
+    expire('pub', subject, removeMessage, PUBLISH_TIMEOUT);
   }
 }
 function getSticky(eventName) { // Answer array of previously set strings that are still associated with eventName.
-  return Object.values(sticky[eventName] || {});
+  return Object.values(data.pub[eventName] || {});
 }
 
 router.ws('/ws', function(ws, req, next) {
   // no on('connection') needed; connection is already made
-  function deleteFromKeySubs(eventName, subject, keySubs = subscriptions[eventName]) {
-    if (!keySubs) return;
-    delete keySubs[subject];
-    if (!Object.keys(keySubs).length) delete subscriptions[eventName];
+  function deleteFromKeySubs(eventName, subject, keySubs = data.sub[eventName]) {
+    removeBucket('sub', eventName, subject, keySubs);
   }
   function deleteWS() {
-    for (const eventName in subscriptions)  {
-      const keySubs = subscriptions[eventName];
+    for (const eventName in data.sub)  {
+      const keySubs = data.sub[eventName];
       for (const [subject, socket] of Object.entries(keySubs)) {
 	if (ws === socket) deleteFromKeySubs(eventName, subject, keySubs);
       }
@@ -62,16 +75,19 @@ router.ws('/ws', function(ws, req, next) {
   let heartbeat = setInterval(() => ws.ping(), 10e3);
   ws.on('message', message => {
     const {eventName, type, subject, payload, ...rest} = JSON.parse(message);
-    let keySubs = subscriptions[eventName] ||= {};
+    let keySubs = data.sub[eventName] ||= {};
     switch (type) {
     case 'pub':
       const subscribedSockets = Object.values(keySubs);
-      //if (subscribedSockets.length) console.log('sending', message, 'to', Object.keys(keySubs));
       for (const ws of subscribedSockets) ws.send(message);
       setSticky(eventName, {eventName, subject, payload, ...rest, type: 'event'});
       break;
+    case 'ext':
+      cancel('pub', subject);
+      expire('pub', subject, () => removeBucket('pub', eventName, subject), PUBLISH_TIMEOUT);
+      break;
     case 'sub':
-      clearTimeout(subscribeTimeouts[subject]);
+      cancel('sub', subject);
       if (payload) {
 	//console.log('subscribing', eventName, 'among', Object.keys(keySubs));
 	// In the DHT, the payload is the node name so that we can fire the event to it later.
@@ -82,7 +98,7 @@ router.ws('/ws', function(ws, req, next) {
 	  console.log('sending sticky', string);
 	  ws.send(string);
 	}
-	subscribeTimeouts[subject] = setTimeout(() => deleteFromKeySubs(eventName, subject), SUBSCRIPTION_TIMEOUT);
+	expire('sub', subject, () => deleteFromKeySubs(eventName, subject), SUBSCRIPTION_TIMEOUT);
       } else {
 	deleteFromKeySubs(eventName, subject, keySubs);
       }
