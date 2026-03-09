@@ -1,7 +1,8 @@
 import { Int } from './translations.js';
 import { NetworkClass } from './pubSub.js';
-import { Marker, map, getShareableURL, showMessage, defaultInit, updateLocation, updateSubscriptions, recenterMap } from './map.js';
-const { QRCodeStyling, GeolocationPositionError } = globalThis; // For linters.
+import { getPointInCell } from './s2.js';
+import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap } from './map.js';
+const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt } = globalThis; // For linters.
 
 const RETRY_SECONDS = 90;
 const INACTIVITY_SECONDS = 5 * 60; // five minutes
@@ -62,7 +63,7 @@ document.getElementById('share').onclick = () => { // Invoke platform share API
 document.getElementById('recenterButton').onclick = recenterMap;
 
 function delay(ms = 1e3) {
-  new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 let inactivityTimer, reconnectCountdown, networkPromise = null;
@@ -115,9 +116,27 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
   const {geolocation} = navigator;  // Get user's geolocation
   console.log('initializeGeolocation. subscribe:', subscribe);
   subscribeOneShot = subscribe;
+  const initMap = (lat, lng) => {
+    let zoom = 14;
+    if (lat === undefined) {
+      const level9Cell = localStorage.getItem('level9Cell');
+      if (level9Cell) { // Zoomed out near where we last where, but not too exact for security.
+	zoom = 12;
+	[lat, lng] = getPointInCell(BigInt(level9Cell));
+      } else {
+	zoom = 13;
+	[lat, lng] = [37.7749, -122.4194]; // San Fransisco
+      }
+    }
+    updateLocation(lat, lng, zoom);
+    if (!subscribeOneShot) return;
+    subscribeOneShot = false;
+    resetInactivityTimer(false);
+    updateSubscriptions([]); // This was for a new node, so supply and empty oldSubscriptions.
+  };
   if (!geolocation) {
     showMessage(Int`Geolocation not supported. Using default location.`, 'error', 'fail');
-    defaultInit();
+    delay(2e3).then(() => initMap());
     return;
   }
   geolocation.clearWatch(positionWatch);
@@ -125,22 +144,17 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
     position => {
       const {latitude, longitude} = position.coords;
       console.log('geolocation ready, position:', position, 'map:', !!map, 'subscribeOneShot:', subscribeOneShot);
-      updateLocation(latitude, longitude);
-      if (!subscribeOneShot) return;
-      subscribeOneShot = false;
-      resetInactivityTimer(false);
-      updateSubscriptions([]); // This was for a new node, so supply and empty oldSubscriptions.
-    }, async error => {
+      initMap(latitude, longitude);
+    }, error => {
+      geolocation.clearWatch(positionWatch);
       console.warn(`Geolocation code ${error.code}. online:`, navigator.onLine, 'code:', error.code);
       if (navigator.onLine) {
 	if (error.code === GeolocationPositionError.PERMISSION_DENIED) {
 	  showMessage(Int`Location access denied. Using default location.`, 'error', error);
-	  defaultInit();
+	  delay(2e3).then(() => initMap());
 	} else {
-	  geolocation.clearWatch(positionWatch);
 	  showMessage(Int`Unable to get location.`, 'error', error);
-	  await delay(4e3);
-	  initializeGeolocation(subscribe);
+	  delay(4e3).then(() => initializeGeolocation(subscribe));
 	}
       } else {
 	showMessage(Int`No network connection.`, 'error');

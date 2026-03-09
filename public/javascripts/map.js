@@ -12,6 +12,7 @@ const ttl = 10 * 60e3; // Ten minutes
 const infoBanner = document.getElementById('info');
 export function showMessage(message, type = 'loading', errorObject) { // Show loading/instructions/error message.
   if (errorObject || errorObject) console.error(message, errorObject);
+  else console.info(message);
   if (!message) {
     infoBanner.style.display = 'none';
     return;
@@ -46,6 +47,8 @@ export function getShareableURL() { // Answer a url that reflects application st
 }
 
 let subscriptions = []; // array of stringy keys s2:<cellID>:<hashtag>
+// We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
+let lastLevel9Cell; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
 export function updateSubscriptions(oldKeys = subscriptions) { // Update current subscriptions to the new map bounds.
   // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
   if (!networkPromise) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
@@ -54,6 +57,13 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
   const northEast = bounds.getNorthEast();
   const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
   const newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => makeEventName(cell, hash)));
+
+
+  // Record a zoomed-out cell id in case next session does not have geolocation services.
+  let level9Cell = getContainingCells(center.lat, center.lng)[9];
+  if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
+  console.log('level9Cell:', typeof level9Cell, level9Cell, center);
+
   console.log('subscribing', {newKeys, oldKeys});
   const subscribe = (key, handler, autoRenewal = false) =>
 	networkPromise.then(async contact => contact.subscribe({eventName: key, handler, autoRenewal}));
@@ -299,16 +309,17 @@ export class Marker { // A wrapper around L.marker
 let yourLocation; // marker
 let lastLatitude, lastLongitude;
 
-export function updateLocation(lat, lng) { // initMap if necessary, and set our position.
+export function updateLocation(lat, lng, zoom) { // initMap if necessary, and set our position.
   //console.log('updateLocation', lat, lng);
   // Can't call getCurrentPosition while watching. So set it here for use in recenterMap.
   lastLatitude = lat;
   lastLongitude = lng;
 
   if (!map) {
-    initMap(lat, lng);
+    initMap(lat, lng, zoom);
     return;
   }
+  // Otherwise just update the yourLocation marker if appropriate (and not update zoom).
 
   // setLatLng can cause the map to autoPan to put the marker within bounds.
   // It seems like that shouldn't happen with autoPan:false, above, but it does.
@@ -317,7 +328,6 @@ export function updateLocation(lat, lng) { // initMap if necessary, and set our 
   if (!map.getBounds().contains(L.latLng(lat, lng))) return;
 
   const latLng = [lat, lng];
-  //console.log({latLng, yourLocation, bounds: map.getBounds(), map});
   setTimeout(() => yourLocation.setLatLng(latLng), 100); // It seems that yourLocation can be set, but not yet ready to be moved?
 }
 
@@ -328,13 +338,13 @@ export function recenterMap() {
   map.flyTo(latLng);
 }
 
-export function initMap(lat, lng) { // Set up appropriate zoomed initial map and handlers for this position.
+export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial map and handlers for this position.
   // Then show initial message and updateSubscriptions.
 
   showMessage(Int`Getting your location...`);
 
   // Map will be centered at the given current location marker, unless overriden by query parameters.
-  let center = {lat, lng}, zoom = 14;
+  let center = {lat, lng};
   const queryParameters = new URLSearchParams(location.search);
   if (queryParameters.has('lat')) center.lat = queryParameters.get('lat');
   if (queryParameters.has('lng')) center.lng = queryParameters.get('lng');
@@ -380,11 +390,5 @@ export function initMap(lat, lng) { // Set up appropriate zoomed initial map and
   });
 
   showMessage(Int`Tap anywhere to mark a concern. Markers fade after 10 minutes.`, 'instructions');
-}
-
-export function defaultInit() { // After two seconds, show San Fransisco.
-  setTimeout(() => {
-    updateLocation(37.7749, -122.4194);
-  }, 2000);
 }
 

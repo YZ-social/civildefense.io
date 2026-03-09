@@ -13,6 +13,14 @@ const { cellid, LatLng, Point, Cell, Cap, RegionCoverer } = s2;
 const MAX_LEVEL = 30;
 const EARTH_RADIUS_METERS = 6371e3;
 
+export function getPointInCell(cellId) { // answer [lat, lng] in degrees.
+  let {lat, lng} = s2.cellid.latLng(cellId);
+  const degrees = 180 / Math.PI;
+  lat *= degrees;
+  lng *= degrees;
+  return [lat, lng];
+}
+
 // Return a list of the cell ids that contain the point.
 export function getContainingCells(lat, lng) {
   const userLatLng = LatLng.fromDegrees(lat, lng);
