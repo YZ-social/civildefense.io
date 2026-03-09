@@ -74,6 +74,9 @@ router.ws('/ws', function(ws, req, next) {
       clearTimeout(subscribeTimeouts[subject]);
       if (payload) {
 	//console.log('subscribing', eventName, 'among', Object.keys(keySubs));
+	// In the DHT, the payload is the node name so that we can fire the event to it later.
+	// Here we have/store the websocket.
+	if (subject !== payload) throw new Error('Subscription with payload:', payload, 'and subject:', subject);
 	keySubs[subject] = ws;
 	for (const string of getSticky(eventName)) {
 	  console.log('sending sticky', string);

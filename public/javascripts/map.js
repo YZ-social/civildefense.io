@@ -53,8 +53,8 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
   const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
   const newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => makeEventName(cell, hash)));
   console.log('subscribing', {newKeys, oldKeys});
-  const subscribe = (key, value, autoRenewal = false) =>
-	networkPromise.then(async contact => contact.subscribe({eventName: key, handler: value, autoRenewal}));
+  const subscribe = (key, handler, autoRenewal = false) =>
+	networkPromise.then(async contact => contact.subscribe({eventName: key, handler, autoRenewal}));
 
   // For each entry in the new subscription set that was not previously subscribed, subscribe now.
   for (const key of newKeys) oldKeys.includes(key) || subscribe(key, data => Marker.ensure(data), true);
