@@ -1,6 +1,6 @@
 const { URLSearchParams, localStorage } = globalThis; // For linters.
 import { Int } from './translations.js';
-import { updateQueryParameters, updateSubscriptions, Marker } from './map.js';
+import { updateSubscriptions, Marker } from './map.js';
 import { resetInactivityTimer } from './main.js';
 
 // We subscribe to the cartesian product of the list of non-overlapping cells and all hashes.
@@ -40,7 +40,6 @@ export const Hashtags = {
     // If redisplaySubscribers, the presence/order may have changed.
     if (redisplaySubscribers) this.resetSubscriberDisplay();
     localStorage.setItem('hashtags', JSON.stringify(this.hashtags));
-    updateQueryParameters();
     if (resetSubscriptions) {
       updateSubscriptions();
       Object.values(Marker.markers).forEach(wrapper => this.hashtags[wrapper.hashtag] || wrapper.destroy());

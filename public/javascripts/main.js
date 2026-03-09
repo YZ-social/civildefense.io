@@ -1,6 +1,6 @@
 import { Int } from './translations.js';
 import { NetworkClass } from './pubSub.js';
-import { Marker, map, showMessage, defaultInit, updateLocation, updateSubscriptions, recenterMap } from './map.js';
+import { Marker, map, getShareableURL, showMessage, defaultInit, updateLocation, updateSubscriptions, recenterMap } from './map.js';
 const { QRCodeStyling, GeolocationPositionError } = globalThis; // For linters.
 
 const RETRY_SECONDS = 90;
@@ -25,7 +25,7 @@ document.getElementById('qrButton').onclick = () => { // generate (and display) 
     width: 300,
     height: 300,
     type: "svg",
-    data: location.href,
+    data: getShareableURL().href,
     dotsOptions: {
       color: "#0A2E7C",
       type: "rounded"
@@ -55,7 +55,7 @@ document.getElementById('share').onclick = () => { // Invoke platform share API
   navigator.share({
     title: "CivilDefense.io",
     text: "CivilDefense.io",
-    url: location.href
+    url: getShareableURL().href
   });
 };
 

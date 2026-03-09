@@ -1,4 +1,4 @@
-const { L, jdenticon, localStorage } = globalThis; // Leaflet namespace, for linters.
+const { L, jdenticon, localStorage, URL, URLSearchParams } = globalThis; // Leaflet namespace, for linters.
 import { v4 as uuidv4 } from 'uuid';
 import { s2 } from 's2js';
 import { Int } from './translations.js';
@@ -33,12 +33,16 @@ localStorage.setItem('usertag', usertag);
 function makeEventName(cell, hash) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
   return `s2:${cell}:${hash}`;
 }
-export function updateQueryParameters({params = new URLSearchParams(location.search), lat = params.get('lat'), lng = params.get('lng'), zoom = params.get('z')} = {}) { // Update url to reflect application state.
+export function getShareableURL() { // Answer a url that reflects application state.
+  const params = new URLSearchParams(location.search);
+  const zoom = map.getZoom();
+  const { lat, lng } = map.getCenter();
+
   params.set('tags', Hashtags.getSubscribe().toString());
   if (lat !== null) params.set('lat', lat);
   if (lng !== null) params.set('lng', lng);
-  if (zoom !== null) params.set('z', zoom);    
-  history.replaceState(null, '', `?${params.toString()}`);
+  if (zoom !== null) params.set('z', zoom);
+  return new URL(`?${params.toString()}`, location);
 }
 
 let subscriptions = []; // array of stringy keys s2:<cellID>:<hashtag>
@@ -46,8 +50,6 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
   // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
   if (!networkPromise) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
   const center = map.getCenter();
-  const zoom = map.getZoom();
-  updateQueryParameters({zoom, ...center});
   const bounds = map.getBounds();
   const northEast = bounds.getNorthEast();
   const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
