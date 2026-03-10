@@ -11,8 +11,8 @@ const ttl = 10 * 60e3; // Ten minutes
 
 const infoBanner = document.getElementById('info');
 export function showMessage(message, type = 'loading', errorObject) { // Show loading/instructions/error message.
-  if (errorObject || errorObject) console.error(message, errorObject);
-  else console.info(message);
+  if (errorObject || type === 'error' ) console.error(message, errorObject || '');
+  else console.warn(message);
   if (!message) {
     infoBanner.style.display = 'none';
     return;
@@ -58,13 +58,11 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
   const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
   const newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => makeEventName(cell, hash)));
 
-
   // Record a zoomed-out cell id in case next session does not have geolocation services.
   let level9Cell = getContainingCells(center.lat, center.lng)[9];
   if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
-  console.log('level9Cell:', typeof level9Cell, level9Cell, center);
 
-  console.log('subscribing', {newKeys, oldKeys});
+  console.log('subscribing', {newKeys, length: newKeys.length, oldKeys});
   const subscribe = (key, handler, autoRenewal = false) =>
 	networkPromise.then(async contact => contact.subscribe({eventName: key, handler, autoRenewal}));
 
@@ -107,7 +105,7 @@ async function publish({lat, lng, message, // Publish the given data to all appl
     const eventName = makeEventName(cell, hashtag);
     await contact.publish({eventName, subject, payload, _level, issuedTime, hashtag, act, immediate, ...rest});
   }
-  console.log('published', {cells, hashtag, subject, payload, oldCells, oldHash, oldSubject});
+  console.log('published', {cells, n: cells.length, hashtag, subject, payload, oldCells, oldHash, oldSubject});
   return subject;
 }
 

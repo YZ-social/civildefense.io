@@ -85,7 +85,8 @@ function checkOnline() { //true if online and visible, else cancel reconnectCoun
   if (navigator.onLine && !document.hidden) return true;
   clearTimeout(inactivityTimer);
   clearInterval(reconnectCountdown);
-  showMessage(Int`No network connection.`, 'error');
+  if (navigator.onLine) showMessage(Int`No network connection.`, 'error');
+  else console.warn('hidden');
   return false;
 }
 function resetReconnectCountdown() { // if !checkOnline each second, show time remaining; at expiration initialize(false)
@@ -143,7 +144,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
   positionWatch = geolocation.watchPosition(
     position => {
       const {latitude, longitude} = position.coords;
-      console.log('geolocation ready, position:', position, 'map:', !!map, 'subscribeOneShot:', subscribeOneShot);
+      console.log('geolocation ready, map:', !!map, 'subscribeOneShot:', subscribeOneShot);
       initMap(latitude, longitude);
     }, error => {
       geolocation.clearWatch(positionWatch);
@@ -170,7 +171,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
 let checking = false; // For debouncing.
 async function initialize(fromHandler) { // Ensure there is a network promise and map, and reset geolocation.
   // debounce
-  // if !checkOnline, return
+  // if !checkOnline(), return
   // set network to promise a new Contact, set ondisconnect, and connect.
   // delay if asked
   // initializeGeolocation
@@ -178,9 +179,14 @@ async function initialize(fromHandler) { // Ensure there is a network promise an
   checking = true;
   try {
     // If networkPromise has not yet been set (or cleared by disconnect), we will be subscribing.
-    const subscribe = !networkPromise;
-    console.log('initialize fromHandler:', !!fromHandler, 'subscribe:', !!subscribe);
-    if (!checkOnline()) return;
+    const needsConnection = !networkPromise;
+    const couldConnect = checkOnline();
+    console.log('initialize from handler:', !!fromHandler, 'needs connection:', !!needsConnection, 'could connect:', couldConnect);
+    if (!couldConnect) {
+      navigator?.geolocation.clearWatch(positionWatch);
+      return;
+    }
+    showMessage('');
     if (!networkPromise) {
       console.log('creating');
       networkPromise = NetworkClass.create();
@@ -191,8 +197,8 @@ async function initialize(fromHandler) { // Ensure there is a network promise an
 	  console.log('contact detached');
 	  // If/when we reconnect, we will make a new network object with a new GUID,
 	  // so as not to confuse other nodes that have given up on the unresponsive old GUID.
-	  networkPromise = null; 
-	  showMessage(Int`No network connection.`, 'error');
+	  networkPromise = null;
+	  showMessage(navigator.onLine ? Int`The service connection has closed. Please reload.` : Int`No network connection.`, 'error');
 	  resetReconnectCountdown();
 	});
 	contact.connect()
@@ -200,7 +206,7 @@ async function initialize(fromHandler) { // Ensure there is a network promise an
       });
     }
     if (fromHandler) await delay();
-    initializeGeolocation(subscribe);
+    initializeGeolocation(needsConnection);
   } finally {
     checking = false;
   }
