@@ -22,7 +22,9 @@ if (params.has('dht') && (params.get('dht') !== '0')) {
       const socket = await this.connection;
       socket?.close(3000, 'inactivity');
       this.connection = null;
-    };
+    }
+    async replicateStorage() { // In the KDHT, this ensure that the data we store is replicated on other nodes. No-op for server-based storage
+    }
     connection = null; // Promise established at start of connect(), that resolves to socket/channel when open.
     attachment = null; // In the DHT, this promise resolves to self when joined, but here it happens at the same time as connection.
     detachment = null; // Promise established at start of connect(), that resolves when closed.
@@ -44,7 +46,7 @@ if (params.has('dht') && (params.get('dht') !== '0')) {
 	// onerror is of no help, as the event is generic.
 	socket.onclose = event => {
 	  console.warn('websocket close', event.code, event.wasClean, event.reason);
-	  this.detached(event.reason || (event.wasClean ? 'closed' : 'failed'));
+	  this.detached(event.reason ===  'inactivity');
 	  this.attached(this);
 	  resolveConnection( null); // If anyone is waiting or will wait.
 	  this.connection = this.attachment = this.detachment = null;

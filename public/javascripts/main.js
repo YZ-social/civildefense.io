@@ -75,7 +75,6 @@ export async function resetInactivityTimer(clearMessage = true) { // if !network
   clearInterval(reconnectCountdown);
   if (!networkPromise) return initialize(false);
   return inactivityTimer = setTimeout(() => {
-    showMessage(Int`Connection closed due to inactivity. Will reconnect on use.`, 'error');
     networkPromise?.then(contact => contact.disconnect());
   }, INACTIVITY_SECONDS * 1e3);
 }
@@ -184,6 +183,7 @@ async function initialize(fromHandler) { // Ensure there is a network promise an
     console.log('initialize from handler:', !!fromHandler, 'needs connection:', !!needsConnection, 'could connect:', couldConnect);
     if (!couldConnect) {
       navigator?.geolocation.clearWatch(positionWatch);
+      if (navigator.onLine) networkPromise?.then(contact => contact.replicateStorage()); // Hidden. Replicate in case we get shut down.
       return;
     }
     showMessage('');
@@ -193,13 +193,14 @@ async function initialize(fromHandler) { // Ensure there is a network promise an
       networkPromise.then(contact => {
 	console.log('contact created', contact.name);
 	globalThis.contact = contact; // For debugging.
-	contact.detachment.then(() => {
-	  console.log('contact detached');
+	contact.detachment.then(onPurpose => {
+	  networkPromise = null;
+	  const message = onPurpose ? Int`Connection closed due to inactivity. Will reconnect on use.` :
+		(navigator.onLine ? Int`The service connection has closed. Please reload.` : Int`No network connection.`);
+	  console.log('contact detached', {onPurpose, onLine: navigator.onLine});
 	  // If/when we reconnect, we will make a new network object with a new GUID,
 	  // so as not to confuse other nodes that have given up on the unresponsive old GUID.
-	  networkPromise = null;
-	  showMessage(navigator.onLine ? Int`The service connection has closed. Please reload.` : Int`No network connection.`, 'error');
-	  resetReconnectCountdown();
+	  showMessage(message, 'error');
 	});
 	contact.connect()
 	  .then(() => console.log('connected'));

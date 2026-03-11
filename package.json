@@ -1,22 +1,22 @@
 {
   "name": "yz.social",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "keywords": [
     "map",
     "browser",
     "alert"
   ],
   "scripts": {
-    "start": "node ./app.js --externalBaseURL https://ki1r0y.com/kdht",
+    "start": "npm stop; npm run shared",
     "stop": "pkill yz.social",
-    "background": "npm stop; (npm start 1>server.log 2>&1 &); sleep 1",
-    "withoutExternal": "npm stop; (node ./app.js 1>server.log 2>&1 &); sleep 1",
-    "withoutPortals": "npm stop; (node ./app.js --nPortals 0 1>server.log 2>&1 &); sleep 1"
+    "shared": "node ./app.js --externalBaseURL https://ki1r0y.com/kdht",
+    "withoutExternal": "node ./app.js",
+    "withoutPortals": "node ./app.js --nPortals 0"
   },
   "type": "module",
   "dependencies": {
-    "@yz-social/kdht": "^0.1.20",
-    "@yz-social/webrtc": "^0.1.4",
+    "@yz-social/kdht": "^0.1.21",
+    "@yz-social/webrtc": "^0.1.5",
     "express": "^4.22.1",
     "express-ws": "^5.0.2",
     "morgan": "^1.10.1",
