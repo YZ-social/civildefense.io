@@ -1,6 +1,6 @@
 {
   "name": "yz.social",
-  "version": "0.0.29",
+  "version": "0.0.30",
   "keywords": [
     "map",
     "browser",
@@ -15,7 +15,7 @@
   },
   "type": "module",
   "dependencies": {
-    "@yz-social/kdht": "^0.1.22",
+    "@yz-social/kdht": "^0.1.23",
     "@yz-social/webrtc": "^0.1.6",
     "express": "^4.22.1",
     "express-ws": "^5.0.2",
