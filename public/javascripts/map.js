@@ -1,6 +1,7 @@
 const { L, jdenticon, localStorage, URL, URLSearchParams } = globalThis; // Leaflet namespace, for linters.
 import { v4 as uuidv4 } from 'uuid';
 import { s2 } from 's2js';
+import { Node } from '@yz-social/kdht';
 import { Int } from './translations.js';
 import { networkPromise, resetInactivityTimer } from './main.js';
 import { Hashtags } from './hashtags.js';
@@ -86,6 +87,10 @@ async function publish({lat, lng, message, // Publish the given data to all appl
 			immediate = true,  // Whether to act locally before sending.
 			...rest
 		       }) {
+  // We call all the publishing at once and return subject, without waiting for each to occur.
+  // However, the 'unpublishing' (if any) is invoked first.
+  // To do this, we must hash the eventName ourselves.
+
   const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
   let oldCells = null, oldHash, oldSubject = null, act = usertag;
   if (cancel) {
@@ -94,7 +99,9 @@ async function publish({lat, lng, message, // Publish the given data to all appl
     oldCells = getContainingCells(lat, lng);
     oldHash = hashtag; oldSubject = subject;
     for (const cell of oldCells) {
-      await contact.publish({eventName: makeEventName(cell, hashtag), subject, payload: null, issuedTime: time, hashtag, act, immediate, ...rest});
+      const eventName = makeEventName(cell, hashtag);
+      const key = await Node.key(eventName);
+      contact.publish({eventName, key, subject, payload: null, issuedTime: time, hashtag, act, immediate, ...rest});
     }
   }
 
@@ -103,7 +110,8 @@ async function publish({lat, lng, message, // Publish the given data to all appl
   for (const cell of cells) {
     const _level = s2.cellid.level(cell); // add _level for debugging
     const eventName = makeEventName(cell, hashtag);
-    await contact.publish({eventName, subject, payload, _level, issuedTime, hashtag, act, immediate, ...rest});
+    const key = await Node.key(eventName);
+    contact.publish({eventName, key, subject, payload, _level, issuedTime, hashtag, act, immediate, ...rest});
   }
   console.log('published', {cells, n: cells.length, hashtag, subject, payload, oldCells, oldHash, oldSubject});
   return subject;
@@ -298,7 +306,7 @@ export class Marker { // A wrapper around L.marker
   destroy() { // Remove this Marker pin entirely.
     clearInterval(this.fader);
     // Unsubscribe from replies.
-    networkPromise.then(async contact => contact.subscribe({eventName: this.subject, handler: null}));
+    networkPromise?.then(async contact => contact.subscribe({eventName: this.subject, handler: null}));
     this.marker.removeFrom(map);
     delete this.constructor.markers[this.subject];
   }
