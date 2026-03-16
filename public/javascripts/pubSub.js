@@ -9,22 +9,22 @@ if (params.has('dht') && (params.get('dht') !== '0')) {
   NetworkClass = WebContact;
   WebContact.iceServers = [{
     urls: 'stun:stun.l.google.com:19302'
-  }, {
-    urls: "turn:global.relay.metered.ca:80",
-    username: "e8f11d2425ba7a20d70c2430",
-    credential: "HjCN46G4zqxejMyN",
-  }, {
-    urls: "turn:global.relay.metered.ca:80?transport=tcp",
-    username: "e8f11d2425ba7a20d70c2430",
-    credential: "HjCN46G4zqxejMyN",
   // }, {
-  //   urls: [
-  //     `turn:${globalThis.location?.hostname || 'localhost'}:3478`, // FIXME getPublicIP()
-  //     `turn:${globalThis.location?.hostname || 'localhost'}:3478?transport=tcp`, // FIXME getPublicIP()
-  //   ],
-  //   // Even with no auth at server, some RTCPeerConnection requires creds for turn.
-  //   username: "dummy",
-  //   credential: "nothing"
+  //   urls: "turn:global.relay.metered.ca:80",
+  //   username: "e8f11d2425ba7a20d70c2430",
+  //   credential: "HjCN46G4zqxejMyN",
+  // }, {
+  //   urls: "turn:global.relay.metered.ca:80?transport=tcp",
+  //   username: "e8f11d2425ba7a20d70c2430",
+  //   credential: "HjCN46G4zqxejMyN",
+  }, {
+    urls: [
+      `turn:${globalThis.location?.hostname || 'localhost'}:3478`, // FIXME getPublicIP()
+      `turn:${globalThis.location?.hostname || 'localhost'}:3478?transport=tcp`, // FIXME getPublicIP()
+    ],
+    // Even with no auth at server, some RTCPeerConnection requires creds for turn.
+    username: "dummy",
+    credential: "nothing"
   }];
 
 } else {
