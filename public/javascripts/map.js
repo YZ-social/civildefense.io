@@ -169,9 +169,6 @@ export class Marker { // A wrapper around L.marker
     let content = isOurs ? this.formatOwnerPost() : this.formatObserverPost();
     content += this.formatReplies();
     popup.setContent(content);
-    const popupElement = popup.getElement();
-    const replyInput = popupElement.querySelector('.reply-input');
-    replyInput.onchange = event => { resetInactivityTimer(); this.postReply(event); };
     if (!isOurs) return;
     this.initializeOwnerPopupHandlers(popup);
   }
@@ -215,6 +212,12 @@ export class Marker { // A wrapper around L.marker
     const publishChoices = popupElement.querySelector('form');
     const cancelButton = popupElement.querySelector('md-outlined-button');
     const updateButton = popupElement.querySelector('md-filled-button');
+    const replyInput = popupElement.querySelector('.reply-input');
+    const replyButton = replyInput.querySelector('md-filled-icon-button');
+    replyInput.oninput = event => { replyButton.removeAttribute('disabled'); };
+    replyButton.onclick = event => { this.parentElement.dispatchEvent(new Event('change')); };
+    replyInput.onchange = event => { this.postReply(event); };
+
     postInput.addEventListener('input', event => {
       resetInactivityTimer();      
       this.enableUpdate(popupElement);
@@ -271,9 +274,12 @@ export class Marker { // A wrapper around L.marker
     this.ensureContent();
   }
   postReply(event) { // Post a reply to this marker's subject, in response to a text-field change event.
+    resetInactivityTimer();
     const eventName = this.subject;
-    const reply = event.target.value.trim();
-    event.target.value = '';
+    const inputElement = event.target;
+    inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
+    const reply = inputElement.value.trim();
+    inputElement.value = '';
     if (!reply) return;
     networkPromise.then(async contact => contact.publish({eventName, payload: reply, subject: uuidv4(), act: usertag}));
   }
@@ -286,7 +292,11 @@ export class Marker { // A wrapper around L.marker
 	  .join('');
     return `
 <div class="replies">${formattedReplies}</div>
-<md-outlined-text-field class="reply-input" ${isEnabled ? '' : 'disabled'} label="${Int`reply here`}"></md-outlined-text-field>`;
+<md-outlined-text-field class="reply-input" ${isEnabled ? '' : 'disabled'} label="${Int`reply here`}">
+  <md-filled-icon-button disabled slot="trailing-icon">
+    <md-icon class="material-icons">reply</md-icon>
+  </md-filled-icon-button>
+</md-outlined-text-field>`;
   }
 
   startFader(remaining) { // Set up or update fader.
