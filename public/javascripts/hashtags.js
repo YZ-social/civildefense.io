@@ -115,4 +115,14 @@ export const Hashtags = {
 
 // Populate hashtags data and display.
 new URLSearchParams(location.search).get('tags')?.split(',').forEach(tag => Hashtags.add(tag));
+// We don't need the query parameters now. Get rid of them. They're annoying. But preserve dht, if any.
+const copy = new URL(location);
+const dht = copy.searchParams.get('dht');
+console.log('params', copy.searchParams.size, dht);
+if (copy.searchParams.size > (dht ? 1 : 0)) {
+  copy.search = dht ? `?dht=${dht}` : '';
+  console.log('replace with', copy.href);
+  history.replaceState(null, '', copy);
+}
+
 Hashtags.onchange({resetSubscriptions: false}); // Too early to subscribe, but will be done during initialization.
