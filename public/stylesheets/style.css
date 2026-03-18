@@ -156,9 +156,17 @@ md-filter-chip minidenticon-svg {
 .alert md-outlined-button, .alert md-filled-button {
     width: 100px;
 }
+.alert .attribution md-outlined-button {
+    width: unset;
+    padding-left: 5px;
+    padding-right: 5px;
+}
 .alert md-icon {
     width: 22px;
     height: 22px;
+}
+md-menu {
+    min-width: 150px;
 }
 .attribution {
     display: flex;
@@ -176,6 +184,9 @@ md-filter-chip minidenticon-svg {
 }
 .reply {
     margin-top: 5px;
+}
+.reply img {
+    width: 100%;
 }
 .reply .message {
     border-color: var(--md-sys-color-outline);
@@ -198,8 +209,17 @@ md-filter-chip minidenticon-svg {
 .alert {
     font-family: roboto;
 }
+.reply .attachment md-icon {
+    vertical-align: bottom;
+}
+.attachment-preview {
+    margin-top: 15px;
+    text-align: right;
+}
+input[type="file"] {
+    display: none;
+}
 .reply-input {
-    margin-top: 5px;
     width: 100%;
 }
 :root {

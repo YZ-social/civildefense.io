@@ -31,11 +31,16 @@ const translations = {
   ['No additional information.']: {es: "No hay información adicional."},
   ['posted']: {es: "al corriente"},
   ['updated']: {es: "actualizada"},
-  ['post here']: {es: "publicar aquí"},
   ['reply here']: {es: "responder aquí"},
   ['remove']: {es: "eliminar"},
+  ['cancel alert']: {es: "Cancelar alerta"},
   ['update']: {es: "actualizar"},
   ['for update to...']: {es: "para actualizar a..."},
+  ['In Firefox, sharing must be explicitly enabled through the <a target="civildefense_help" href="https://developer.mozilla.org/en-US/docs/Mozilla/Firefox/Experimental_features#webshare_api">dom.webshare.enabled</a> preference in about:config.']: {es: 'En Firefox, la función de compartir debe habilitarse explícitamente mediante la preferencia <a target="civildefense_help" href="https://developer.mozilla.org/en-US/docs/Mozilla/Firefox/Experimental_features#webshare_api">dom.webshare.enabled</a> en about:config.'},
+  ['This browser does not support sharing.']: {es: "Este navegador no admite la función de compartir."},
+  ['This browser does not support file sharing.']: {es: "Este navegador no admite el intercambio de archivos."},
+  ['This browser does not support sharing this type of file.']: {es: "Este navegador no admite compartir este tipo de archivo."},
+																															 
   
   
   ['#aboutReport']: {en: "Report immediate concerns to the public by tapping their location on the map.", es: "Informa de cualquier problema inmediato al público pulsando su ubicación en el mapa."},

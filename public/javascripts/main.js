@@ -1,7 +1,7 @@
 import { Int } from './translations.js';
 import { NetworkClass } from './pubSub.js';
 import { getPointInCell } from './s2.js';
-import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap } from './map.js';
+import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
 const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt } = globalThis; // For linters.
 
 const RETRY_SECONDS = 90;
@@ -48,17 +48,7 @@ qrDisplayContainer.onclick = () => {
   resetInactivityTimer();
   qrDisplayContainer.classList.toggle('hidden', true);
 }
-document.getElementById('share').onclick = () => { // Invoke platform share API
-  if (!navigator.share) {
-    showMessage(navigator.userAgent.includes('Firefox') ? `In Firefox, sharing must be explicitly enabled through the <a target="civildefense_help" href="https://developer.mozilla.org/en-US/docs/Mozilla/Firefox/Experimental_features#webshare_api">dom.webshare.enabled</a> preference in about:config.` : `This browser does not support sharing.`);
-    return;
-  }
-  navigator.share({
-    title: "CivilDefense.io",
-    text: "CivilDefense.io",
-    url: getShareableURL().href
-  });
-};
+document.getElementById('share').onclick = () => share({text: "CivilDefense.io", url: getShareableURL().href });
 
 document.getElementById('recenterButton').onclick = recenterMap;
 

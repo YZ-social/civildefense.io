@@ -1,4 +1,4 @@
-const { L, jdenticon, localStorage, URL, URLSearchParams } = globalThis; // Leaflet namespace, for linters.
+const { L, jdenticon, localStorage, URL, URLSearchParams, FileReader, File } = globalThis; // Leaflet namespace, for linters.
 import { v4 as uuidv4 } from 'uuid';
 import { s2 } from 's2js';
 import { Node } from '@yz-social/kdht';
@@ -13,7 +13,7 @@ const ttl = 10 * 60e3; // Ten minutes
 const infoBanner = document.getElementById('info');
 export function showMessage(message, type = 'loading', errorObject) { // Show loading/instructions/error message.
   if (errorObject || type === 'error' ) console.error(message, errorObject || '');
-  else console.warn(message);
+  else if (message) console.warn(message);
   if (!message) {
     infoBanner.style.display = 'none';
     return;
@@ -27,6 +27,24 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   if (type === 'instructions') {
     setTimeout(() => infoBanner.style.display = 'none', 4000);
   }
+}
+
+export function share(properties) {  // Invoke platform share API on properties.
+  if (!navigator.share) {
+    showMessage(navigator.userAgent.includes('Firefox') ? Int`In Firefox, sharing must be explicitly enabled through the <a target="civildefense_help" href="https://developer.mozilla.org/en-US/docs/Mozilla/Firefox/Experimental_features#webshare_api">dom.webshare.enabled</a> preference in about:config.` : Int`This browser does not support sharing.`);
+    return;
+  }
+  if (properties.files) {
+    if (!navigator.canShare) {
+      showMessage(Int`This browser does not support file sharing.`);
+      return;
+    }
+    if (!navigator.canShare({files: properties.files})) {
+      showMessage(Int`This browser does not support sharing this type of file.`);
+      return;
+    }
+  }
+  navigator.share({title: "CivilDefense.io", ...properties});
 }
 
 const usertag = localStorage.getItem('usertag') || uuidv4();
@@ -101,6 +119,7 @@ async function publish({lat, lng, message, // Publish the given data to all appl
     for (const cell of oldCells) {
       const eventName = makeEventName(cell, hashtag);
       const key = await Node.key(eventName);
+      // Note: we cannot unpublish replies by others, but they expire after a while anyway.
       contact.publish({eventName, key, subject, payload: null, issuedTime: time, hashtag, act, immediate, ...rest});
     }
   }
@@ -164,103 +183,89 @@ export class Marker { // A wrapper around L.marker
     if (!this.needsRedisplay) return;
     if (!popup.isOpen()) return;
     this.needsRedisplay = false;
-    const {act} = this;
-    const isOurs = act === usertag;
-    let content = isOurs ? this.formatOwnerPost() : this.formatObserverPost();
+    const {issuedTime, originalPosting, hashtag, act}  = this;
+    let content = this.formatAttribution({act, issuedTime, originalPosting, hashtag});
     content += this.formatReplies();
     popup.setContent(content);
-    if (!isOurs) return;
-    this.initializeOwnerPopupHandlers(popup);
+    const popupElement = popup.getElement();
+    const changeHashtag = popupElement.querySelector('.changeHashtag');
+    const replyInput = popupElement.querySelector('.reply-input');
+    const replyButton = replyInput.querySelector('md-filled-icon-button');
+    const replyAttachButton = replyInput.querySelector('md-tonal-icon-button');
+    const fileChooser = popupElement.querySelector('input[type="file"]');
+    replyInput.oninput = event => { replyButton.removeAttribute('disabled'); };
+    replyButton.onclick = event => { this.postReply(event); };
+    replyAttachButton.onclick = event => { fileChooser.click(); };
+    fileChooser.onchange = event => {
+      replyButton.removeAttribute('disabled');
+      let filenameDisplay = popupElement.querySelector('.attachment-preview');
+      filenameDisplay.textContent = fileChooser.files.length ? (fileChooser.files[0].name || 'image') : '';
+    };
+    if (changeHashtag) {
+      const menu = changeHashtag?.nextElementSibling;
+      menu.anchorElement = changeHashtag;
+      changeHashtag.addEventListener('click', () => menu.open = !menu.open);
+      menu.addEventListener('close-menu', event => this.updatePost(event.detail.initiator.dataset.tag));
+    }
+    for (const deleter of popupElement.querySelectorAll('.reply .attribution md-outlined-button')) {
+      deleter.onclick = event => { // Delete reply.
+	event.stopPropagation();
+	this.deleteReply(event.currentTarget.closest('.reply'));
+      };
+    }
+    for (const reply of popupElement.querySelectorAll('.reply')) {
+      reply.onclick = async event => { // Share reply.
+	// TODO: Preserve attribution data. Maybe by including the subject reply tag in the url, and metadata in the text?
+	const {text, file, name = 'unknown'} = event.currentTarget.dataset;
+	const url = getShareableURL().href;
+	const data = {text, url};
+	if (file) {
+	  const res = await fetch(file);
+	  const blob = await res.blob();
+	  data.files = [new File([blob], name, {type: blob.type})];
+	}
+	share(data);
+      };
+    }
   }
   formatAttribution({act, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/optional-hashtag
+    let endMarker = '';
+    if (hashtag) {
+      if (act === usertag) endMarker = `
+<div style="position: relative">
+  <md-outlined-button class="changeHashtag">${Hashtags.formatPubtag(hashtag)}</md-outlined-button>
+  <md-menu>
+   ${Hashtags.getSubscribe().map(tag => `<md-menu-item data-tag="${tag}"><div slot="headline">${tag}</div></md-menu-item>`).join('')}
+   <md-divider></md-divider>
+   <md-menu-item data-tag="">
+     <md-icon slot="end" class="material-icons">delete_forever</md-icon>
+     <div slot="headline">${Int`remove`}</div>
+     <div slot="supporting-text">${Int`cancel alert`}</div></md-menu-item>
+  </md-menu>
+</div>`;
+      else endMarker = `<div><span>${Hashtags.formatPubtag(hashtag)}</span></div>`;
+    } else if (act === usertag) { // Owner of reply
+      endMarker = `<div><md-outlined-button><md-icon class="material-icons">delete</md-icon></md-outlined-button></div>`;
+    }
     return `
 <div class="attribution">
   <minidenticon-svg username="${act}"></minidenticon-svg>
   <div class="times">
-    <div>${Int`posted`} ${new Date(originalPosting || issuedTime).toLocaleString()}</div>
-    ${originalPosting ? `<div>${Int`updated`} ${new Date(issuedTime).toLocaleString()}</div>` : ''}
+    <div>${new Date(originalPosting || issuedTime).toLocaleString()}</div>
+    ${originalPosting ? `<div>${Int`updated`} ${new Date(issuedTime).toLocaleTimeString()}</div>` : ''}
   </div>
-  ${hashtag ? `<div><span>${Hashtags.formatPubtag(hashtag)}</span></div>` : ''}
+  ${endMarker}
 </div>`;
   }
-  formatObserverPost() { // Answer HTML for the main post as seen by observers (not author).
-    const {issuedTime, originalPosting, hashtag, act, message}  = this;
-    return `${this.formatAttribution({act, issuedTime, originalPosting, hashtag})}<p>${message || Marker.noMessage}</p>`;
-  }
-  formatOwnerPost() { // Answer HTML for main post as seen by the author.
-    const {issuedTime, originalPosting, hashtag, act, message, replies} = this;
-    const messageValueAttribute = message ? `value="${message}"` : '';
-    const radioDisabled = replies.length ? 'disabled' : '';
-    const publishChoices = Hashtags.getSubscribe()
-	  .map(tag => `<label><md-radio ${radioDisabled} name="pub" value="${tag}" ${tag === hashtag ? 'checked' : ''}></md-radio> ${tag}</label>`)
-	  .join('');
-
-    return `${this.formatAttribution({act, issuedTime, originalPosting, hashtag})}
-<div class="post-input">
-  <md-outlined-text-field class="post-input" type="textarea" label="${Int`post here`}"${messageValueAttribute}></md-outlined-text-field>
-  <form>${publishChoices}</form>
-</div>
-<div class="actions">
-  <md-outlined-button><md-icon slot="icon" class="material-icons">delete</md-icon> ${Int`remove`}</md-outlined-button>
-  <md-filled-button disabled><md-icon slot="icon" class="material-icons">check</md-icon> ${Int`update`}</md-filled-button>
-</div>`;
-  }
-  initializeOwnerPopupHandlers(popup) { // Set up handlers for the owner.
-    const {lat, lng, subject, hashtag} = this;
-    const popupElement = popup.getElement();
-    const postInput = popupElement.querySelector('md-outlined-text-field');
-    const publishChoices = popupElement.querySelector('form');
-    const cancelButton = popupElement.querySelector('md-outlined-button');
-    const updateButton = popupElement.querySelector('md-filled-button');
-    const replyInput = popupElement.querySelector('.reply-input');
-    const replyButton = replyInput.querySelector('md-filled-icon-button');
-    replyInput.oninput = event => { replyButton.removeAttribute('disabled'); };
-    replyButton.onclick = event => { this.parentElement.dispatchEvent(new Event('change')); };
-    replyInput.onchange = event => { this.postReply(event); };
-
-    postInput.addEventListener('input', event => {
-      resetInactivityTimer();      
-      this.enableUpdate(popupElement);
-    });
-    publishChoices.addEventListener('change', event => { // Do not re-publish yet, but do change tag display.
-      const tag = event.target.value;
-      const html = Hashtags.formatPubtag(tag);
-      popupElement.querySelector('span').innerHTML = html;
-      resetInactivityTimer();
-      this.enableUpdate(popupElement);
-    });
-    cancelButton.onclick = event=> {
-      resetInactivityTimer();
-      event.stopPropagation();
-      publish({lat, lng, subject, hashtag, payload: null, cancel: null});
-    };
-    updateButton.onclick = event=> {
-      resetInactivityTimer();
-      event.stopPropagation();
-      popup.close();
-      this.maybeUpdate(popupElement);
-    };
-  }
-  enableUpdate(popupElement) { // The owner has changed something. Allow update.
-    const button = popupElement.querySelector('md-filled-button');
-    if (!button.hasAttribute('disabled')) return;
-    button.removeAttribute('disabled');
-    popupElement.querySelector('.times').insertAdjacentHTML("beforeend", Int`for update to...`);
-  }
-  maybeUpdate(displayElement) { // If data has changed, republish.
+  updatePost(tag) { // Republish under a different hashtag, or cancel altogether if no tag (which is not allowed as a hashtag).
+    resetInactivityTimer();
     const {lat, lng, hashtag, subject, message = '', issuedTime, originalPosting = issuedTime} = this;
-    let newMessage = displayElement.querySelector('md-outlined-text-field').value;
-    const newHashtag = displayElement.querySelector('span').textContent;
-    const isNewHashtag = newHashtag !== hashtag;
-    console.log({lat, lng, subject, message, newMessage, hashtag, newHashtag, isNewHashtag});
-    if (newMessage === message && !isNewHashtag) return;
-    let cancel = null;
-    if (isNewHashtag) {
-      Hashtags.setPublish(newHashtag);
-      Hashtags.onchange({redisplaySubscribers: false, resetSubscriptions: false});
-      cancel = {lat, lng, hashtag, subject};
-    }
-    publish({lat, lng, subject, message: newMessage, originalPosting, cancel}); // immediate for canceled and new, before we remove old hash
+    if (!tag) return publish({lat, lng, subject, hashtag, payload: null, cancel: null});
+    if (tag === hashtag) return this.needsRedisplay = true;
+    const cancel = {lat, lng, hashtag, subject};
+    Hashtags.setPublish(tag);
+    Hashtags.onchange({redisplaySubscribers: false, resetSubscriptions: false});
+    return publish({lat, lng, subject, originalPosting, cancel}); // immediate for canceled and new, before we remove old hash
   }
 
   // Each reply is separately published by its author, and only they can modify/unpublish it.
@@ -268,35 +273,71 @@ export class Marker { // A wrapper around L.marker
   handleReply(data) { // Add or update reply for this marker.
     // TODO: handle update/removal.
     const { replies } = this;
-    replies.push(data);
-    replies.sort((a, b) => a.issuedTime - b.issuedTime); // Could be slightly out of order.
+    if (data.payload) {
+      replies.push(data); // TODO: when we implement edited replies, we'll have to find the existing
+      replies.sort((a, b) => a.issuedTime - b.issuedTime); // Could be slightly out of order.
+    } else {
+      replies.splice(replies.findIndex(reply => reply.subject === data.subject), 1);
+    }
     this.needsRedisplay = true;
     this.ensureContent();
   }
-  postReply(event) { // Post a reply to this marker's subject, in response to a text-field change event.
+  async postReply(event) { // Post a reply to this marker's subject, in response to a text-field change event.
     resetInactivityTimer();
     const eventName = this.subject;
-    const inputElement = event.target;
-    inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
-    const reply = inputElement.value.trim();
+    const button = event.target;
+    const inputElement = button.parentElement;
+    let payload = inputElement.value.trim();
+    const files = inputElement.parentElement.querySelector('input[type="file"]').files;
+    if (files.length) {
+      await new Promise(resolve => {
+	const reader = new FileReader();
+	reader.onerror = () => resolve(showMessage(reader.error.message || reader.error.name || "Error reading attachment"));
+	reader.onload = () => {
+	  payload = {message: payload, file: reader.result, name: files[0].name};
+	  resolve();
+	};
+	reader.readAsDataURL(files[0]);
+      });
+    }
     inputElement.value = '';
-    if (!reply) return;
-    networkPromise.then(async contact => contact.publish({eventName, payload: reply, subject: uuidv4(), act: usertag}));
+    inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
+    if (!payload) return;
+    networkPromise.then(contact => contact.publish({eventName, payload, subject: uuidv4(), act: usertag}));
+  }
+  deleteReply(replyElement) {
+    networkPromise.then(contact => contact.publish({eventName: this.subject, subject: replyElement.dataset.subject, payload: null, act: usertag}));
   }
   formatReplies() { // Answer HTML for the replies and input box.
     const { replies, act, originalPosting } = this;
-    const isEnabled = act !== usertag || originalPosting || replies.length;
-    const formattedReplies = replies
-	  .map(({subject, payload, ...rest}) =>
-	    `<div class="reply ${subject}">${this.formatAttribution(rest)}<span class="message">${payload}</span><div>`)
-	  .join('');
+    const formatReply = ({subject, payload, ...rest}) => {
+      const {message = payload, file, name} = payload;
+      let text = message.replace(/https?:\/\/\S+/g, url => `<a href="${url}" target="yz.sidebar">${url}</a>`); // show urls as links
+      let attachment = '';
+      if (file?.startsWith('data:image')) attachment = `<img class="attachment" src="${file}"></img>`;
+      else if (file) attachment = `
+<span class="attachment ${message ? '' : 'message'}">
+  <md-icon class="material-icons">attachment</md-icon>
+  ${name}
+</span>`;
+      const messageDisplay = message ? `<span class="message">${text}</span>` : '';
+      let dataAttributes = `data-subject="${subject}" data-text="${message}"`;
+      if (file) dataAttributes += ` data-file="${file}" data-name="${name}"`;
+      return `<div class="reply" ${dataAttributes}>${this.formatAttribution(rest)}${attachment}${messageDisplay}</div>`;
+    };
+    const formattedReplies = replies.map(formatReply).join('');
     return `
 <div class="replies">${formattedReplies}</div>
-<md-outlined-text-field class="reply-input" ${isEnabled ? '' : 'disabled'} label="${Int`reply here`}">
+<div class="attachment-preview"></div>
+<md-outlined-text-field class="reply-input" label="${Int`reply here`}">
+  <md-tonal-icon-button slot="leading-icon">
+    <md-icon class="material-icons">attach_file</md-icon>
+  </md-tonal-icon-button>
   <md-filled-icon-button disabled slot="trailing-icon">
-    <md-icon class="material-icons">reply</md-icon>
+    <md-icon class="material-icons">send</md-icon>
   </md-filled-icon-button>
-</md-outlined-text-field>`;
+</md-outlined-text-field>
+<input type="file"></input>`;
   }
 
   startFader(remaining) { // Set up or update fader.
