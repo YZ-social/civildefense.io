@@ -51,7 +51,7 @@ const usertag = localStorage.getItem('usertag') || uuidv4();
 localStorage.setItem('usertag', usertag);
 
 function makeEventName(cell, hash) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
-  return `s2:${cell}:${hash}`;
+  return `s2:${cell}:${Hashtags.canonicalTag(hash)}`;
 }
 export function getShareableURL() { // Answer a url that reflects application state.
   const params = new URLSearchParams(location.search);
@@ -110,7 +110,8 @@ async function publish({lat, lng, message, // Publish the given data to all appl
   // To do this, we must hash the eventName ourselves.
 
   const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
-  let oldCells = null, oldHash, oldSubject = null, act = usertag;
+  const act = usertag;
+  let oldCells = null, oldHash, oldSubject = null; // Recorded for logging, below.
   if (cancel) {
     const {lat, lng, hashtag, subject} = cancel;
     const time = issuedTime - 1;
@@ -150,7 +151,7 @@ export class Marker { // A wrapper around L.marker
     wrapper?.marker.openPopup();
   }
   static ensure(data) { // Add marker at position with appropriate fade if not already present.
-    const { payload, subject, issuedTime, act, hashtag, immediateLocalAction = false } = data;
+    let { payload, subject, issuedTime, act, hashtag, immediateLocalAction = false } = data;
     let wrapper = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
     console.log('handling event', {wrapper, subject, payload, act, usertag, immediateLocalAction, data});
 
@@ -160,12 +161,13 @@ export class Marker { // A wrapper around L.marker
           remaining = expiration - now;
     if (remaining < 0) return wrapper?.destroy();  // Expired.
 
+    hashtag = Hashtags.add(hashtag); // We already have it and are subscribing, but this updates our extended form if needed.
     wrapper ||= this.markers[subject] = new this();
     const {lat, lng, message, originalPosting} = payload;
     Object.assign(wrapper, {lat, lng, subject, message, originalPosting, issuedTime, hashtag, act});
     let {marker} = wrapper;
     if (!marker) {
-      const icon = L.divIcon({html: Hashtags.markerHTML(hashtag), className: 'alert-pin'});
+      const icon = L.divIcon({html: Hashtags.formatMarker(hashtag), className: 'alert-pin'});
       marker = wrapper.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
       marker.bindPopup('', {className: 'alert'})
 	.on('popupopen', event => wrapper.ensureContent(event.popup, remaining));

@@ -1,4 +1,4 @@
-const { URLSearchParams, localStorage } = globalThis; // For linters.
+const { URL, URLSearchParams, localStorage } = globalThis; // For linters.
 import { Int } from './translations.js';
 import { updateSubscriptions, Marker } from './map.js';
 import { resetInactivityTimer } from './main.js';
@@ -6,10 +6,37 @@ import { resetInactivityTimer } from './main.js';
 // We subscribe to the cartesian product of the list of non-overlapping cells and all hashes.
 // We publish to just the first of these.
 export const Hashtags = {
-  hashtags: JSON.parse(localStorage.getItem('hashtags') ||
-		       `{"🍰${Int`cake`}": true, "🔥${Int`fire`}": true, "🌊${Int`flood`}": true, "🆘${Int`help`}": "pub", "🧊${Int`ice`}": true}`),
-  add(label) { // Ensure label is an active hashtag.
-   this. hashtags[label] ||= true; // If it's 'pub', let it remain so.
+
+  // Unless otherwise noted, a `hashtag` is an extended hashtag that contains a leading emoji if known.
+  // That emoji is used as the marker on the map.
+  // This full string is what is displayed, and shared with others through publishing and urls.
+  //
+  // However, there is also a `canonical` form that is used in forming the eventName for pub/sub, in which the leading emoji is stripped.
+  // A user might manually type in either form to add a new subscription, and they will receive publications that carry the full string.
+  // Any user that does not yet have a leading emoji will display an identicon of the canonical part as the marker,
+  // but the first time they get an extended string whose canonical part matches, they will start using that emoji going forward.
+  // Thus:
+  // 1. A user does not have to type an emoji to add a hashtag subscription.
+  // 2. Once a user has an emoji for a given hashtag - either entered by them or learned from others - it will "stick" and not change for this user.
+  // 3. But until then, we still have a marker that will automatically pick up the first one it sees from someone else.
+  //    (The already displayed identicons do not change until the user "opens" a post, and then they all change.
+  //     Later, we will allow a user to change what they see on their own device.)
+  // 4. While an identicon is displayed, it is the same for all markers of this hashtag, regardless of whether the original posters
+  //    were using the same emoji as each other.
+  hashtags: {},
+  canonical2extended: {},
+  add(label, active = true) { // Ensure label is a hashtag, initialized to active, and if existing, forcing it active.
+    // Return our (possibly new) understanding of the extended hashtag.
+    // Note that only startup-poplation of tags from persistence would ever specify active=false.
+    // Here we accept a canonical or extended label, updating our records keyed by the canonical part,
+    // but if we currently have just a canonical part we update our records to capture the extended.
+    // (We do not change the emoji of an existing extended.)
+    const canonical = this.canonicalTag(label);
+    const extended = this.extendedTag(canonical, label);
+    // fixme if we have only the canonical, replace it with the new extended
+    this.hashtags[extended] ||= active; // If it's 'pub', let it remain so.
+    if (canonical !== extended) this.canonical2extended[canonical] = extended;
+    return extended;
   },
   getAll() { // List of all the user's hashtags.
     return Object.keys(this.hashtags);
@@ -20,21 +47,29 @@ export const Hashtags = {
   getPublish() { // Return the one hashtag to which the user intends to publish.
     return this.getAll().find(key => this.hashtags[key] === 'pub');
   },
-  stripLeadingEmoji(string) { // Return string without any leading emoji (which might be of varying length).
-    return string.replace(/^\p{Extended_Pictographic}/u, '') || string;
+  stripLeadingEmoji(string) { // Return string without any leading emoji (which might be of varying
+    // length) followed by an optional emoji break character and any whitespace.
+    return string.replace(/^\p{Extended_Pictographic}*\uFE0F?\s*/u, '') || string;
   },
   firstEmoji(tag) { // First emoji that appears in string, else falsy.
     return tag.match(/\p{Extended_Pictographic}/u)?.[0];
   },
-  identicon(tag, slot = '') {
+  identicon(tag, slot = '') { // HTML for an identicon representing tag.
+    // Unneeded and not necessarilly meaningful if tag has emoji.
     return `<minidenticon-svg ${slot ? `slot="${slot}"` : ''} username="${tag}"></minidenticon-svg>`;
   },
-  markerHTML(tag) { // HTML (possibly text) to represent tag as a marker on map.
+  formatMarker(tag) { // HTML (possibly text) to represent tag as a marker on map.
     return this.firstEmoji(tag) || this.identicon(tag);
   },
   formatPubtag(tag) { // HTML (possibly text) to represent tag with defaulted icon.
     const emoji = this.firstEmoji(tag);
     return emoji ? tag : this.identicon(tag) + tag;
+  },
+  canonicalTag(tag) { // A string representing tag, without the (leading) emoji if any.
+    return this.stripLeadingEmoji(tag);
+  },
+  extendedTag(tag, defaultExtended = tag) { // The tag with the emoji, if known, else the input as is.
+    return this.canonical2extended[tag] || defaultExtended;
   },
   onchange({redisplaySubscribers = true, resetSubscriptions = true} = {}) { // Update and persist internal data, and update visuals.
     // If redisplaySubscribers, the presence/order may have changed.
@@ -74,6 +109,7 @@ export const Hashtags = {
 	resetInactivityTimer();
 	const chip = event.target;
 	delete this.hashtags[chip.label];
+	delete this.canonical2extended[this.canonicalTag(chip.label)];
 	this.onchange({redisplaySubscribers: false, resetSubscriptions: false});
       });
       element.onclick = event => {
@@ -114,11 +150,15 @@ export const Hashtags = {
 };
 
 // Populate hashtags data and display.
+// First the persisted/default data:
+const persisted = JSON.parse(localStorage.getItem('hashtags') ||
+			     `{"🍰${Int`cake`}": true, "🔥${Int`fire`}": true, "🌊${Int`flood`}": true, "🆘${Int`help`}": "pub", "🧊${Int`ice`}": true}`);
+Object.entries(persisted).forEach(([tag, active]) => Hashtags.add(tag, active));
+
 new URLSearchParams(location.search).get('tags')?.split(',').forEach(tag => Hashtags.add(tag));
 // We don't need the query parameters now. Get rid of them. They're annoying. But preserve dht, if any.
 const copy = new URL(location);
 const dht = copy.searchParams.get('dht');
-console.log('params', copy.searchParams.size, dht);
 if (copy.searchParams.size > (dht ? 1 : 0)) {
   copy.search = dht ? `?dht=${dht}` : '';
   console.log('replace with', copy.href);
