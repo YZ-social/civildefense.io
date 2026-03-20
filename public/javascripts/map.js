@@ -251,7 +251,7 @@ export class Marker { // A wrapper around L.marker
     if (!changeHashtag) return;
     const menu = changeHashtag?.nextElementSibling;
     menu.anchorElement = changeHashtag;
-    changeHashtag.onclick = () => { resetInactivityTimer(); menu.open = !menu.open; }; // We will snarf this in updateMarkers, so it must be onlick rather than addEventListener.
+    changeHashtag.onclick = event => { resetInactivityTimer(); event.stopPropagation(); menu.open = !menu.open; }; // Must be onlick rather than addEventListener.
     menu.addEventListener('close-menu', this.menuCloser); // Must be addEventListener because there's no onclosemenu.
   }
   menuCloser = event => this.updatePost(event.detail.initiator.dataset.tag);
