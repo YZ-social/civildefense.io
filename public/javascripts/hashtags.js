@@ -137,9 +137,10 @@ export const Hashtags = {
     this.chipset.firstChild.onchange = event => { // Add the new hashtag.
       resetInactivityTimer();
       const tag = event.target.value.trim();
-      if (!tag);
-      this.add(tag);
+      if (!tag) return;
       Marker.closePopup();
+      this.add(tag);
+      this.setPublish(tag);
       this.onchange();
     };
   },
