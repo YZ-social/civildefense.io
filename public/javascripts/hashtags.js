@@ -1,4 +1,4 @@
-const { URL, URLSearchParams, localStorage } = globalThis; // For linters.
+const { localStorage } = globalThis; // For linters.
 import { Int } from './translations.js';
 import { updateSubscriptions, Marker } from './map.js';
 import { resetInactivityTimer } from './main.js';
@@ -161,15 +161,3 @@ export const Hashtags = {
 const persisted = JSON.parse(localStorage.getItem('hashtags') ||
 			     `{"🍰${Int`cake`}": true, "🔥${Int`fire`}": true, "🌊${Int`flood`}": true, "🆘${Int`help`}": "pub", "🧊${Int`ice`}": true}`);
 Object.entries(persisted).forEach(([tag, active]) => Hashtags.add(tag, active, false));
-
-new URLSearchParams(location.search).get('tags')?.split(',').forEach(tag => Hashtags.add(tag));
-// We don't need the query parameters now. Get rid of them. They're annoying. But preserve dht, if any.
-const copy = new URL(location);
-const dht = copy.searchParams.get('dht');
-if (copy.searchParams.size > (dht ? 1 : 0)) {
-  copy.search = dht ? `?dht=${dht}` : '';
-  console.log('replace with', copy.href);
-  history.replaceState(null, '', copy);
-}
-
-Hashtags.onchange({resetSubscriptions: false}); // Too early to subscribe, but will be done during initialization.

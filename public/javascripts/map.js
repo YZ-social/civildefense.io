@@ -412,6 +412,21 @@ export function updateLocation(lat, lng, zoom) { // initMap if necessary, and se
 
   if (!map) {
     initMap(lat, lng, zoom);
+
+    const params = new URL(location).searchParams;
+    params.get('tags')?.split(',').forEach(tag => Hashtags.add(tag));
+    Hashtags.onchange({resetSubscriptions: false}); // Too early to subscribe, but will be done during initialization.
+    if (params.has('lat') && params.has('lng')) {
+      map.flyTo({lat: params.get('lat'), lng: params.get('lng')}, params.get('z'));
+    }
+    // We don't need the query parameters now. Get rid of them. They're annoying. But preserve dht, if any.
+    const copy = new URL(location);
+    const dht = copy.searchParams.get('dht');
+    if (copy.searchParams.size > (dht ? 1 : 0)) {
+      copy.search = dht ? `?dht=${dht}` : '';
+      history.replaceState(null, '', copy);
+    }
+
     return;
   }
   // Otherwise just update the yourLocation marker if appropriate (and not update zoom).
