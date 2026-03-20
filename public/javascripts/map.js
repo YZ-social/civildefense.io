@@ -95,11 +95,11 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
 }
 
 let last = null; // Last published lat, lng, subject
-async function publish({lat, lng, message, // Publish the given data to all applicable eventNames, promising subject.
+async function publish({lat, lng, // Publish the given data to all applicable eventNames, promising subject.
 			originalPosting = undefined,
 			hashtag = Hashtags.getPublish(),
 			subject  = uuidv4(), // For recognizing locally executed events and for cancelling. Not a user tag!
-			payload = {lat, lng, message, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
+			payload = {lat, lng, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
 			cancel = last, // First unpublish the specified data, if any.
 			issuedTime = Date.now(),
 			immediate = true,  // Whether to act locally before sending.
@@ -183,8 +183,8 @@ export class Marker { // A wrapper around L.marker
 
     hashtag = Hashtags.add(hashtag); // We already have it and are subscribing, but this updates our extended form if needed.
     wrapper ||= this.markers[subject] = new this();
-    const {lat, lng, message, originalPosting} = payload;
-    Object.assign(wrapper, {lat, lng, subject, message, originalPosting, issuedTime, hashtag, act});
+    const {lat, lng, originalPosting} = payload;
+    Object.assign(wrapper, {lat, lng, subject, originalPosting, issuedTime, hashtag, act});
     let {marker} = wrapper;
     if (!marker) {
       const icon = this.makeIcon(hashtag);
@@ -288,7 +288,7 @@ export class Marker { // A wrapper around L.marker
   }
   updatePost(tag) { // Republish under a different hashtag, or cancel altogether if no tag (which is not allowed as a hashtag).
     resetInactivityTimer();
-    const {lat, lng, hashtag, subject, message = '', issuedTime, originalPosting = issuedTime} = this;
+    const {lat, lng, hashtag, subject, issuedTime, originalPosting = issuedTime} = this;
     if (!tag) return publish({lat, lng, subject, hashtag, payload: null, cancel: null});
     if (tag === hashtag) return this.needsRedisplay = true;
     const cancel = {lat, lng, hashtag, subject};
