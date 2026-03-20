@@ -260,7 +260,7 @@ export class Marker { // A wrapper around L.marker
 <div style="position: relative">
   <md-outlined-button class="changeHashtag">${Hashtags.formatPubtag(hashtag)}</md-outlined-button>
   <md-menu>
-   ${Hashtags.getSubscribe().map(tag => `<md-menu-item data-tag="${tag}"><div slot="headline">${tag}</div></md-menu-item>`).join('')}
+   ${Hashtags.getSubscribe().map(tag => `<md-menu-item data-tag="${tag}"><div slot="headline">${Hashtags.formatPubtag(tag)}</div></md-menu-item>`).join('')}
    <md-divider></md-divider>
    <md-menu-item data-tag="">
      <md-icon slot="end" class="material-icons">delete_forever</md-icon>

@@ -178,6 +178,11 @@ md-menu {
     height: 40px;
     width: 40px;
 }
+.attribution md-menu-item minidenticon-svg {
+    display: inline-block;
+    height: 20px;
+    width: 20px;
+}
 .reply .attribution minidenticon-svg {
     height: 20px;
     width: 20px;
