@@ -54,7 +54,7 @@ localStorage.setItem('usertag', usertag);
 function makeEventName(cell, hash) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
   return `s2:${cell}:${Hashtags.canonicalTag(hash)}`;
 }
-export function getShareableURL() { // Answer a url that reflects application state.
+export function getShareableURL(subject = null) { // Answer a url that reflects application state.
   const params = new URLSearchParams(location.search);
   const zoom = map.getZoom();
   const { lat, lng } = map.getCenter();
@@ -63,6 +63,7 @@ export function getShareableURL() { // Answer a url that reflects application st
   if (lat !== null) params.set('lat', lat);
   if (lng !== null) params.set('lng', lng);
   if (zoom !== null) params.set('z', zoom);
+  if (subject !== null) params.set('sub', subject);
   return new URL(`?${params.toString()}`, location);
 }
 
@@ -138,6 +139,7 @@ async function publish({lat, lng, // Publish the given data to all applicable ev
   return subject;
 }
 
+let openOnReceive = null;
 export class Marker { // A wrapper around L.marker
   // When we resubscribe to different cells covering the same place, we will get the same
   // sticky data. We don't want to change the marker. Fortunately, the publication to each
@@ -194,6 +196,10 @@ export class Marker { // A wrapper around L.marker
 	.on('popupopen', event => wrapper.ensureContent(event.popup, remaining));
       // Subscribe to replies to this subject, now that we're set up to receive them.
       networkPromise.then(async contact => contact.subscribe({eventName: subject, autoRenewal: true, handler: data => wrapper.handleReply(data)}));
+      if (subject === openOnReceive) {
+	openOnReceive = false;
+	marker.openPopup();
+      }
     } else {
       wrapper.needsRedisplay = true;
       wrapper.ensureContent();
@@ -237,21 +243,8 @@ export class Marker { // A wrapper around L.marker
 	this.deleteReply(event.currentTarget.closest('.reply'));
       };
     }
-    for (const reply of popupElement.querySelectorAll('.reply')) {
-      reply.onclick = async event => { // Share reply.
-	resetInactivityTimer();
-	// TODO: Preserve attribution data. Maybe by including the subject reply tag in the url, and metadata in the text?
-	const {text, file, name = 'unknown'} = event.currentTarget.dataset;
-	const url = getShareableURL().href;
-	const data = {text, url};
-	if (file) {
-	  const res = await fetch(file);
-	  const blob = await res.blob();
-	  data.files = [new File([blob], name, {type: blob.type})];
-	}
-	share(data);
-      };
-    }
+    const replyable = [...popupElement.querySelectorAll('.reply'), popupElement.querySelector('.attribution')];
+    for (const element of replyable) element.onclick = event => this.share(event);
   }
   initChangeHashtag(someParent) { // Init handler on the menu button, if any
     const changeHashtag = someParent.querySelector('.changeHashtag');
@@ -378,6 +371,20 @@ export class Marker { // A wrapper around L.marker
 <input type="file"></input>`;
   }
 
+  async share(event) { // Share reply or post
+    resetInactivityTimer();
+    // TODO: Preserve attribution data. Maybe by including the subject reply tag in the url, and metadata in the text?
+    console.log('share', event);
+    const {text = 'New CivilDefense.io alert', file, name = 'unknown'} = event.currentTarget.dataset || {};
+    const url = getShareableURL(this.subject).href;
+    const data = {text, url};
+    if (file) {
+      const res = await fetch(file);
+      const blob = await res.blob();
+      data.files = [new File([blob], name, {type: blob.type})];
+    }
+    share(data);
+  }
   startFader(remaining) { // Set up or update fader.
     // It would be nice to use CSS transitions, but, that's not the API presented by L.marker.
     const interval = 1000, // milliseconds per adjustment (a tiny increment at a time)
@@ -419,6 +426,9 @@ export function updateLocation(lat, lng, zoom) { // initMap if necessary, and se
     if (params.has('lat') && params.has('lng')) {
       map.flyTo({lat: params.get('lat'), lng: params.get('lng')}, params.get('z'));
     }
+    openOnReceive = null;
+    const subject = params.get('sub');
+    if (subject) Marker.openPopup(subject) || (openOnReceive = subject);
     // We don't need the query parameters now. Get rid of them. They're annoying. But preserve dht, if any.
     const copy = new URL(location);
     const dht = copy.searchParams.get('dht');
