@@ -44,7 +44,8 @@ export function share(properties) {  // Invoke platform share API on properties.
       return;
     }
   }
-  navigator.share({title: "CivilDefense.io", ...properties});
+  navigator.share({title: "CivilDefense.io", ...properties})
+    .catch(error => { if (!['AbortError', 'InvalidStateError'].includes(error.name)) throw error; });
 }
 
 const usertag = localStorage.getItem('usertag') || uuidv4();
@@ -161,7 +162,7 @@ export class Marker { // A wrapper around L.marker
       const popup = marker.getPopup();
       marker.setIcon(newIcon);
       wrapper.hashtag = extendedHashtag;
-      wrapper.needsRedisplay = true; // subtle: Leaflet pupup will recreate from last setContent. We need to clear that.
+      wrapper.needsRedisplay = true; // See comment for initializeHandlers. We need to clear and rebuild content on re-open.
       if (!popup.isOpen()) continue;
       // Fix what's showing now without flashing everything. Make sure menu works.
       const popupAttribution = popup.getElement().querySelector('.attribution');
@@ -202,13 +203,19 @@ export class Marker { // A wrapper around L.marker
   }
   needsRedisplay = true;
   ensureContent(popup = this.marker.getPopup()) { // Set content and handlers in popup if/as needed.
-    if (!this.needsRedisplay) return;
     if (!popup.isOpen()) return;
+    if (!this.needsRedisplay) {
+      this.initializeHandlers(popup);
+      return;
+    }
     this.needsRedisplay = false;
     const {issuedTime, originalPosting, hashtag, act}  = this;
     let content = this.formatAttribution({act, issuedTime, originalPosting, hashtag});
     content += this.formatReplies();
     popup.setContent(content);
+    this.initializeHandlers(popup);
+  }
+  initializeHandlers(popup) { // subtle: Leaflet pupup will recreate from last setContent string. Need to re-establish handlers.
     const popupElement = popup.getElement();
     const replyInput = popupElement.querySelector('.reply-input');
     const replyButton = replyInput.querySelector('md-filled-icon-button');
@@ -252,8 +259,9 @@ export class Marker { // A wrapper around L.marker
     const menu = changeHashtag?.nextElementSibling;
     menu.anchorElement = changeHashtag;
     changeHashtag.onclick = () => { resetInactivityTimer(); menu.open = !menu.open; }; // We will snarf this in updateMarkers, so it must be onlick rather than addEventListener.
-    menu.addEventListener('close-menu', event => this.updatePost(event.detail.initiator.dataset.tag)); // Must be addEventListener because there's no onclosemenu.
+    menu.addEventListener('close-menu', this.menuCloser); // Must be addEventListener because there's no onclosemenu.
   }
+  menuCloser = event => this.updatePost(event.detail.initiator.dataset.tag);
   static formatAttributionHashtag(act, hashtag) { // Answer HTML for the hashtag button/dispaly in an a post attribution
     if (act !== usertag) return `<div><span>${Hashtags.formatPubtag(hashtag)}</span></div>`;
     return `
