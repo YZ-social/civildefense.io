@@ -150,6 +150,26 @@ export class Marker { // A wrapper around L.marker
     const wrapper = this.markers[subject];
     wrapper?.marker.openPopup();
   }
+  static makeIcon(hashtag) { // Return a Leaflet icon
+    return L.divIcon({html: Hashtags.formatMarker(hashtag), className: 'alert-pin'});
+  }
+  static updateMarkers(canonicalHashtag, extendedHashtag) { // Update markers becase we have discovered an extendedHashtag that we have only had as canonical.
+    for (const wrapper of Object.values(this.markers)) {
+      const { hashtag, marker, act } = wrapper;
+      if (hashtag !== canonicalHashtag) continue;
+      const newIcon = this.makeIcon(extendedHashtag);
+      const popup = marker.getPopup();
+      marker.setIcon(newIcon);
+      wrapper.hashtag = extendedHashtag;
+      wrapper.needsRedisplay = true; // subtle: Leaflet pupup will recreate from last setContent. We need to clear that.
+      if (!popup.isOpen()) continue;
+      // Fix what's showing now without flashing everything. Make sure menu works.
+      const popupAttribution = popup.getElement().querySelector('.attribution');
+      popupAttribution.lastElementChild.remove();
+      popupAttribution.insertAdjacentHTML('beforeend', this.formatAttributionHashtag(act, extendedHashtag));
+      wrapper.initChangeHashtag(popupAttribution);
+    }
+  }
   static ensure(data) { // Add marker at position with appropriate fade if not already present.
     let { payload, subject, issuedTime, act, hashtag, immediateLocalAction = false } = data;
     let wrapper = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
@@ -167,7 +187,7 @@ export class Marker { // A wrapper around L.marker
     Object.assign(wrapper, {lat, lng, subject, message, originalPosting, issuedTime, hashtag, act});
     let {marker} = wrapper;
     if (!marker) {
-      const icon = L.divIcon({html: Hashtags.formatMarker(hashtag), className: 'alert-pin'});
+      const icon = this.makeIcon(hashtag);
       marker = wrapper.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
       marker.bindPopup('', {className: 'alert'})
 	.on('popupopen', event => wrapper.ensureContent(event.popup, remaining));
@@ -190,7 +210,6 @@ export class Marker { // A wrapper around L.marker
     content += this.formatReplies();
     popup.setContent(content);
     const popupElement = popup.getElement();
-    const changeHashtag = popupElement.querySelector('.changeHashtag');
     const replyInput = popupElement.querySelector('.reply-input');
     const replyButton = replyInput.querySelector('md-filled-icon-button');
     const replyAttachButton = replyInput.querySelector('md-tonal-icon-button');
@@ -203,12 +222,7 @@ export class Marker { // A wrapper around L.marker
       let filenameDisplay = popupElement.querySelector('.attachment-preview');
       filenameDisplay.textContent = fileChooser.files.length ? (fileChooser.files[0].name || 'image') : '';
     };
-    if (changeHashtag) {
-      const menu = changeHashtag?.nextElementSibling;
-      menu.anchorElement = changeHashtag;
-      changeHashtag.addEventListener('click', () => menu.open = !menu.open);
-      menu.addEventListener('close-menu', event => this.updatePost(event.detail.initiator.dataset.tag));
-    }
+    this.initChangeHashtag(popupElement);
     for (const deleter of popupElement.querySelectorAll('.reply .attribution md-outlined-button')) {
       deleter.onclick = event => { // Delete reply.
 	event.stopPropagation();
@@ -230,10 +244,17 @@ export class Marker { // A wrapper around L.marker
       };
     }
   }
-  formatAttribution({act, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/optional-hashtag
-    let endMarker = '';
-    if (hashtag) {
-      if (act === usertag) endMarker = `
+  initChangeHashtag(someParent) { // Init handler on the menu button, if any
+    const changeHashtag = someParent.querySelector('.changeHashtag');
+    if (!changeHashtag) return;
+    const menu = changeHashtag?.nextElementSibling;
+    menu.anchorElement = changeHashtag;
+    changeHashtag.onclick = () => menu.open = !menu.open; // We will snarf this in updateMarkers, so it must be onlick rather than addEventListener.
+    menu.addEventListener('close-menu', event => this.updatePost(event.detail.initiator.dataset.tag)); // Must be addEventListener because there's no onclosemenu.
+  }
+  static formatAttributionHashtag(act, hashtag) { // Answer HTML for the hashtag button/dispaly in an a post attribution
+    if (act !== usertag) return `<div><span>${Hashtags.formatPubtag(hashtag)}</span></div>`;
+    return `
 <div style="position: relative">
   <md-outlined-button class="changeHashtag">${Hashtags.formatPubtag(hashtag)}</md-outlined-button>
   <md-menu>
@@ -245,7 +266,11 @@ export class Marker { // A wrapper around L.marker
      <div slot="supporting-text">${Int`cancel alert`}</div></md-menu-item>
   </md-menu>
 </div>`;
-      else endMarker = `<div><span>${Hashtags.formatPubtag(hashtag)}</span></div>`;
+  }
+  formatAttribution({act, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/optional-hashtag
+    let endMarker = '';
+    if (hashtag) {
+      endMarker = this.constructor.formatAttributionHashtag(act, hashtag);
     } else if (act === usertag) { // Owner of reply
       endMarker = `<div><md-outlined-button><md-icon class="material-icons">delete</md-icon></md-outlined-button></div>`;
     }

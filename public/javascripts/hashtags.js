@@ -25,17 +25,26 @@ export const Hashtags = {
   //    were using the same emoji as each other.
   hashtags: {},
   canonical2extended: {},
-  add(label, active = true) { // Ensure label is a hashtag, initialized to active, and if existing, forcing it active.
+  add(label, active = true, updateMarkers = true) { // Ensure label is a hashtag, initialized to active, and if existing, forcing it active.
     // Return our (possibly new) understanding of the extended hashtag.
     // Note that only startup-poplation of tags from persistence would ever specify active=false.
     // Here we accept a canonical or extended label, updating our records keyed by the canonical part,
     // but if we currently have just a canonical part we update our records to capture the extended.
     // (We do not change the emoji of an existing extended.)
     const canonical = this.canonicalTag(label);
-    const extended = this.extendedTag(canonical, label);
-    // fixme if we have only the canonical, replace it with the new extended
+    const ours = this.canonical2extended[canonical];
+    const extended = ours || label;
+    const isExtendingCanonical = !ours && label !== canonical; // We have only a canonical so far.
+    if (isExtendingCanonical) {
+      active = this.hashtags[canonical] || active;
+      delete this.hashtags[canonical];
+    }
     this.hashtags[extended] ||= active; // If it's 'pub', let it remain so.
     if (canonical !== extended) this.canonical2extended[canonical] = extended;
+    if (isExtendingCanonical) {
+      this.onchange({resetSubscriptions: false});
+      if (updateMarkers) Marker.updateMarkers(canonical, extended);
+    }
     return extended;
   },
   getAll() { // List of all the user's hashtags.
@@ -67,9 +76,6 @@ export const Hashtags = {
   },
   canonicalTag(tag) { // A string representing tag, without the (leading) emoji if any.
     return this.stripLeadingEmoji(tag);
-  },
-  extendedTag(tag, defaultExtended = tag) { // The tag with the emoji, if known, else the input as is.
-    return this.canonical2extended[tag] || defaultExtended;
   },
   onchange({redisplaySubscribers = true, resetSubscriptions = true} = {}) { // Update and persist internal data, and update visuals.
     // If redisplaySubscribers, the presence/order may have changed.
@@ -153,7 +159,7 @@ export const Hashtags = {
 // First the persisted/default data:
 const persisted = JSON.parse(localStorage.getItem('hashtags') ||
 			     `{"🍰${Int`cake`}": true, "🔥${Int`fire`}": true, "🌊${Int`flood`}": true, "🆘${Int`help`}": "pub", "🧊${Int`ice`}": true}`);
-Object.entries(persisted).forEach(([tag, active]) => Hashtags.add(tag, active));
+Object.entries(persisted).forEach(([tag, active]) => Hashtags.add(tag, active, false));
 
 new URLSearchParams(location.search).get('tags')?.split(',').forEach(tag => Hashtags.add(tag));
 // We don't need the query parameters now. Get rid of them. They're annoying. But preserve dht, if any.
