@@ -216,8 +216,9 @@ export class Marker { // A wrapper around L.marker
     const fileChooser = popupElement.querySelector('input[type="file"]');
     replyInput.oninput = event => { replyButton.removeAttribute('disabled'); };
     replyButton.onclick = event => { this.postReply(event); };
-    replyAttachButton.onclick = event => { fileChooser.click(); };
+    replyAttachButton.onclick = event => { resetInactivityTimer(); fileChooser.click(); };
     fileChooser.onchange = event => {
+      resetInactivityTimer();
       replyButton.removeAttribute('disabled');
       let filenameDisplay = popupElement.querySelector('.attachment-preview');
       filenameDisplay.textContent = fileChooser.files.length ? (fileChooser.files[0].name || 'image') : '';
@@ -231,6 +232,7 @@ export class Marker { // A wrapper around L.marker
     }
     for (const reply of popupElement.querySelectorAll('.reply')) {
       reply.onclick = async event => { // Share reply.
+	resetInactivityTimer();
 	// TODO: Preserve attribution data. Maybe by including the subject reply tag in the url, and metadata in the text?
 	const {text, file, name = 'unknown'} = event.currentTarget.dataset;
 	const url = getShareableURL().href;
@@ -249,7 +251,7 @@ export class Marker { // A wrapper around L.marker
     if (!changeHashtag) return;
     const menu = changeHashtag?.nextElementSibling;
     menu.anchorElement = changeHashtag;
-    changeHashtag.onclick = () => menu.open = !menu.open; // We will snarf this in updateMarkers, so it must be onlick rather than addEventListener.
+    changeHashtag.onclick = () => { resetInactivityTimer(); menu.open = !menu.open; }; // We will snarf this in updateMarkers, so it must be onlick rather than addEventListener.
     menu.addEventListener('close-menu', event => this.updatePost(event.detail.initiator.dataset.tag)); // Must be addEventListener because there's no onclosemenu.
   }
   static formatAttributionHashtag(act, hashtag) { // Answer HTML for the hashtag button/dispaly in an a post attribution
@@ -333,6 +335,7 @@ export class Marker { // A wrapper around L.marker
     networkPromise.then(contact => contact.publish({eventName, payload, subject: uuidv4(), act: usertag}));
   }
   deleteReply(replyElement) {
+    resetInactivityTimer();
     networkPromise.then(contact => contact.publish({eventName: this.subject, subject: replyElement.dataset.subject, payload: null, act: usertag}));
   }
   formatReplies() { // Answer HTML for the replies and input box.
