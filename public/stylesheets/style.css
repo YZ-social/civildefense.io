@@ -213,6 +213,9 @@ md-menu {
 .attribution > div:last-child {
     margin-left: auto;
 }
+.alert md-outlined-button {
+    min-width: 60px;
+}
 .attribution minidenticon-svg {
     height: 40px;
     width: 40px;
