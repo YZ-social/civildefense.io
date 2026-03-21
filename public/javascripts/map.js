@@ -50,7 +50,7 @@ export async function share(properties) {  // Invoke platform share API on prope
     }
   }
   if (!properties.files) {
-    const target = document.getElementById('mapCapture')
+    const target = document.getElementById('mapCapture');
     const icon = target.lastElementChild;
     icon.style = 'opacity: 1';
     const capture = await domtoimage.toPng(target);
