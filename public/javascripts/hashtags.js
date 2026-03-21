@@ -159,5 +159,5 @@ export const Hashtags = {
 // Populate hashtags data and display.
 // First the persisted/default data:
 const persisted = JSON.parse(localStorage.getItem('hashtags') ||
-			     `{"🍰${Int`cake`}": true, "🔥${Int`fire`}": true, "🌊${Int`flood`}": true, "🆘${Int`help`}": "pub", "🧊${Int`ice`}": true}`);
+			     `{"🍰 ${Int`cake`}": true, "🔥 ${Int`fire`}": true, "🌊 ${Int`flood`}": true, "🆘 ${Int`help`}": "pub", "🧊 ${Int`ice`}": true}`);
 Object.entries(persisted).forEach(([tag, active]) => Hashtags.add(tag, active, false));
