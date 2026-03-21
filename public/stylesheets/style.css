@@ -1,16 +1,20 @@
 :root {
     --md-filter-chip-label-text-font: roboto;
     --md-sys-color-primary: #0A2E7C;
+    --md-sys-color-outline: var(--md-sys-color-primary);
+    --md-filter-chip-selected-leading-icon-color: var(--md-sys-color-primary);
+
     --md-sys-color-secondary: #BD2E2F;
-    --md-sys-color-outline: #6f7979;
+    --md-filled-text-field-input-text-placeholder-color: var(--md-sys-color-secondary);
+
     --md-sys-color-on-surface: #191c1c;
     --md-sys-color-surface-container-low: #B8C2D7; /* non-selected elevated filter chip */
     --md-sys-color-secondary-container: white; /* selected filter chip */
     --md-sys-color-surface-container-highest: white; /* filled text field */
+    --md-menu-container-color: white;
     --md-filled-text-field-container-shape: 16px;
     --md-filter-chip-container-shape: 16px;
-    --md-filled-text-field-input-text-placeholder-color: var(--md-sys-color-secondary);
-    --md-outlined-text-field-input-text-placeholder-color: var(--md-sys-color-secondary);
+
     /* --md-sys-color-tertiary-container: blue; */
     /* --md-sys-color-background: yellow; */
     /* --md-sys-color-primary-container: green; /\* #B8C2D7; /\* #cce8e7;*\/ */
@@ -29,13 +33,28 @@
 body {
     font-family: Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen, Ubuntu, Cantarell, sans-serif;
     overflow: hidden;
+    color: var(--md-sys-color-primary);
 }
-.leaflet-bar a, .leaflet-container a.leaflet-popup-close-button {
+.leaflet-bar a, .leaflet-container a.leaflet-popup-close-button, .leaflet-popup-content-wrapper {
     color: var(--md-sys-color-primary);
     border-color: var(--md-sys-color-primary);
 }
+.remove, .remove > md-icon, .icon.leading, .reply-input md-tonal-icon-button md-icon  {
+    color: var(--md-sys-color-primary);
+    --md-menu-item-supporting-text-color: var(--md-sys-color-primary);
+    --md-menu-item-label-text-color: var(--md-sys-color-primary);
+}
+md-outlined-text-field.reply-input {
+    --md-outlined-text-field-label-text-color: var(--md-sys-color-secondary);
+    --md-outlined-text-field-focus-outline-color: var(--md-sys-color-primary);
+    --md-outlined-field-outline-color: var(--md-sys-color-primary);
+}
+.pubtag-choice {
+    color: unset;
+}
 .alert .leaflet-popup-content {
-  min-width: min(80vw, 600px);
+    min-width: min(80vw, 600px);
+    max-height: 80vh;
 }
 #map {
     width: 100vw;
@@ -236,7 +255,8 @@ md-menu {
     width: 100%;
 }
 .reply .message {
-    border-color: var(--md-sys-color-outline);
+    color: black;
+    border-color: var(--md-sys-color-primary);
     border-width: 1px;
     border-radius: 0 16px 16px 16px;
     border-style: solid;

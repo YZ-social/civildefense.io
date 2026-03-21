@@ -281,9 +281,9 @@ export class Marker { // A wrapper around L.marker
 <div style="position: relative">
   <md-outlined-button class="changeHashtag">${Hashtags.formatPubtag(hashtag)}</md-outlined-button>
   <md-menu>
-   ${Hashtags.getSubscribe().map(tag => `<md-menu-item data-tag="${tag}"><div slot="headline">${Hashtags.formatPubtag(tag)}</div></md-menu-item>`).join('')}
+   ${Hashtags.getSubscribe().map(tag => `<md-menu-item class:"pubtag-choice" data-tag="${tag}"><div slot="headline">${Hashtags.formatPubtag(tag)}</div></md-menu-item>`).join('')}
    <md-divider></md-divider>
-   <md-menu-item data-tag="">
+   <md-menu-item data-tag="" class="remove">
      <md-icon slot="end" class="material-icons">delete_forever</md-icon>
      <div slot="headline">${Int`remove`}</div>
      <div slot="supporting-text">${Int`cancel alert`}</div></md-menu-item>
@@ -295,7 +295,7 @@ export class Marker { // A wrapper around L.marker
     if (hashtag) {
       endMarker = this.constructor.formatAttributionHashtag(act, hashtag);
     } else if (act === usertag) { // Owner of reply
-      endMarker = `<div><md-outlined-button><md-icon class="material-icons">delete</md-icon></md-outlined-button></div>`;
+      endMarker = `<div><md-outlined-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-button></div>`;
     }
     return `
 <div class="attribution">
