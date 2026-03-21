@@ -34,6 +34,9 @@ body {
     color: var(--md-sys-color-primary);
     border-color: var(--md-sys-color-primary);
 }
+.alert .leaflet-popup-content {
+  min-width: min(80vw, 600px);
+}
 #map {
     width: 100vw;
     height: 100vh;
@@ -206,6 +209,9 @@ md-menu {
     flex-direction: row;
     align-items: center;
     gap: 5px;
+}
+.attribution > div:last-child {
+    margin-left: auto;
 }
 .attribution minidenticon-svg {
     height: 40px;

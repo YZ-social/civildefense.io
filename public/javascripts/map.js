@@ -506,7 +506,7 @@ export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial m
   // Add a marker at user's current location
   yourLocation = L.marker([lat, lng], {autoPan: false})
     .addTo(map)
-    .bindPopup(Int`Your Location`, {className: 'alert'})
+    .bindPopup(Int`Your Location`)
     .openPopup();
   // We close the popup on move, because the map will try to keep an open popup from straddling the bounds,
   // which can be confusing. It also closes when another marker is made, so it's nice to just close it
