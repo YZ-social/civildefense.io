@@ -264,7 +264,7 @@ export class Marker { // A wrapper around L.marker
   initChangeHashtag(someParent) { // Init handler on the menu button, if any
     const changeHashtag = someParent.querySelector('.changeHashtag');
     if (!changeHashtag) return;
-    const menu = changeHashtag?.nextElementSibling;
+    const menu = document.getElementById('popoverMenu');
     menu.anchorElement = changeHashtag;
     changeHashtag.onclick = event => {
       resetInactivityTimer();
@@ -277,17 +277,19 @@ export class Marker { // A wrapper around L.marker
   menuCloser = event => this.updatePost(event.detail.initiator.dataset.tag);
   static formatAttributionHashtag(act, hashtag) { // Answer HTML for the hashtag button/dispaly in an a post attribution
     if (act !== usertag) return `<div><span>${Hashtags.formatPubtag(hashtag)}</span></div>`;
-    return `
-<div style="position: relative">
-  <md-outlined-button class="changeHashtag">${Hashtags.formatPubtag(hashtag)}</md-outlined-button>
-  <md-menu>
+
+    document.getElementById('popoverMenu').innerHTML = `
    ${Hashtags.getSubscribe().map(tag => `<md-menu-item class:"pubtag-choice" data-tag="${tag}"><div slot="headline">${Hashtags.formatPubtag(tag)}</div></md-menu-item>`).join('')}
    <md-divider></md-divider>
    <md-menu-item data-tag="" class="remove">
      <md-icon slot="end" class="material-icons">delete_forever</md-icon>
      <div slot="headline">${Int`remove`}</div>
      <div slot="supporting-text">${Int`cancel alert`}</div></md-menu-item>
-  </md-menu>
+`;
+
+    return `
+<div style="position: relative">
+  <md-outlined-button class="changeHashtag">${Hashtags.formatPubtag(hashtag)}</md-outlined-button>
 </div>`;
   }
   formatAttribution({act, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/optional-hashtag
