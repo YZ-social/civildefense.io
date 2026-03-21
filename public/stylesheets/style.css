@@ -52,6 +52,10 @@ md-outlined-text-field.reply-input {
 .pubtag-choice {
     color: unset;
 }
+:not(.alert) .leaflet-popup-content {
+    font-family: 'Roboto';
+    min-width: 80px;
+}
 .alert .leaflet-popup-content {
     min-width: min(80vw, 600px);
     max-height: 80vh;
@@ -80,12 +84,12 @@ md-outlined-text-field.reply-input {
 }
 
 .loading {
-    color: #2563eb;
+    color: var(--md-sys-color-primary);
     font-weight: 500;
 }
 
 .error {
-    color: #dc2626;
+    color: var(--md-sys-color-secondary);
     font-weight: 500;
 }
 
