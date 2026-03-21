@@ -52,6 +52,14 @@ body {
     transition: opacity 2s;
 }
 
+#mapCapture {
+    height: 100vh;
+}
+#mapCapture > img {
+    position: absolute;
+    opacity: 0;
+    z-index: 1100;
+}
 .about-button {
     background: none;
     border: none;

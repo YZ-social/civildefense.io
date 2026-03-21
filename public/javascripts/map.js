@@ -1,9 +1,9 @@
-const { L, jdenticon, localStorage, URL, URLSearchParams, FileReader, File } = globalThis; // Leaflet namespace, for linters.
+const { L, jdenticon, domtoimage, localStorage, URL, URLSearchParams, FileReader, File } = globalThis; // Leaflet namespace, for linters.
 import { v4 as uuidv4 } from 'uuid';
 import { s2 } from 's2js';
 import { Node } from '@yz-social/kdht';
 import { Int } from './translations.js';
-import { networkPromise, resetInactivityTimer } from './main.js';
+import { networkPromise, resetInactivityTimer, delay } from './main.js';
 import { Hashtags } from './hashtags.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 
@@ -29,7 +29,12 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   }
 }
 
-export function share(properties) {  // Invoke platform share API on properties.
+async function dataURL2file(url, name) {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new File([blob], name, {type: blob.type});
+}
+export async function share(properties) {  // Invoke platform share API on properties.
   if (!navigator.share) {
     showMessage(navigator.userAgent.includes('Firefox') ? Int`In Firefox, sharing must be explicitly enabled through the <a target="civildefense_help" href="https://developer.mozilla.org/en-US/docs/Mozilla/Firefox/Experimental_features#webshare_api">dom.webshare.enabled</a> preference in about:config.` : Int`This browser does not support sharing.`);
     return;
@@ -44,6 +49,16 @@ export function share(properties) {  // Invoke platform share API on properties.
       return;
     }
   }
+  if (!properties.files) {
+    const target = document.getElementById('mapCapture')
+    const icon = target.lastElementChild;
+    icon.style = 'opacity: 1';
+    const capture = await domtoimage.toPng(target);
+    icon.style = '';
+    const file = await dataURL2file(capture, 'map.png');
+    console.log({capture, file});
+    properties.files = [file];
+  }
   navigator.share({title: "CivilDefense.io", ...properties})
     .catch(error => { if (!['AbortError', 'InvalidStateError'].includes(error.name)) throw error; });
 }
@@ -54,12 +69,12 @@ localStorage.setItem('usertag', usertag);
 function makeEventName(cell, hash) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
   return `s2:${cell}:${Hashtags.canonicalTag(hash)}`;
 }
-export function getShareableURL(subject = null) { // Answer a url that reflects application state.
+export function getShareableURL(subject = null, tags = Hashtags.getSubscribe().toString()) { // Answer a url that reflects application state.
   const params = new URLSearchParams(location.search);
   const zoom = map.getZoom();
   const { lat, lng } = map.getCenter();
 
-  params.set('tags', Hashtags.getSubscribe().toString());
+  params.set('tags', tags);
   if (lat !== null) params.set('lat', lat);
   if (lng !== null) params.set('lng', lng);
   if (zoom !== null) params.set('z', zoom);
@@ -251,7 +266,12 @@ export class Marker { // A wrapper around L.marker
     if (!changeHashtag) return;
     const menu = changeHashtag?.nextElementSibling;
     menu.anchorElement = changeHashtag;
-    changeHashtag.onclick = event => { resetInactivityTimer(); event.stopPropagation(); menu.open = !menu.open; }; // Must be onlick rather than addEventListener.
+    changeHashtag.onclick = event => {
+      resetInactivityTimer();
+      event.stopPropagation();
+      menu.open = !menu.open;
+    }; // Must be onlick rather than addEventListener.
+    menu.onclick = event => { event.stopPropagation(); };
     menu.addEventListener('close-menu', this.menuCloser); // Must be addEventListener because there's no onclosemenu.
   }
   menuCloser = event => this.updatePost(event.detail.initiator.dataset.tag);
@@ -376,13 +396,11 @@ export class Marker { // A wrapper around L.marker
     // TODO: Preserve attribution data. Maybe by including the subject reply tag in the url, and metadata in the text?
     console.log('share', event);
     const {text = 'New CivilDefense.io alert', file, name = 'unknown'} = event.currentTarget.dataset || {};
-    const url = getShareableURL(this.subject).href;
+    const url = getShareableURL(this.subject, [this.hashtag]).href;
     const data = {text, url};
-    if (file) {
-      const res = await fetch(file);
-      const blob = await res.blob();
-      data.files = [new File([blob], name, {type: blob.type})];
-    }
+    Marker.closePopup();
+    if (file) data.files = [await dataURL2file(file, name)];
+    else await delay(500); // Allow popup time to close. It doesn't render well because of the web component style sheets.
     share(data);
   }
   startFader(remaining) { // Set up or update fader.

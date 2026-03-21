@@ -52,7 +52,7 @@ document.getElementById('share').onclick = () => share({text: "CivilDefense.io",
 
 document.getElementById('recenterButton').onclick = recenterMap;
 
-function delay(ms = 1e3) {
+export function delay(ms = 1e3) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
