@@ -7,17 +7,6 @@ const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt } = global
 const RETRY_SECONDS = 90;
 const INACTIVITY_SECONDS = 5 * 60; // five minutes
 
-var aboutContent = document.getElementById('aboutContent');
-document.getElementById('aboutButton').onclick = () => {
-  resetInactivityTimer();
-  Marker.closePopup();
-  aboutContent.classList.toggle('hidden', false);
-};
-aboutContent.onclick = () => {
-  resetInactivityTimer();
-  aboutContent.classList.toggle('hidden', true);
-};
-
 var qrDisplayContainer = document.getElementById('qrDisplayContainer');
 var qrDisplay = document.getElementById('qrDisplay');
 document.getElementById('qrButton').onclick = () => { // generate (and display) qr code on-demand (in case url changes)
@@ -211,7 +200,7 @@ function initText(selector, content = selector) {
   const text = Int([content]);
   element.textContent = text;
 }
-initText('div.about-text', 'About');
+//initText('div.about-text', 'About');
 initText('#aboutReport');
 initText('#aboutShared');
 initText('#aboutFade');

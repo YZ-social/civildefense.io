@@ -505,6 +505,43 @@ export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial m
     maxZoom: 19
   }).addTo(map);
 
+  // Add the "About" button. This is incredibly subtle, because we need for the button
+  // to be rendered above the map, but below the popups. The Leaflet pupups are in their
+  // own stacking context, and there is no way to arrange for some element to be rendered
+  // WITHIN some other stacking context. (This makes sense if you think about how to
+  // render efficiently.) However, that whole stacking context gets transformed as the
+  // map moves around under the viewport. There's no way to position right:10px from the
+  // viewport when there's a transform in between you and the viewport. So instead,
+  // we handle map 'move' events by adjusting the about container element's style so as
+  // to keep it 10px from the right edge of the viewport.
+  const popupPane = document.querySelector('.leaflet-popup-pane');
+  popupPane.insertAdjacentHTML('beforebegin', `
+    <div class="about-container">
+      <div class="about-text">About</div>
+      <button id="aboutButton" class="about-button">
+        <img src="images/civil-defense-240.png" alt="civildefense" class="about-image"></img>
+      </button>;
+    </div>`);
+  const aboutContent = document.getElementById('aboutContent');
+  const mapElement = document.querySelector('#map');
+  const mapPane = document.querySelector('.leaflet-map-pane');
+  const aboutContainer = document.querySelector('.about-container');
+  const adjust = mapElement.clientWidth - aboutContainer.clientWidth - 10;
+  map.on('move', () => {
+    const rect = mapPane.getBoundingClientRect();
+    aboutContainer.style = `left: ${adjust - rect.left}px; top: ${-rect.top}px;`;
+  });
+  document.getElementById('aboutButton').onclick = event => {
+    resetInactivityTimer();
+    event.stopPropagation();
+    Marker.closePopup();
+    aboutContent.classList.toggle('hidden', false);
+  };
+  aboutContent.onclick = () => {
+    resetInactivityTimer();
+    aboutContent.classList.toggle('hidden', true);
+  };
+
   // Add a marker at user's current location
   yourLocation = L.marker([lat, lng], {autoPan: false})
     .addTo(map)
