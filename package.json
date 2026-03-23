@@ -1,6 +1,6 @@
 {
-  "name": "yz.social",
-  "version": "0.0.36",
+  "name": "civildefense.io",
+  "version": "0.0.37",
   "keywords": [
     "map",
     "browser",
@@ -9,13 +9,14 @@
   "scripts": {
     "start": "npm stop; npm run shared",
     "stop": "pkill yz.social",
+    "local": "node ./app.js",
     "shared": "node ./app.js --externalBaseURL https://ki1r0y.com/kdht",
-    "withoutExternal": "node ./app.js",
+    "withoutExternal": "npm run local",
     "withoutPortals": "node ./app.js --nPortals 0"
   },
   "type": "module",
   "dependencies": {
-    "@yz-social/kdht": "^0.1.28",
+    "@yz-social/kdht": "^0.1.29",
     "@yz-social/webrtc": "^0.1.6",
     "dom-to-image": "^2.6.0",
     "express": "^4.22.1",
