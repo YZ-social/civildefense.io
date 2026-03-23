@@ -47,7 +47,7 @@ if (params.has('dht') && (params.get('dht') !== '0')) {
     connection = null; // Promise established at start of connect(), that resolves to socket/channel when open.
     attachment = null; // In the DHT, this promise resolves to self when joined, but here it happens at the same time as connection.
     detachment = null; // Promise established at start of connect(), that resolves when closed.
-    async connect(baseURL = globalThis.location.origin.replace('^http', 'ws') + '/ws') { // Establish or re-establish a connection.
+    async connect(baseURL = globalThis.location.origin.replace(/^http/, 'ws') + '/ws') { // Establish or re-establish a connection.
       if ((await this.connection)?.readyState === WebSocket.OPEN) {
 	//console.log('already connected');
 	return this;
@@ -57,7 +57,7 @@ if (params.has('dht') && (params.get('dht') !== '0')) {
 	socket.onmessage = event => this.receive(JSON.parse(event.data));
 	socket.onopen = () => {
 	  if (socket.readyState !== WebSocket.OPEN) return; // You would think that can't happen, but...
-	  console.log('connection open');
+	  console.log('connection open', baseURL);
 	  resolveConnection(socket);
 	  this.attached(this);
 	};
