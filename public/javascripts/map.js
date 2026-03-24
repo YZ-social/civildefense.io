@@ -8,7 +8,7 @@ import { Hashtags } from './hashtags.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 
 export let map; // Leaflet map object.
-const ttl = 10 * 60e3; // Ten minutes
+const ttl = 24 * 60 * 60e3; // 24 hours
 
 const infoBanner = document.getElementById('info');
 export function showMessage(message, type = 'loading', errorObject) { // Show loading/instructions/error message.
@@ -407,17 +407,19 @@ export class Marker { // A wrapper around L.marker
   }
   startFader(remaining) { // Set up or update fader.
     // It would be nice to use CSS transitions, but, that's not the API presented by L.marker.
-    const interval = 1000, // milliseconds per adjustment (a tiny increment at a time)
-          fade = interval / ttl, // Change in opacity per adjustment.
-	  { marker } = this;
+    const minOpacity = 0.25;
+    const interval = 2000; // milliseconds per adjustment (a tiny increment at a time)
+    const fade = (1 - minOpacity) * interval / ttl; // Change in opacity per adjustment.
+    const { marker } = this;
     let opacity = remaining / ttl; // Do not start at 1 if it was reported some time ago.
     marker.setOpacity(opacity);
     clearInterval(this.fader);
+    clearInterval(this.destroyer);
     this.fader = setInterval(() => {
       marker.setOpacity(opacity -= fade);
-      if (opacity > 0) return;
-      this.destroy();
+      if (opacity < minOpacity) clearInterval(this.fader);
     }, interval);
+    this.destroyer = setTimeout(() => this.destroy(), remaining);
   }
   destroy() { // Remove this Marker pin entirely.
     clearInterval(this.fader);
@@ -566,6 +568,6 @@ export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial m
     Marker.openPopup(await publish({lat, lng}));
   });
 
-  showMessage(Int`Tap anywhere to mark a concern. Markers fade after 10 minutes.`, 'instructions');
+  showMessage(Int`Tap anywhere to mark a concern. Markers fade after 24 hours.`, 'instructions');
 }
 
