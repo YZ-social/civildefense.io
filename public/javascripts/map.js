@@ -169,7 +169,12 @@ export class Marker { // A wrapper around L.marker
     wrapper?.marker.openPopup();
   }
   static makeIcon(hashtag) { // Return a Leaflet icon
-    return L.divIcon({html: Hashtags.formatMarker(hashtag), className: 'alert-pin'});
+    return L.divIcon({
+      html: Hashtags.formatMarker(hashtag),
+      iconSize: [40, 40],
+      popupAnchor: [0, 0],
+      className: 'alert-pin'
+    });
   }
   static updateMarkers(canonicalHashtag, extendedHashtag) { // Update markers becase we have discovered an extendedHashtag that we have only had as canonical.
     for (const wrapper of Object.values(this.markers)) {

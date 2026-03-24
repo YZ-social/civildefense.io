@@ -171,9 +171,8 @@ md-outlined-text-field.reply-input {
 .alert-pin {
     text-shadow: 8px -3px 10px rgb(0 0 0 / 60%);
     font-size: 40px;
-    position: relative;
-    left: -15px;
-    top: -30px;
+    line-height: 40px;
+    text-align: center;
 }
 md-filter-chip minidenticon-svg {
     background: white;
