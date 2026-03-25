@@ -210,3 +210,4 @@ initText('#aboutAnyone3');
 initText('#learnMore');
 initText('#version');
 initialize(false);
+document.querySelector('head > title').innerHTML = `CivilDefense @${location.hostname}`;
