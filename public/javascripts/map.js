@@ -188,7 +188,8 @@ export class Marker { // A wrapper around L.marker
       if (!popup.isOpen()) continue;
       // Fix what's showing now without flashing everything. Make sure menu works.
       const popupAttribution = popup.getElement().querySelector('.attribution');
-      popupAttribution.lastElementChild.remove();
+      const attributionActions = popupAttribution.lastElementChild;
+      attributionActions.lastChildElement.remove();
       popupAttribution.insertAdjacentHTML('beforeend', this.formatAttributionHashtag(act, extendedHashtag));
       wrapper.initChangeHashtag(popupAttribution);
     }
@@ -263,8 +264,8 @@ export class Marker { // A wrapper around L.marker
 	this.deleteReply(event.currentTarget.closest('.reply'));
       };
     }
-    const replyable = [...popupElement.querySelectorAll('.reply'), popupElement.querySelector('.attribution')];
-    for (const element of replyable) element.onclick = event => this.share(event);
+    const shareable = popupElement.querySelectorAll('.share');
+    for (const element of shareable) element.onclick = event => this.share(event);
   }
   initChangeHashtag(someParent) { // Init handler on the menu button, if any
     const changeHashtag = someParent.querySelector('.changeHashtag');
@@ -280,9 +281,12 @@ export class Marker { // A wrapper around L.marker
     menu.addEventListener('close-menu', this.menuCloser); // Must be addEventListener because there's no onclosemenu.
   }
   menuCloser = event => this.updatePost(event.detail.initiator.dataset.tag);
-  static formatAttributionHashtag(act, hashtag) { // Answer HTML for the hashtag button/dispaly in an a post attribution
-    if (act !== usertag) return `<div><span>${Hashtags.formatPubtag(hashtag)}</span></div>`;
+  static formatAttributionHashtag(act, hashtag) { // Answer HTML for the hashtag button/display in an a post attribution.
+    // It will be either a simple HTML element with pubtag.
+    const pubtag = Hashtags.formatPubtag(hashtag);
+    if (act !== usertag) return `<span>${pubtag}</span>`;
 
+    // ... or an HTML button, with a side-effect of populating the popoverMenu with the choices to display when the button is pressed.
     document.getElementById('popoverMenu').innerHTML = `
    ${Hashtags.getSubscribe().map(tag => `<md-menu-item class:"pubtag-choice" data-tag="${tag}"><div slot="headline">${Hashtags.formatPubtag(tag)}</div></md-menu-item>`).join('')}
    <md-divider></md-divider>
@@ -291,27 +295,26 @@ export class Marker { // A wrapper around L.marker
      <div slot="headline">${Int`remove`}</div>
      <div slot="supporting-text">${Int`cancel alert`}</div></md-menu-item>
 `;
-
-    return `
-<div style="position: relative">
-  <md-outlined-button class="changeHashtag">${Hashtags.formatPubtag(hashtag)}</md-outlined-button>
-</div>`;
+    return `<md-outlined-button class="changeHashtag">${pubtag}</md-outlined-button>`;
   }
-  formatAttribution({act, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/optional-hashtag
-    let endMarker = '';
-    if (hashtag) {
-      endMarker = this.constructor.formatAttributionHashtag(act, hashtag);
-    } else if (act === usertag) { // Owner of reply
-      endMarker = `<div><md-outlined-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-button></div>`;
-    }
+  formatAttributionActions({act, hashtag}) { // Anser div HTML containing: [deleter] sharer [hashtag]
+    // Where deletere appears if it our reply (no hashtag), and hashtag if present is a button if ours (and otherwise just text).
+    const deleter = !hashtag && act === usertag ? `<md-outlined-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-button>` : '';
+    const sharer = `<md-outlined-button class="share"><md-icon class="material-icons">ios_share</md-icon></md-outlined-button>`;
+    const pubtag = hashtag ? this.constructor.formatAttributionHashtag(act, hashtag) : '';
+    return `<div>${deleter} ${sharer} ${pubtag}</div>`;
+  }
+  formatAttribution({act, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/[deleter]+sharer+[hashtag]
+    const actions = this.formatAttributionActions({act, hashtag});
+    const dataText = hashtag ? 'data-text=""' : ''; // Used in sharing.
     return `
-<div class="attribution">
+<div class="attribution" ${dataText}>
   <minidenticon-svg username="${act}"></minidenticon-svg>
   <div class="times">
     <div>${new Date(originalPosting || issuedTime).toLocaleString()}</div>
     ${originalPosting ? `<div>${Int`updated`} ${new Date(issuedTime).toLocaleString()}</div>` : ''}
   </div>
-  ${endMarker}
+  ${actions}
 </div>`;
   }
   updatePost(tag) { // Republish under a different hashtag, or cancel altogether if no tag (which is not allowed as a hashtag).
@@ -401,10 +404,14 @@ export class Marker { // A wrapper around L.marker
   async share(event) { // Share reply or post
     resetInactivityTimer();
     // TODO: Preserve attribution data. Maybe by including the subject reply tag in the url, and metadata in the text?
-    console.log('share', event);
-    const {text = 'New CivilDefense.io alert', file, name = 'unknown'} = event.currentTarget.dataset || {};
+    const shareable = event.currentTarget.closest('[data-text]');
+    const {text, file, name = 'unknown'} = shareable.dataset;
+    const {lat, lng} = this;
+    console.log('share', shareable.dataset);
     const url = getShareableURL(this.subject, [this.hashtag]).href;
-    const data = {text, url};
+    let textBase = `New CivilDefense.io alert @${lat},${lng}`;
+    const extendedText = text ? `${textBase}\n${text}` : textBase;
+    const data = {text: extendedText, url};
     Marker.closePopup();
     if (file) data.files = [await dataURL2file(file, name)];
     else await delay(500); // Allow popup time to close. It doesn't render well because of the web component style sheets.
