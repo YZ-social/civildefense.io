@@ -309,7 +309,7 @@ export class Marker { // A wrapper around L.marker
   <minidenticon-svg username="${act}"></minidenticon-svg>
   <div class="times">
     <div>${new Date(originalPosting || issuedTime).toLocaleString()}</div>
-    ${originalPosting ? `<div>${Int`updated`} ${new Date(issuedTime).toLocaleTimeString()}</div>` : ''}
+    ${originalPosting ? `<div>${Int`updated`} ${new Date(issuedTime).toLocaleString()}</div>` : ''}
   </div>
   ${endMarker}
 </div>`;
