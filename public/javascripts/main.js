@@ -158,11 +158,11 @@ async function initialize(fromHandler) { // Ensure there is a network promise an
   try {
     // If networkPromise has not yet been set (or cleared by disconnect), we will be subscribing.
     const needsConnection = !networkPromise;
-    const couldConnect = checkOnline();
+    const couldConnect = checkOnline(); // Meaning online AND visble (could be hidden)
     console.log('initialize from handler:', !!fromHandler, 'needs connection:', !!needsConnection, 'could connect:', couldConnect);
     if (!couldConnect) {
       navigator?.geolocation.clearWatch(positionWatch);
-      if (navigator.onLine) networkPromise?.then(contact => contact.disconnect()); // Hidden. Replicate in case we get shut down. FIXME: just replicateStorage() instead
+      if (navigator.onLine) networkPromise?.then(contact => contact.replicateStorage()); // Hidden. Replicate in case we get shut down.
       return;
     }
     showMessage('');

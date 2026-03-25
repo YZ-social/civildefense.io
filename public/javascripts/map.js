@@ -189,8 +189,8 @@ export class Marker { // A wrapper around L.marker
       // Fix what's showing now without flashing everything. Make sure menu works.
       const popupAttribution = popup.getElement().querySelector('.attribution');
       const attributionActions = popupAttribution.lastElementChild;
-      attributionActions.lastChildElement.remove();
-      popupAttribution.insertAdjacentHTML('beforeend', this.formatAttributionHashtag(act, extendedHashtag));
+      attributionActions.lastElementChild.remove();
+      attributionActions.insertAdjacentHTML('beforeend', this.formatAttributionHashtag(act, extendedHashtag));
       wrapper.initChangeHashtag(popupAttribution);
     }
   }
