@@ -156,9 +156,15 @@ await navigator.serviceWorker
 	// Reload, but convince all browsers to re-"fech" (through the new service worker that is now running).
 	const url = new URL(location.href);
 	url.searchParams.set('v', params);
+	// For any other tabs in THIS browser:
+	new BroadcastChannel('site_control').postMessage({method: 'reload', params: url.href});
 	//alert(`About to reload ${url.href} from ${appVersion} to ${params}.`); // fixme remove
 	window.location.assign(url.href);
       }
     });
   });
 if (localStorage.getItem(newVersionAvailableKey)) newVersionAvailable();
+new BroadcastChannel('site_control').onmessage = event => {
+  const {method, params} = event.data;
+  if (method === 'reload') window.location.assign(params);
+};
