@@ -11,13 +11,13 @@
     <link rel="stylesheet" href="stylesheets/style.css" />
     <script type="importmap">
       {
-	"imports": {
-	  "uuid": "./uuid/index.js",
-	  "s2js": "https://esm.sh/s2js",
+        "imports": {
+          "uuid": "./uuid/index.js",
+          "s2js": "https://esm.sh/s2js",
           "@material/web/": "https://esm.run/@material/web/",
-	  "@yz-social/kdht": "./kdht/index.js",
-	  "@yz-social/webrtc": "./webrtc/index.js"
-	}
+          "@yz-social/kdht": "./kdht/index.js",
+          "@yz-social/webrtc": "./webrtc/index.js"
+        }
       }
     </script>
     <script type="module">
@@ -31,6 +31,7 @@
     <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="dom-to-image/dom-to-image.min.js"></script>
+    <script>var appVersion = '0.1.40';</script>
     <script type="module" src="javascripts/main.js"></script>
   </head>
   <body>
@@ -46,7 +47,7 @@
         <img src="images/qr.svg" alt="qr code" class="button-image">
       </button>
       <button id="share">
-	<img src="images/share.svg" alt="share" class="button-image">
+        <img src="images/share.svg" alt="share" class="button-image">
       </button>
       <button id="recenterButton">
         <img src="images/recenter.svg" alt="recenter on position" class="button-image">
@@ -59,21 +60,26 @@
 
     <div id="aboutContent" class="hidden">
       <div class="about-display">
-	<h1>Civil Defense.io</h1>
-	  <ul>
-	    <li id="aboutReport"></li>
-	    <li id="aboutShared"></li>
-	    <li id="aboutFade"></li>
-	  </ul>
-	<p>
-	  <span id="aboutAnyone1"></span>
-	  <a id="aboutAnyone2" href="https://github.com/YZ-social/Yz.social" target="yz.sidebar"></a>
-	  <span id="aboutAnyone3"></span>
-	</p>
-	<p>
-	  <a id="learnMore" href="https://yz.social/civildefense.html" target="yz.sidebar">Learn More</a>
-	</p>
-	<p><small><span id="version"></span> 0.0.39</small></p>
+        <h1>Civil Defense.io</h1>
+        <div>
+          <button id="checkForUpdates">check for updates</button>
+          <span id="updateStatus"></span>
+          <button id="downloadUpdates" style="display:none;">download updates</button>
+        </div>
+          <ul>
+            <li id="aboutReport"></li>
+            <li id="aboutShared"></li>
+            <li id="aboutFade"></li>
+          </ul>
+        <p>
+          <span id="aboutAnyone1"></span>
+          <a id="aboutAnyone2" href="https://github.com/YZ-social/Yz.social" target="yz.sidebar"></a>
+          <span id="aboutAnyone3"></span>
+        </p>
+        <p>
+          <a id="learnMore" href="https://yz.social/civildefense.html" target="yz.sidebar">Learn More</a>
+        </p>
+        <p><small><span id="version">Version</span> <span id="appVersion"></span></small></p>
       </div>
     </div>
 
