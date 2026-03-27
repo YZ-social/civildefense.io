@@ -32,7 +32,7 @@ async function cacheFirst({request, event}) {
 // Install all the resources we need, so that we can work offline.
 // (Users, groups, and media are cached separately in indexeddb.)
 self.addEventListener('install', event => {
-  console.log('install', event, serviceVersion);
+  console.log('Install service worker', serviceVersion);
   // IF a service worker is updated, the old service worker is active, and by default,
   // the new one will not be activated until the old one dies. This is our only chance to
   // tell the browser to skipWaiting, and activate the new service worker right away,
@@ -54,7 +54,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', async event => {
-  console.log('activate', event, serviceVersion);
+  console.log('Activate service worker', serviceVersion);
   // Apply to running clients now, so that first fresh install sees updatefound event.
   // Otherwise, the service worker wouldn't fire until the code NEXT time the page loads after
   // registration, and thus the initial load would not see any updatefound events.
@@ -66,7 +66,7 @@ self.addEventListener('fetch', event => {
 });
 
 self.addEventListener('message', async event => {
-  console.log('service worker got message', event.data);
+  //console.log('service worker got message', event.data);
   const {method, params} = event.data;
   switch (method) {
   case 'version':

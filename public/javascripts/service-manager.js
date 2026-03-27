@@ -1,4 +1,4 @@
-const { Request, Response, URL, localStorage, appVersion } = globalThis;
+const { Request, Response, URL, localStorage, BroadcastChannel, appVersion } = globalThis;
 import { resetInactivityTimer } from './main.js';
 /*
   Registers and interacts with the service worker, to provide:
@@ -147,12 +147,12 @@ await navigator.serviceWorker
       if (method !== 'version') return;
       console.log('Comparing service worker version', params, 'to app version', appVersion);
       if (params === appVersion) {
-	console.log('Checked version', appVersion);
+	//console.log('Checked version', appVersion);
       } else {
 	await cacheSource(params);
 	await caches.delete(appVersion);
 	localStorage.removeItem(newVersionAvailableKey);
-	console.log('only cache', params, 'should exist now:', await caches.keys());
+	//console.log('only cache', params, 'should exist now:', await caches.keys());
 	// Reload, but convince all browsers to re-"fech" (through the new service worker that is now running).
 	const url = new URL(location.href);
 	url.searchParams.set('v', params);
