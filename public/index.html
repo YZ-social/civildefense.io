@@ -31,7 +31,7 @@
     <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="dom-to-image/dom-to-image.min.js"></script>
-    <script>var appVersion = '0.1.40';</script>
+    <script>var appVersion = '0.0.40';</script>
     <script type="module" src="javascripts/main.js"></script>
   </head>
   <body>
@@ -61,10 +61,10 @@
     <div id="aboutContent" class="hidden">
       <div class="about-display">
         <h1>Civil Defense.io</h1>
-        <div>
-          <button id="checkForUpdates">check for updates</button>
+        <div class="source-updates">
+          <md-elevated-button id="checkForUpdates">check for updates</md-elevated-button>
+          <md-elevated-button id="downloadUpdates" class="hidden">download updates</md-elevated-button>
           <span id="updateStatus"></span>
-          <button id="downloadUpdates" style="display:none;">download updates</button>
         </div>
           <ul>
             <li id="aboutReport"></li>
@@ -80,6 +80,14 @@
           <a id="learnMore" href="https://yz.social/civildefense.html" target="yz.sidebar">Learn More</a>
         </p>
         <p><small><span id="version">Version</span> <span id="appVersion"></span></small></p>
+      </div>
+    </div>
+    <div id="uploadAvailable" class="hidden">
+      <div class="about-display">
+        <h1>New version available</h1>
+	<p>Would you like to update now? (You can update later through the button in About.)</p>
+	<md-elevated-button id="downloadUpdates2">yes, update</md-elevated-button>
+	<md-elevated-button>no, not yet</md-elevated-button>	
       </div>
     </div>
 

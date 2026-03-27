@@ -1,4 +1,5 @@
 const { Request, appVersion } = globalThis;
+import { resetInactivityTimer } from './main.js';
 /*
   Registers and interacts with the service worker, to provide:
 
@@ -94,6 +95,7 @@ navigator.serviceWorker // without waiting
     const updateText = document.getElementById('updateStatus');
     console.log('registered', registration, navigator.serviceWorker, navigator.serviceWorker.controller);
     checkButton.onclick = async event => {
+      resetInactivityTimer();
       event.stopPropagation();
       await registration.update();
       updateText.textContent = `No update at ${new Date().toLocaleString()}.`;
@@ -108,17 +110,31 @@ navigator.serviceWorker // without waiting
 	  // FIXME: At this point, we should be running out of the old appVersion cache, but we're not if there was a reload.
 
 	  // Set up all the buttons and displays in case the user declines the popup.
-	  checkButton.style = 'display:none;';
 	  const downloadButton = document.getElementById('downloadUpdates');
-	  downloadButton.style = '';
+	  const downloadButton2 = document.getElementById('downloadUpdates2');
+	  const dialog = document.getElementById('uploadAvailable');
+	  checkButton.classList.toggle('hidden', true);
+	  downloadButton.classList.toggle('hidden', false);
 	  updateText.textContent = `Update available.`;
 	  // No need to reset button/status on click, because we will be reloading.
 	  downloadButton.onclick = () => getServiceVersion(registration); // We don't know the new version here yet.
 
-	  // And now the popup.
-	  if (confirm("New version available" + '\n' + "Would you like to update now? (You can update later through the button in About.)")) {
+	  // And now the popup
+	  dialog.classList.toggle('hidden', false);
+	  downloadButton2.onclick = event => {
+	    console.log('starting version exchange');	    
+	    event.stopPropagation();
 	    getServiceVersion(registration);
-	  }
+	  };
+	  dialog.onclick = () => {
+	    resetInactivityTimer();
+	    dialog.classList.toggle('hidden', true);
+  };
+
+	  // if (confirm("New version available" + '\n' + "Would you like to update now? (You can update later through the button in About.)")) {
+	  //   console.log('starting version exchange');
+	  //   getServiceVersion(registration);
+	  // }
 	}
       };
     };

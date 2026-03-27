@@ -1,5 +1,5 @@
 const { Request, Response, clients} = self;
-const serviceVersion = '0.1.40';
+const serviceVersion = '0.0.40';
 
 async function cacheFirst({request, event}) {
   // Handle request from our serviceVersion cache, else fetch and store it.
@@ -99,9 +99,6 @@ self.addEventListener('activate', async event => {
 
 self.addEventListener('fetch', event => {
   event.respondWith(cacheFirst({request: event.request, event}));
-  // event.respondWith(caches.open(serviceVersion)
-  // 		    .then(cache => cache.match(event.request) || fetch(event.request)));
-  //event.respondWith(getResource(event.request));
 });
 
 self.addEventListener('message', async event => {

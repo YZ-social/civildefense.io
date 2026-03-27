@@ -8,7 +8,6 @@
     --md-filled-text-field-input-text-placeholder-color: var(--md-sys-color-secondary);
 
     --md-sys-color-on-surface: #191c1c;
-    --md-sys-color-surface-container-low: #B8C2D7; /* non-selected elevated filter chip */
     --md-sys-color-secondary-container: white; /* selected filter chip */
     --md-sys-color-surface-container-highest: white; /* filled text field */
     --md-menu-container-color: white;
@@ -174,6 +173,17 @@ md-outlined-text-field.reply-input {
     line-height: 40px;
     text-align: center;
 }
+#checkForUpdates, #downloadUpdates, #uploadAvailable md-elevated-button {
+    width: 150px;
+}
+.source-updates {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+md-filter-chip {
+    --md-sys-color-surface-container-low: #B8C2D7; /* non-selected elevated filter chip */
+}
 md-filter-chip minidenticon-svg {
     background: white;
 }
@@ -317,7 +327,7 @@ input[type="file"] {
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-#qrDisplayContainer, #aboutContent {
+#qrDisplayContainer, #aboutContent, #uploadAvailable {
     position: absolute;
     top: 0;
     width: 100vw;
