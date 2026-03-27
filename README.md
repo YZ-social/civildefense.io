@@ -35,15 +35,24 @@ npm install
 npm run local # Now visit http://localhost:3000
 ```
 
-This network can only be reached through `http://localhost:3000`. To run a network that is connected to the world-wide YZ network, do `npm run shared`.
+### Sharing
+
+This network can only be reached through `http://localhost:3000`. To run a network that is connected to the world-wide YZ network, instead to
+```
+npm run shared
+```
 
 To allow people visit the page from another device, the server must use `https`. This is usually done with a front end (aka reverse proxy server) such as [nginx](https://nginx.org/) or [OpenResty](https://openresty.org), and most commercial setups already operate this way. For example, at [civildefense.io](https://civildefense.io/?dht=1) and our own mirror at [ki1r0y.com](https://ki1r0y.com/?dht=1), nginx handles https connection handshake and certificate (tcp inbound 443), and passes the request to NodeJS running on port 3000.
+
+### What It Does
 
 The application server does a few things:
 1. It serves the static client files - i.e., the web page.
 2. It launches 2 or more separate NodeJS processes, each with an a network node just like the one that is run in the browser when someone visits the site. These "portal nodes" allow web visitors to connect to the network. If the box has 6 logical cores or more, it lauches nCores/2 nodes. These will each make outgoing UDP [Webrtc](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API) connections for each node that connects to them on high-numbered ports. The only difference between `npm run local` and `npm run shared` is that with `shared`, the first portal node connects to a portal node at `https://civildefense.io`. All remaning portal nodes connect to that one.
 3. It provides a means of connecting to the p2p network. Specifically, it provides `post` endpoints that deliver Webrtc connection information to the portal nodes. The server passes this info to the requested node process via NodeJS InterProcess Communication (IPC). 
-4. It runs a [TURN](https://developer.mozilla.org/en-US/docs/Glossary/TURN) relay (within the web server process). The TURN server listens for setup requests incoming on udp or tcp on 3478. (We do not currently use (D)TLS, which would be 5349.) Additionally, the actual relay traffic happens on incoming udp ports 49152 - 65535. 
+4. It runs a [TURN](https://developer.mozilla.org/en-US/docs/Glossary/TURN) relay (within the web server process). The TURN server listens for setup requests incoming on udp or tcp on 3478. (We do not currently use (D)TLS, which would be 5349.) Additionally, the actual relay traffic happens on incoming udp ports 49152 - 65535.
+
+### Building Your Own
 
 This is all done with a very minimal ExpressJS server. The one we provide is in `app.js`. If you already have such a server set up, you can just:
 1. Add or link public/ to the directory of static client files already being served. E.g., 
