@@ -1,19 +1,20 @@
-const { Request, Response, clients} = self;
+const { Request, Response, URL, clients} = self;
 const serviceVersion = '0.0.40';
 
 async function cacheFirst({request, event}) {
-  // Handle request from our serviceVersion cache, else fetch and store it.
-  const cache = await caches.open(serviceVersion);
+  // Handle request from any cache, else fetch and store it in serviceCache.
 
-  // First try to get the resource from the cache.
-  const responseFromCache = await cache.match(request);
+  // First try to get the resource from the cache (any version).
+  const responseFromCache = await caches.match(request);
   if (responseFromCache) return responseFromCache;
 
   // Next try to get the resource from the network.
   try {
     const responseFromNetwork = await fetch(request);
+    if (request.method !== 'GET') return responseFromNetwork; // Cache wouldn't allow anyway.
     // Put clone of response in cache (so that original can be returned.
     // Tell event to keep worker open while we put it, even though we return response immediately.
+    const cache = await caches.open(serviceVersion);
     event.waitUntil(cache.put(request, responseFromNetwork.clone()));
     return responseFromNetwork;
   } catch (error) {
@@ -50,47 +51,10 @@ self.addEventListener('install', event => {
   // after panic will cause a harmless but confusing "new version available" popup. Instead,
   // one must manually close the tab after panic.
   self.skipWaiting();
-  event.waitUntil(caches.open(serviceVersion)
-		  .then(cache => cache.addAll([
-		      "index.html",
-		      "favicon.ico",
-
-		      "javascripts/main.js",
-		      "javascripts/map.js",
-		      "javascripts/hashtags.js",
-		      "javascripts/s2.js",
-		      "javascripts/translations.js",
-		      "javascripts/service-manager.js",
-
-		      "stylesheets/style.css",
-
-		      "images/civil-defense-240.png",
-		      "images/qr.svg",
-		      "images/share.svg",
-		      "images/recenter.svg",
-
-		      // TODO: kdht, webrtc
-		      "uuid/index.js"
-		      // TODO: rest of uuid
-		      // TODO: the libraries
-		  ])));
-  // These are referenced within material web, but missing. Turns out we don't need them,
-  // but let's cache empty responses to keep the console cleaner.
-  event.waitUntil(caches.open(serviceVersion)
-		  .then(cache => Promise.all([
-		    "https://esm.run/npm/lit@3.3.1/+esm",
-		    "https://esm.run/npm/tslib@2.8.1/+esm",
-		    "https://esm.run/npm/lit@3.3.1/static-html.js/+esm",
-		    "https://esm.run/npm/lit@3.3.1/decorators.js/+esm",
-		    "https://esm.run/npm/lit@3.3.1/directives/style-map.js/+esm",
-		    "https://esm.run/npm/lit@3.3.1/directives/class-map.js/+esm",
-		    "https://esm.run/npm/lit@3.3.1/directives/when.js/+esm",
-		    "https://esm.run/npm/lit@3.3.1/directives/live.js/+esm",
-		  ].map(url => cache.put(new Request(url), new Response("", {headers: { "Content-Type": "text/javascript" }}))))));
 });
 
 self.addEventListener('activate', async event => {
-  console.log('activate', event);
+  console.log('activate', event, serviceVersion);
   // Apply to running clients now, so that first fresh install sees updatefound event.
   // Otherwise, the service worker wouldn't fire until the code NEXT time the page loads after
   // registration, and thus the initial load would not see any updatefound events.

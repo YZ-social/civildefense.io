@@ -150,7 +150,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
 }
 
 let checking = false; // For debouncing.
-async function initialize(event) { // Ensure there is a network promise and map, and reset geolocation.
+async function initialize(event) { // Ensure there is a network promise and map, and reset geolocation:
   // debounce
   // if !checkOnline(), return
   // set network to promise a new Contact, set ondisconnect, and connect.
@@ -162,7 +162,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
     // If networkPromise has not yet been set (or cleared by disconnect), we will be subscribing.
     const needsConnection = !networkPromise;
     const couldConnect = checkOnline(); // Meaning online AND visble (could be hidden)
-    console.log('Initialize from', event ? event.type : 'reset', networkPromise ? 'Has network.' : 'Needs network.', couldConnect ? 'Is online+visible.' : 'Is not online+visible.');
+    console.log('Initialize', appVersion, 'from', event ? event.type : 'reset', networkPromise ? 'Has network.' : 'Needs network.', couldConnect ? 'Is online+visible.' : 'Is not online+visible.');
     if (!couldConnect) {
       navigator?.geolocation.clearWatch(positionWatch);
       if (navigator.onLine) networkPromise?.then(contact => contact.replicateStorage()); // Hidden. Replicate in case we get shut down.

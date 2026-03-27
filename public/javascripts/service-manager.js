@@ -1,4 +1,4 @@
-const { Request, appVersion } = globalThis;
+const { Request, Response, URL, appVersion } = globalThis;
 import { resetInactivityTimer } from './main.js';
 /*
   Registers and interacts with the service worker, to provide:
@@ -41,16 +41,65 @@ import { resetInactivityTimer } from './main.js';
 */
 
 
+async function cacheSource(version) { // Cache source in the given version.
+  const cache = await caches.open(version);
+  await cache.addAll([
+    "/",  // If we don't cache root, then a request to root will pick up a new version instead of the cached one!
+    "/?dht=0",
+    "/?dht=1",
+    `/?v=${version}`, // When updating, we cache-bust the browser by explicitly loading this.
+    `/?dht=0&v=${version}`,
+    `/?dht=1&v=${version}`,
+    "favicon.ico",
+
+    "javascripts/main.js",
+    "javascripts/map.js",
+    "javascripts/hashtags.js",
+    "javascripts/s2.js",
+    "javascripts/translations.js",
+    "javascripts/service-manager.js",
+
+    "stylesheets/style.css",
+
+    "images/civil-defense-240.png",
+    "images/qr.svg",
+    "images/share.svg",
+    "images/recenter.svg",
+
+    // TODO: kdht, webrtc
+    "uuid/index.js"
+    // TODO: rest of uuid
+    // TODO: the libraries
+  ]);
+  await Promise.all([
+    // These are referenced within material web, but missing. Turns out we don't need them,
+    // but let's cache empty responses to keep the console cleaner.
+    "https://esm.run/npm/lit@3.3.1/+esm",
+    "https://esm.run/npm/tslib@2.8.1/+esm",
+    "https://esm.run/npm/lit@3.3.1/static-html.js/+esm",
+    "https://esm.run/npm/lit@3.3.1/decorators.js/+esm",
+    "https://esm.run/npm/lit@3.3.1/directives/style-map.js/+esm",
+    "https://esm.run/npm/lit@3.3.1/directives/class-map.js/+esm",
+    "https://esm.run/npm/lit@3.3.1/directives/when.js/+esm",
+    "https://esm.run/npm/lit@3.3.1/directives/live.js/+esm",
+  ].map(url => cache.put(new Request(url),
+			 new Response("", {headers: { "Content-Type": "text/javascript" }}))));
+}
+
+
 function getServiceVersion(registration) { // Ask the service worker to send back it's version, which will trigger a compare.
   registration.active.postMessage({method: 'version', params: appVersion});
 }
 
-navigator.serviceWorker // without waiting
-  .register("/service-worker.js", {updateViaCache: 'none'}) // Always check host.
+// First time or after clearing cache, cache latest version of app.
+if (!(await caches.has(appVersion))) cacheSource(appVersion);
+
+navigator.serviceWorker
+  .register("/service-worker.js", {updateViaCache: 'none'})
   .then(registration => {
     const checkButton = document.getElementById('checkForUpdates');
     const updateText = document.getElementById('updateStatus');
-    console.log('registered', registration, navigator.serviceWorker, navigator.serviceWorker.controller);
+    //console.log('registered', registration, navigator.serviceWorker, navigator.serviceWorker.controller);
     checkButton.onclick = async event => {
       resetInactivityTimer();
       event.stopPropagation();
@@ -59,12 +108,11 @@ navigator.serviceWorker // without waiting
     };    
     registration.onupdatefound = () => { // A new service worker has been installed because of a service worker script change.
       const newWorker = registration.installing;
-      console.log('updatefound', newWorker.state, navigator.serviceWorker, navigator.serviceWorker.controller);
+      //console.log('updatefound', newWorker.state, navigator.serviceWorker, navigator.serviceWorker.controller);
       newWorker.onstatechange = () => {
-	console.log('statechange', newWorker.state, navigator.serviceWorker, navigator.serviceWorker.controller);
+	//console.log('statechange', newWorker.state, navigator.serviceWorker, navigator.serviceWorker.controller);
 	// We don't want to nag/confuse the user when installing fresh/first-time. There will not be a controller that time.
 	if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-	  // FIXME: At this point, we should be running out of the old appVersion cache, but we're not if there was a reload.
 
 	  // Set up all the buttons and displays in case the user declines the popup.
 	  const downloadButton = document.getElementById('downloadUpdates');
@@ -94,15 +142,18 @@ navigator.serviceWorker // without waiting
     navigator.serviceWorker.addEventListener('message', async event => {
       const {method, params} = event.data;
       if (method !== 'version') return;
-      console.log('got message from service worker', event.data);
       console.log('Comparing service worker version', params, 'to app version', appVersion);
       if (params === appVersion) {
 	console.log('Checked version', appVersion);
       } else {
+	await cacheSource(params);
 	await caches.delete(appVersion);
-	//fixme await downloadSource(params);
-	alert(`About to reload from ${appVersion} to ${params}.`); // fixme remove
-	location.reload();
+	console.log('only cache', params, 'should exist now:', await caches.keys());
+	// Reload, but convince all browsers to re-"fech" (through the new service worker that is now running).
+	const url = new URL(location.href);
+	url.searchParams.set('v', params);
+	//alert(`About to reload ${url.href} from ${appVersion} to ${params}.`); // fixme remove
+	window.location.assign(url.href);
       }
     });
   });
