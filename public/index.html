@@ -62,8 +62,8 @@
       <div class="about-display">
         <h1>Civil Defense.io</h1>
         <div class="source-updates">
-          <md-elevated-button id="checkForUpdates">check for updates</md-elevated-button>
-          <md-elevated-button id="downloadUpdates" class="hidden">install update</md-elevated-button>
+          <md-elevated-button id="checkForUpdates"></md-elevated-button>
+          <md-elevated-button id="downloadUpdates" class="hidden"></md-elevated-button>
           <span id="updateStatus"></span>
         </div>
           <ul>
@@ -84,12 +84,12 @@
     </div>
     <div id="uploadAvailable" class="hidden">
       <div class="about-display">
-        <h1>New version available</h1>
-	<p>Would you like to update now?</p>
-	<p>All CivilDefense.io tabs will reload.</p>
-	<p>Alternatively, you can update later through the button in About.</p>
-	<md-elevated-button id="downloadUpdates2">yes, update</md-elevated-button>
-	<md-elevated-button>no, not yet</md-elevated-button>	
+        <h1 id="newVersionHeader">New version available</h1>
+	<p id="updateNowQuestion"></p>
+	<p id="updateReload"></p>
+	<p id="updateDefer"></p>
+	<md-elevated-button id="downloadUpdates2"></md-elevated-button>
+	<md-elevated-button id="downloadDefer"></md-elevated-button>
       </div>
     </div>
 

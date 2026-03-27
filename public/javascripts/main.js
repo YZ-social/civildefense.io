@@ -211,5 +211,14 @@ initText('#aboutAnyone2');
 initText('#aboutAnyone3');
 initText('#learnMore');
 initText('#version');
+initText('#checkForUpdates');
+initText('#downloadUpdates');
+initText('#newVersionHeader');
+initText('#updateNowQuestion');
+initText('#updateReload');
+initText('#updateDefer');
+initText('#downloadUpdates2');
+initText('#downloadDefer');
+
 initialize(false);
 document.querySelector('head > title').innerHTML = `CivilDefense @${location.hostname}`;

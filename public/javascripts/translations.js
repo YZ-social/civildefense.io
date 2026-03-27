@@ -40,8 +40,6 @@ const translations = {
   ['This browser does not support sharing.']: {es: "Este navegador no admite la función de compartir."},
   ['This browser does not support file sharing.']: {es: "Este navegador no admite el intercambio de archivos."},
   ['This browser does not support sharing this type of file.']: {es: "Este navegador no admite compartir este tipo de archivo."},
-																															 
-  
   
   ['#aboutReport']: {en: "Report immediate concerns to the public by tapping their location on the map.", es: "Informa de cualquier problema inmediato al público pulsando su ubicación en el mapa."},
   ['#aboutShared']: {en: "These locations are shared over anonymous p2p with other users in your area.", es: "Estas ubicaciones se comparten a través de redes P2P anónimas con otros usuarios de tu zona."},
@@ -50,6 +48,15 @@ const translations = {
   ['#aboutAnyone2']: {en: "run by anyone,", es: "administrado por cualquier persona,"},
   ['#aboutAnyone3']: {en: "in case this site is taken down.", es: "en caso de que este sitio sea dado de baja."},
   ['#learnMore']: {en: 'Learn More', es: "Más Información"},
-  ['#version']: {en: "Version", es: "Versión"}
+  ['#version']: {en: "Version", es: "Versión"},
+  ['#checkForUpdates']: {en: "check for updates", es: "Buscar actualizaciones"},
+  ['#downloadUpdates']: {en: "install update", es: "Instalar actualización"},
+  ['#newVersionHeader']: {en: "New version available", es: "Nueva versión disponible"},
+  ['#updateNowQuestion']: {en: "Would you like to update now?", es: "¿Le gustaría actualizar ahora?"},
+  ['#updateReload']: {en: "All CivilDefense.io tabs will reload.", es: "Todas las pestañas de CivilDefense.io se recargarán."},
+  ['#updateDefer']: {en: "Alternatively, you can update later through the button in About.", es: "Alternativamente, puede actualizar más tarde a través del botón en «Acerca de»."},
+  ['#downloadUpdates2']: {en: "yes, update", es: "Sí, actualizar."},
+  ['#downloadDefer']: {en: "no, not yet", es: "No, todavía no."},
+  ['No update at']: {es: "No hay actualizaciones a las"}
 };
 

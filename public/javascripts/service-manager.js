@@ -1,5 +1,7 @@
 const { Request, Response, URL, localStorage, BroadcastChannel, appVersion } = globalThis;
 import { resetInactivityTimer } from './main.js';
+import { Int } from './translations.js';
+
 /*
   Registers and interacts with the service worker, to provide:
 
@@ -8,36 +10,32 @@ import { resetInactivityTimer } from './main.js';
   key behaviors:
   1. New code won't be used (even on refresh) until the user agrees.
   2. Even a refreshed page does not require the web server. (Access to the DHT must still be provded. That's not handled here.)
+  3. Any and all tabs are updated to new version.
 
   We use the browser's service worker update mechanism to allow the user to control caching and reload with the right version.
 
-  This file exports a const promiseSourceReady, which resolves when we have the source cached for the desired version.
-  We require the source file (e.g., the root .html) to define a global string named appVersion.
-  The service worker also defines a string named serviceVersion, which will ordinarily match.
+  The service WORKER does NOT fill any cache on installation, nor delete old on activation (as many service worker examples do).
+  Instead, if the service MANAGER sees that the appVersion cache does not exist yet, it explicitly fills it with the host's current source.
+
+  The service WORKER handles requests from any cache version, rather than just serviceVersion, but stores missing items in serviceVersion.
+  Thus the explicitly filled source is from the one-time filling by the service MANAGER.
+  Other requests on the web (such as map tiles) are cached to serviceVersion, responded from there, and do not get updated until cache is cleared or new app version installed.
+
+  New service workers on host are picked up and installed, either by the user pressing a button that asks the browser to try to
+  update the service worker registration (by looking for a new version on host), or by the browser doing this automatically every 24 hours.
+  Either way, it still responds with any resources that have already been cached, including all old source and external resources that have already been cached.
+  New external resources that have not yet been cached (e.g. map tiles for areas not yet visited) are fetched and cached under new serviceVersion going forward.
+  The user is informed (in About and in a popup), and we persist a marker in storage in case the user reloads (which would not otherwise see a new serviceVersion
+  because it already has it).
+
+  When user says to update, the service MANAGER explicitly fills the new serviceVersion cache, including the variants of / and /?v=<newServiceVersion>,
+  and deletes the appVersion cache, and then we reload with this new v parameter.
+  This busts the browser's caching so that it reloads index.html from the new cache.
+  (The v parameter is stripped on load so that it doesn't hang around. Other parameters such as dht=1 are not affected.)
+  The service WORKER responds with the new cached source, and external resources have been pulled no earlier than the host's service worker release.
+  We also broadcast to any other open tabs at the same host, so that they reload to the new v as well.
   
-  Once registered, the service worker intercepts all source requests and serves them from a cache named by serviceVersion.
-  However, to get things rolling before registration, this file downloads the explicitly listed files and caches them by appVerion.
-
-  When the #checkForUpdates element is clicked, we request a service worker update from the browser,
-  and then (if not altered below), the #updateStatus element is updated to indicate there are no updates at this datetime.
-  Otherwise, the browser itself will look for a new version of the service worker on location.host at least every 24 hours.
-
-  Either way, if a service worker update is available, it will be installed by the browser, and we arrange to:
-  - change #updateStatus to indicate that an update is available
-  - hide the #checkForUpdates button
-  - reveal the #downloadUpdates button
-  - popup a dismissable dialog telling the user that an update is avilable and asking if they would like to update.
-
-  If the user says they want to update, either through the dialog, or later on through the #downloadUpdates button,
-  then we post a 'version' message to the service worker, passing the appVersion.
-  The service worker simply posts back its own serviceVerion. (It could potentially do other stuff, but currently does not.)
-  When the code here receives that version back, if the versions match it ungates the promiseSourceReady promise, such that
-  it will resolve when the source is cached. Otherwise, it deletes the cache for the old version, downloads the source
-  for the new version, and reloads. When the app comes back, the cache is full for matching appVersiona and serviceVersion.
-
-  other:
-  -----
-  This file exports a const serviceWorkerRegistration promise.
+  If the user clears cache and reloads (even if there is no source/worker update, or a stale worker), they get the currently hosted versions.
 */
 
 
@@ -127,7 +125,7 @@ await navigator.serviceWorker
       resetInactivityTimer();
       event.stopPropagation();
       await registration.update();
-      updateText.textContent = `No update at ${new Date().toLocaleString()}.`;
+      updateText.textContent = `${Int`No update at`} ${new Date().toLocaleString()}.`;
     };
     registration.onupdatefound = () => { // A new service worker has been installed because of a service worker script change.
       const newWorker = registration.installing;
