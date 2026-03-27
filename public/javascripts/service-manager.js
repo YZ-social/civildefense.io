@@ -1,4 +1,4 @@
-const { Request, Response, URL, appVersion } = globalThis;
+const { Request, Response, URL, localStorage, appVersion } = globalThis;
 import { resetInactivityTimer } from './main.js';
 /*
   Registers and interacts with the service worker, to provide:
@@ -91,21 +91,44 @@ function getServiceVersion(registration) { // Ask the service worker to send bac
   registration.active.postMessage({method: 'version', params: appVersion});
 }
 
+const checkButton = document.getElementById('checkForUpdates');
+const updateText = document.getElementById('updateStatus');
+const downloadButton = document.getElementById('downloadUpdates');
+const downloadButton2 = document.getElementById('downloadUpdates2');
+const dialog = document.getElementById('uploadAvailable');
+const newVersionAvailableKey = 'newVersionAvailable';
+
+function newVersionAvailable() {
+  // Set up all the buttons and displays in case the user declines the popup,
+  // and then open the popup.
+  checkButton.classList.toggle('hidden', true);
+  downloadButton.classList.toggle('hidden', false);
+  updateText.textContent = `Update available.`;
+  dialog.classList.toggle('hidden', false);
+  dialog.onclick = () => {
+    resetInactivityTimer();
+    dialog.classList.toggle('hidden', true);
+  };
+}
+
 // First time or after clearing cache, cache latest version of app.
 if (!(await caches.has(appVersion))) cacheSource(appVersion);
 
-navigator.serviceWorker
+await navigator.serviceWorker
   .register("/service-worker.js", {updateViaCache: 'none'})
   .then(registration => {
-    const checkButton = document.getElementById('checkForUpdates');
-    const updateText = document.getElementById('updateStatus');
-    //console.log('registered', registration, navigator.serviceWorker, navigator.serviceWorker.controller);
+    // No need to reset button/status on click, because we will be reloading.
+    downloadButton.onclick = () => getServiceVersion(registration); // We don't know the new version here yet.
+    downloadButton2.onclick = event => {
+      event.stopPropagation();
+      getServiceVersion(registration);
+    };
     checkButton.onclick = async event => {
       resetInactivityTimer();
       event.stopPropagation();
       await registration.update();
       updateText.textContent = `No update at ${new Date().toLocaleString()}.`;
-    };    
+    };
     registration.onupdatefound = () => { // A new service worker has been installed because of a service worker script change.
       const newWorker = registration.installing;
       //console.log('updatefound', newWorker.state, navigator.serviceWorker, navigator.serviceWorker.controller);
@@ -113,28 +136,8 @@ navigator.serviceWorker
 	//console.log('statechange', newWorker.state, navigator.serviceWorker, navigator.serviceWorker.controller);
 	// We don't want to nag/confuse the user when installing fresh/first-time. There will not be a controller that time.
 	if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-
-	  // Set up all the buttons and displays in case the user declines the popup.
-	  const downloadButton = document.getElementById('downloadUpdates');
-	  const downloadButton2 = document.getElementById('downloadUpdates2');
-	  const dialog = document.getElementById('uploadAvailable');
-	  checkButton.classList.toggle('hidden', true);
-	  downloadButton.classList.toggle('hidden', false);
-	  updateText.textContent = `Update available.`;
-	  // No need to reset button/status on click, because we will be reloading.
-	  downloadButton.onclick = () => getServiceVersion(registration); // We don't know the new version here yet.
-
-	  // And now the popup
-	  dialog.classList.toggle('hidden', false);
-	  downloadButton2.onclick = event => {
-	    console.log('starting version exchange');	    
-	    event.stopPropagation();
-	    getServiceVersion(registration);
-	  };
-	  dialog.onclick = () => {
-	    resetInactivityTimer();
-	    dialog.classList.toggle('hidden', true);
-	  };
+	  localStorage.setItem(newVersionAvailableKey, 'true');
+	  newVersionAvailable();
 	}
       };
     };
@@ -148,6 +151,7 @@ navigator.serviceWorker
       } else {
 	await cacheSource(params);
 	await caches.delete(appVersion);
+	localStorage.removeItem(newVersionAvailableKey);
 	console.log('only cache', params, 'should exist now:', await caches.keys());
 	// Reload, but convince all browsers to re-"fech" (through the new service worker that is now running).
 	const url = new URL(location.href);
@@ -157,3 +161,4 @@ navigator.serviceWorker
       }
     });
   });
+if (localStorage.getItem(newVersionAvailableKey)) newVersionAvailable();
