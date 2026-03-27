@@ -98,7 +98,7 @@ export function updateSubscriptions(oldKeys = subscriptions) { // Update current
   let level9Cell = getContainingCells(center.lat, center.lng)[9];
   if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
 
-  console.log('subscribing', {newKeys, length: newKeys.length, oldKeys});
+  console.log('Subscribing', {newKeys, length: newKeys.length, oldKeys});
   const subscribe = (key, handler, autoRenewal = false) =>
 	networkPromise.then(async contact => contact.subscribe({eventName: key, handler, autoRenewal}));
 
@@ -150,7 +150,7 @@ async function publish({lat, lng, // Publish the given data to all applicable ev
     const key = await Node.key(eventName);
     contact.publish({eventName, key, subject, payload, _level, issuedTime, hashtag, act, immediate, ...rest});
   }
-  console.log('published', {cells, n: cells.length, hashtag, subject, payload, oldCells, oldHash, oldSubject});
+  console.log('Published', {cells, n: cells.length, hashtag, subject, payload, oldCells, oldHash, oldSubject});
   return subject;
 }
 
@@ -197,7 +197,7 @@ export class Marker { // A wrapper around L.marker
   static ensure(data) { // Add marker at position with appropriate fade if not already present.
     let { payload, subject, issuedTime, act, hashtag, immediateLocalAction = false } = data;
     let wrapper = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
-    console.log('handling event', {wrapper, subject, payload, act, usertag, immediateLocalAction, data});
+    console.log('Handling event', {wrapper, subject, payload, act, usertag, immediateLocalAction, data});
 
     if (!payload) return wrapper?.destroy();
     const now = Date.now(),
@@ -407,7 +407,7 @@ export class Marker { // A wrapper around L.marker
     const shareable = event.currentTarget.closest('[data-text]');
     const {text, file, name = 'unknown'} = shareable.dataset;
     const {lat, lng} = this;
-    console.log('share', shareable.dataset);
+    console.log('Share', shareable.dataset);
     const url = getShareableURL(this.subject, [this.hashtag]).href;
     let textBase = `New CivilDefense.io alert @${lat},${lng}`;
     const extendedText = text ? `${textBase}\n${text}` : textBase;

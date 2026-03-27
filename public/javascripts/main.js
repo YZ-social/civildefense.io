@@ -2,7 +2,9 @@ import { Int } from './translations.js';
 import { NetworkClass } from './pubSub.js';
 import { getPointInCell } from './s2.js';
 import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
-const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt } = globalThis; // For linters.
+const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, appVersion } = globalThis; // For linters.
+
+document.getElementById('appVersion').textContent = appVersion;
 
 const RETRY_SECONDS = 90;
 const INACTIVITY_SECONDS = 5 * 60; // five minutes
@@ -93,7 +95,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
   // Any subsequent location updates will update position in the map, but not move the map
   // nor change the subscriptions.
   const {geolocation} = navigator;  // Get user's geolocation
-  console.log('initializeGeolocation. subscribe:', subscribe);
+  console.log('Initializing geolocation.', subscribe ? 'Will subscribe.' : 'Has subscriptions.');
   subscribeOneShot = subscribe;
   const initMap = (lat, lng) => {
     let zoom = 14;
@@ -122,7 +124,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
   positionWatch = geolocation.watchPosition(
     position => {
       const {latitude, longitude} = position.coords;
-      console.log('geolocation ready:', !!map, subscribeOneShot);
+      console.log('Location update.', map ? 'Map exists.' : 'Will create map.', subscribeOneShot ? 'Will subscribe fresh.' : 'Has subscriptions.');
       initMap(latitude, longitude);
     }, error => {
       geolocation.clearWatch(positionWatch);
@@ -147,7 +149,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
 }
 
 let checking = false; // For debouncing.
-async function initialize(fromHandler) { // Ensure there is a network promise and map, and reset geolocation.
+async function initialize(event) { // Ensure there is a network promise and map, and reset geolocation.
   // debounce
   // if !checkOnline(), return
   // set network to promise a new Contact, set ondisconnect, and connect.
@@ -159,7 +161,7 @@ async function initialize(fromHandler) { // Ensure there is a network promise an
     // If networkPromise has not yet been set (or cleared by disconnect), we will be subscribing.
     const needsConnection = !networkPromise;
     const couldConnect = checkOnline(); // Meaning online AND visble (could be hidden)
-    console.log('initialize from handler:', !!fromHandler, 'needs connection:', !!needsConnection, 'could connect:', couldConnect);
+    console.log('Initialize from', event ? event.type : 'reset', networkPromise ? 'Has network.' : 'Needs network.', couldConnect ? 'Is online+visible.' : 'Is not online+visible.');
     if (!couldConnect) {
       navigator?.geolocation.clearWatch(positionWatch);
       if (navigator.onLine) networkPromise?.then(contact => contact.replicateStorage()); // Hidden. Replicate in case we get shut down.
@@ -167,10 +169,10 @@ async function initialize(fromHandler) { // Ensure there is a network promise an
     }
     showMessage('');
     if (!networkPromise) {
-      console.log('creating');
+      console.log('Creating node.');
       networkPromise = NetworkClass.create();
       networkPromise.then(contact => {
-	console.log('contact created', contact.name);
+	console.log('Created node', contact.name);
 	globalThis.contact = contact; // For debugging.
 	contact.detachment.then(onPurpose => {
 	  networkPromise = null;
@@ -181,11 +183,10 @@ async function initialize(fromHandler) { // Ensure there is a network promise an
 	  // so as not to confuse other nodes that have given up on the unresponsive old GUID.
 	  showMessage(message, 'error');
 	});
-	contact.connect()
-	  .then(() => console.log('connected'));
+	contact.connect().then(() => console.log('connected'));
       });
     }
-    if (fromHandler) await delay();
+    if (event) await delay();
     initializeGeolocation(needsConnection);
   } finally {
     checking = false;

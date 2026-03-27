@@ -58,7 +58,7 @@ md-outlined-text-field.reply-input {
     font-family: 'Roboto';
     min-width: 80px;
 }
-.alert .leaflet-popup-content {
+.alert .leaflet-popup-content, .about-display {
     min-width: min(80vw, 600px);
     max-height: 80vh;
     overflow: auto;
