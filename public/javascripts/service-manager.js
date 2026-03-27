@@ -41,55 +41,12 @@ import { resetInactivityTimer } from './main.js';
 */
 
 
-const sources = [
-  "index.html",
-  "favicon.ico",
-
-  "javascripts/main.js",
-  "javascripts/map.js",
-  "javascripts/hashtags.js",
-  "javascripts/s2.js",
-  "javascripts/translations.js",
-  "javascripts/service-manager.js",
-
-  "stylesheets/style.css",
-
-  "images/civil-defense-240.png",
-  "images/qr.svg",
-  "images/share.svg",
-  "images/recenter.svg",
-
-  "uuid/index.js"
-  // TODO: the libraries
-];
-/*
-async function downloadSource(cacheName) { // Promise to get latest version of all sources into cacheName IFF cacheName exists.
-  const cache = await caches.open(cacheName);
-  if (await caches.has(cacheName)) {
-    const keys = await cache.keys();
-    console.log('Cache', cacheName, 'contains', keys);
-    if (keys.length >= sources.length) return;
-  } else {
-    console.log('no cache', cacheName, 'yet');
-  }
-  await cache.addAll(sources.map(name => new Request(name, {cache: 'no-store'})));
-  console.log('Captured source', cacheName);
-}
-
-// There are a few things that have to happen before we can check storageVersion and synchronize.
-const {promise:promiseAppVersion, resolve:checkedAppVersion} = Promise.withResolvers();
-export const promiseSourceReady = Promise.all([ // Resolves when the source is ready.
-  downloadSource(appVersion),  // Start it now.
-  promiseAppVersion            // app.html and other source matches the service worker.
-]);
-*/
-export const promiseSourceReady = true; // fixme and references
 function getServiceVersion(registration) { // Ask the service worker to send back it's version, which will trigger a compare.
   registration.active.postMessage({method: 'version', params: appVersion});
 }
-//export const serviceWorkerRegistration =
+
 navigator.serviceWorker // without waiting
-  .register("/service-worker.js", {updateViaCache: 'none'})
+  .register("/service-worker.js", {updateViaCache: 'none'}) // Always check host.
   .then(registration => {
     const checkButton = document.getElementById('checkForUpdates');
     const updateText = document.getElementById('updateStatus');
@@ -129,18 +86,10 @@ navigator.serviceWorker // without waiting
 	  dialog.onclick = () => {
 	    resetInactivityTimer();
 	    dialog.classList.toggle('hidden', true);
-  };
-
-	  // if (confirm("New version available" + '\n' + "Would you like to update now? (You can update later through the button in About.)")) {
-	  //   console.log('starting version exchange');
-	  //   getServiceVersion(registration);
-	  // }
+	  };
 	}
       };
     };
-    navigator.serviceWorker.addEventListener('controllerchange', event => { // just for debugging, confirming that this page has a new controller.
-      console.log("Page: The controller of current browsing context has changed.", navigator.serviceWorker.controller, navigator.serviceWorker.controller === registration.active);
-    });
     // addEventListener, allowing other code to listen for other messages.
     navigator.serviceWorker.addEventListener('message', async event => {
       const {method, params} = event.data;
@@ -149,7 +98,6 @@ navigator.serviceWorker // without waiting
       console.log('Comparing service worker version', params, 'to app version', appVersion);
       if (params === appVersion) {
 	console.log('Checked version', appVersion);
-	//fixme checkedAppVersion(true);
       } else {
 	await caches.delete(appVersion);
 	//fixme await downloadSource(params);
