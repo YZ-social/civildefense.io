@@ -28,8 +28,8 @@ import { Int } from './translations.js';
   The user is informed (in About and in a popup), and we persist a marker in storage in case the user reloads (which would not otherwise see a new serviceVersion
   because it already has it).
 
-  When user says to update, the service MANAGER explicitly fills the new serviceVersion cache, including the variants of / and /?v=<newServiceVersion>,
-  and deletes the appVersion cache, and then we reload with this new v parameter.
+  When user says to update, the service MANAGER deletes the appVersion cache (so that next step doesn't use old dat), explicitly fills the new serviceVersion cache,
+  and then we reload with new v=version parameter.
   This busts the browser's caching so that it reloads index.html from the new cache.
   (The v parameter is stripped on load so that it doesn't hang around. Other parameters such as dht=1 are not affected.)
   The service WORKER responds with the new cached source, and external resources have been pulled no earlier than the host's service worker release.

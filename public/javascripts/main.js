@@ -2,7 +2,7 @@ import { Int } from './translations.js';
 import { NetworkClass } from './pubSub.js';
 import { getPointInCell } from './s2.js';
 import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
-import './service-manager.js';
+//import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
 const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, appVersion } = globalThis; // For linters.
 
 document.getElementById('appVersion').textContent = appVersion;

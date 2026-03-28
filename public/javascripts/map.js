@@ -267,7 +267,7 @@ export class Marker { // A wrapper around L.marker
     const shareable = popupElement.querySelectorAll('.share');
     for (const element of shareable) element.onclick = event => this.share(event);
   }
-  initChangeHashtag(someParent) { // Init handler on the menu button, if any
+  initChangeHashtag(someParent) { // Init handler on the menu button, if any, as (re-) init of menu for open popup
     const changeHashtag = someParent.querySelector('.changeHashtag');
     if (!changeHashtag) return;
     const menu = document.getElementById('popoverMenu');
@@ -276,11 +276,14 @@ export class Marker { // A wrapper around L.marker
       resetInactivityTimer();
       event.stopPropagation();
       menu.open = !menu.open;
-    }; // Must be onlick rather than addEventListener.
-    menu.onclick = event => { event.stopPropagation(); };
-    menu.addEventListener('close-menu', this.menuCloser); // Must be addEventListener because there's no onclosemenu.
+      menu.onclick = event => event.stopPropagation(); // Must be onlick rather than addEventListener.
+      const handler = event => {
+	menu.removeEventListener('close-menu', handler);
+	this.updatePost(event.detail.initiator.dataset.tag);
+      };
+      menu.addEventListener('close-menu', handler); // Must be addEventListener because there's no onclosemenu.
+    };
   }
-  menuCloser = event => this.updatePost(event.detail.initiator.dataset.tag);
   static formatAttributionHashtag(act, hashtag) { // Answer HTML for the hashtag button/display in an a post attribution.
     // It will be either a simple HTML element with pubtag.
     const pubtag = Hashtags.formatPubtag(hashtag);
