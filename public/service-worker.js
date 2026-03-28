@@ -5,7 +5,9 @@ async function cacheFirst({request, event}) {
   // Handle request from any cache, else fetch and store it in serviceCache.
 
   // First try to get the resource from the cache (any version).
-  const responseFromCache = await caches.match(request);
+  const url = new URL(request.url);
+  const ignoreSearch = url.pathname === '/'; // Regardless of lat/lng, tags, etc. Hopefully no external map or font resources are on root!
+  const responseFromCache = await caches.match(request, {ignoreSearch});
   if (responseFromCache) return responseFromCache;
 
   // Next try to get the resource from the network.

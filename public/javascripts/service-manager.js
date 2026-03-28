@@ -42,12 +42,8 @@ import { Int } from './translations.js';
 async function cacheSource(version) { // Cache source in the given version.
   const cache = await caches.open(version);
   await cache.addAll([
-    "/",  // If we don't cache root, then a request to root will pick up a new version instead of the cached one!
-    "/?dht=0",
-    "/?dht=1",
-    `/?v=${version}`, // When updating, we cache-bust the browser by explicitly loading this.
-    `/?dht=0&v=${version}`,
-    `/?dht=1&v=${version}`,
+    "/",
+    "/index.html", // Just in case anyone is specifying that.
     "favicon.ico",
 
     "javascripts/main.js",
@@ -68,7 +64,7 @@ async function cacheSource(version) { // Cache source in the given version.
     "uuid/index.js"
     // TODO: rest of uuid
     // TODO: the libraries
-  ]);
+  ].map(name => new Request(name, {cache: 'no-store'}))); // Might not be necessary, but if any browsers insist on their own caching...
   await Promise.all([
     // These are referenced within material web, but missing. Turns out we don't need them,
     // but let's cache empty responses to keep the console cleaner.
@@ -147,16 +143,15 @@ await navigator.serviceWorker
       if (params === appVersion) {
 	//console.log('Checked version', appVersion);
       } else {
+	await caches.delete(appVersion); // Must be before cacheSource, or we'll just recache the same files!
 	await cacheSource(params);
-	await caches.delete(appVersion);
 	localStorage.removeItem(newVersionAvailableKey);
-	//console.log('only cache', params, 'should exist now:', await caches.keys());
-	// Reload, but convince all browsers to re-"fech" (through the new service worker that is now running).
+	// Reload, but convince all browsers to re-"fetch" (through the new service worker that is now running).
 	const url = new URL(location.href);
-	url.searchParams.set('v', params);
+	url.searchParams.set('v', params); // Preserving any other searchParams.
+	//alert(`About to reload ${url.href} from ${appVersion} to ${params}.`); // fixme remove
 	// For any other tabs in THIS browser:
 	new BroadcastChannel('site_control').postMessage({method: 'reload', params: url.href});
-	//alert(`About to reload ${url.href} from ${appVersion} to ${params}.`); // fixme remove
 	window.location.assign(url.href);
       }
     });
