@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CivilDefense.io</title>
+    <link rel="manifest" href="manifest.json" />
     <link rel="shortcut icon" href="favicon.ico" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -12,7 +13,7 @@
     <script type="importmap">
       {
         "imports": {
-          "uuid": "./uuid/index.js",
+          "uuid": "https://unpkg.com/uuid@13.0.0/dist/index.js",
           "s2js": "https://esm.sh/s2js",
           "@material/web/": "https://esm.run/@material/web/",
           "@yz-social/kdht": "./kdht/index.js",
@@ -28,10 +29,10 @@
     <script type="module">
       import { minidenticonSvg } from "https://cdn.jsdelivr.net/npm/minidenticons@4.2.1/minidenticons.min.js";
     </script>
-    <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    <script src="dom-to-image/dom-to-image.min.js"></script>
-    <script>var appVersion = '0.0.40';</script>
+    <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+    <script src="https://unpkg.com/dom-to-image@2.6.0/dist/dom-to-image.min.js"></script>
+    <script>var appVersion = '0.0.41';</script>
     <script type="module" src="javascripts/main.js"></script>
   </head>
   <body>

@@ -1,6 +1,7 @@
 {
   "name": "civildefense.io",
-  "version": "0.0.40",
+  "description": "Browser app to safely share live sightings on a map.",
+  "version": "0.0.41",
   "keywords": [
     "map",
     "browser",
@@ -18,7 +19,6 @@
   "dependencies": {
     "@yz-social/kdht": "^0.1.31",
     "@yz-social/webrtc": "^0.1.7",
-    "dom-to-image": "^2.6.0",
     "express": "^4.22.1",
     "express-ws": "^5.0.2",
     "morgan": "^1.10.1",

@@ -45,6 +45,7 @@ async function cacheSource(version) { // Cache source in the given version.
     "/",
     "/index.html", // Just in case anyone is specifying that.
     "favicon.ico",
+    "manifest.json",
 
     "javascripts/main.js",
     "javascripts/map.js",
@@ -52,6 +53,7 @@ async function cacheSource(version) { // Cache source in the given version.
     "javascripts/s2.js",
     "javascripts/translations.js",
     "javascripts/service-manager.js",
+    "javascripts/pubSub.js",
 
     "stylesheets/style.css",
 
@@ -60,9 +62,18 @@ async function cacheSource(version) { // Cache source in the given version.
     "images/share.svg",
     "images/recenter.svg",
 
-    // TODO: kdht, webrtc
-    "uuid/index.js"
-    // TODO: rest of uuid
+    "kdht/index.js",
+    "kdht/contacts/contact.js",
+    "kdht/contacts/simulations.js",
+    "kdht/contacts/webrtc.js",
+    "kdht/nodes/helper.js",
+    "kdht/nodes/kbucket.js",
+    "kdht/nodes/storageBag.js",
+    "kdht/nodes/nodePubSub.js",
+    "kdht/nodes/node.js",
+
+    "webrtc/index.js",
+
     // TODO: the libraries
   ].map(name => new Request(name, {cache: 'no-store'}))); // Might not be necessary, but if any browsers insist on their own caching...
   await Promise.all([

@@ -1,0 +1,25 @@
+{
+  "name": "CivilDefense.io",
+  "description": "Safely safely share live sightings on a map.",
+  "start_url": "/",
+  "display": "standalone",  
+  "icons": [{
+    "src": "images/civil-defense-512.png",
+    "type": "image/png",
+    "sizes": "512x512"
+  }, {
+    "src": "images/civil-defense-192.png",
+    "sizes": "192x192",
+    "type": "image/png"
+  }, {
+    "src": "images/civil-definse.png",
+    "sizes": "122x122",
+    "type": "image/png"
+  }],
+
+  "comment": "In Chrome App Settings, the following sets the initial value of 'Opening supported links' (meaning in-scope links) to be 'Open in FairShare' (rather than 'Open in Chrome browser'.",
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  }
+}
