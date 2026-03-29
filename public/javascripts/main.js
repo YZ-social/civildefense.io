@@ -3,7 +3,7 @@ import { NetworkClass } from './pubSub.js';
 import { getPointInCell } from './s2.js';
 import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
 import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
-const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, appVersion } = globalThis; // For linters.
+const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, URL, appVersion } = globalThis; // For linters.
 
 document.getElementById('appVersion').textContent = appVersion;
 
@@ -184,7 +184,8 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	  // so as not to confuse other nodes that have given up on the unresponsive old GUID.
 	  showMessage(message, 'error');
 	});
-	contact.connect().then(() => console.log('connected'));
+	const portals = [new URL('/kdht', window.location).href, 'https://civildefense.io/kdht', 'https://ki1r0y.com/kdht'];
+	contact.connect(...portals).then(() => console.log('connected'));
       });
     }
     if (event) await delay();
