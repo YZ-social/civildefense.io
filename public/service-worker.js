@@ -13,7 +13,7 @@ async function cacheFirst({request, event}) {
   // Next try to get the resource from the network.
   try {
     const responseFromNetwork = await fetch(request);
-    if (request.method !== 'GET') return responseFromNetwork; // Cache wouldn't allow anyway.
+    if (request.method !== 'GET' || request.cache === 'no-store') return responseFromNetwork; // Cache shouldn't allow anyway.
     // Put clone of response in cache (so that original can be returned.
     // Tell event to keep worker open while we put it, even though we return response immediately.
     const cache = await caches.open(serviceVersion);
