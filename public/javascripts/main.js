@@ -184,8 +184,8 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	  // so as not to confuse other nodes that have given up on the unresponsive old GUID.
 	  showMessage(message, 'error');
 	});
-	const portals = [new URL('/kdht', window.location).href, 'https://civildefense.io/kdht', 'https://ki1r0y.com/kdht'];
-	contact.connect(...portals).then(() => console.log('connected'));
+	const portals = [new URL('/kdht', window.location).href, /*'https://civildefense.io/kdht',*/ 'https://ki1r0y.com/kdht'];
+	contact.connect(...portals).then(ok => console.log(ok ? 'connected' : 'unable to connect!'));
       });
     }
     if (event) await delay();
