@@ -17,7 +17,7 @@
   },
   "type": "module",
   "dependencies": {
-    "@yz-social/kdht": "^0.1.35",
+    "@yz-social/kdht": "^0.1.36",
     "@yz-social/webrtc": "^0.1.7",
     "cors": "^2.8.6",
     "express": "^4.22.1",
