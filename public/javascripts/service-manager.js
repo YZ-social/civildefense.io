@@ -57,10 +57,13 @@ async function cacheSource(version) { // Cache source in the given version.
 
     "stylesheets/style.css",
 
-    "images/civil-defense-240.png",
     "images/qr.svg",
     "images/share.svg",
     "images/recenter.svg",
+    "images/civil-defense-122.png",
+    "images/civil-defense-192.png",
+    "images/civil-defense-240.png",
+    "images/civil-defense-512.png",
 
     "kdht/index.js",
     "kdht/contacts/contact.js",
@@ -69,6 +72,14 @@ async function cacheSource(version) { // Cache source in the given version.
     "kdht/nodes/helper.js",
     "kdht/nodes/kbucket.js",
     "kdht/nodes/storageBag.js",
+    "kdht/nodes/nodeUtilities.js",
+    "kdht/nodes/nodeKeys.js",
+    "kdht/nodes/nodeRefresh.js",
+    "kdht/nodes/nodeStorage.js",
+    "kdht/nodes/nodeConnections.js",
+    "kdht/nodes/nodeContacts.js",
+    "kdht/nodes/nodeMessages.js",
+    "kdht/nodes/nodeProbe.js",
     "kdht/nodes/nodePubSub.js",
     "kdht/nodes/node.js",
 

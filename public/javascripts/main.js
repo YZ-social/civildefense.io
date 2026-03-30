@@ -56,9 +56,9 @@ export async function resetInactivityTimer(clearMessage = true) { // if !network
   clearTimeout(inactivityTimer);
   clearInterval(reconnectCountdown);
   if (!networkPromise) return initialize(false);
-  return inactivityTimer = setTimeout(() => {
-    networkPromise?.then(contact => contact.disconnect());
-  }, INACTIVITY_SECONDS * 1e3);
+  // return inactivityTimer = setTimeout(() => {
+  //   networkPromise?.then(contact => contact.disconnect());
+  // }, INACTIVITY_SECONDS * 1e3);
 }
 
 function checkOnline() { //true if online and visible, else cancel reconnectCountdown and inactivityTimeout, and show "offline"
