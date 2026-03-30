@@ -150,6 +150,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
 }
 
 let checking = false; // For debouncing.
+let auxPortals = JSON.parse(localStorage.getItem('auxPortals') || '[]');
 async function initialize(event) { // Ensure there is a network promise and map, and reset geolocation:
   // debounce
   // if !checkOnline(), return
@@ -184,8 +185,8 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	  // so as not to confuse other nodes that have given up on the unresponsive old GUID.
 	  showMessage(message, 'error');
 	});
-	const portals = [new URL('/kdht', window.location).href, /*'https://civildefense.io/kdht',*/ 'https://ki1r0y.com/kdht'];
-	contact.connect(...portals).then(ok => console.log(ok ? 'connected' : 'unable to connect!'));
+	const portals = [new URL('/kdht', window.location).href, ...auxPortals];
+	contact.connect(...portals);
       });
     }
     if (event) await delay();
