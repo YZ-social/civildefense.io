@@ -4,7 +4,7 @@ const { WebSocket, URLSearchParams } = globalThis; // For linters.
 
 let NetworkClass;
 const params = new URLSearchParams(location.search);
-if (params.has('dht') && (params.get('dht') !== '0')) {
+if (!params.has('dht') || (params.get('dht') !== '0')) {
 
   NetworkClass = WebContact;
   WebContact.iceServers = [{
