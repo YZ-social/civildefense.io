@@ -225,7 +225,10 @@ md-filter-chip minidenticon-svg {
     flex-direction: row;
     gap: 5px;
 }
-.alert md-outlined-button, .alert md-filled-button {
+.alert md-outlined-button {
+    width: 45px;
+}
+.alert md-filled-button {
     width: 100px;
 }
 .alert .attribution md-outlined-button {
@@ -248,10 +251,15 @@ md-menu {
 }
 .attribution > div:last-child {
     margin-left: auto;
+    display: flex;
+    align-items: center;
 }
-.alert md-outlined-button {
-    min-width: 60px;
+.attribution > div:last-child > span {
+    text-wrap: nowrap;
 }
+/* .alert md-outlined-button { */
+/*     min-width: 60px; */
+/* } */
 .attribution minidenticon-svg {
     height: 40px;
     width: 40px;

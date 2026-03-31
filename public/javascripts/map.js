@@ -303,15 +303,16 @@ export class Marker { // A wrapper around L.marker
   formatAttributionActions({act, hashtag}) { // Anser div HTML containing: [deleter] sharer [hashtag]
     // Where deletere appears if it our reply (no hashtag), and hashtag if present is a button if ours (and otherwise just text).
     const deleter = !hashtag && act === usertag ? `<md-outlined-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-button>` : '';
-    const sharer = `<md-outlined-button class="share"><md-icon class="material-icons">ios_share</md-icon></md-outlined-button>`;
     const pubtag = hashtag ? this.constructor.formatAttributionHashtag(act, hashtag) : '';
-    return `<div>${deleter} ${sharer} ${pubtag}</div>`;
+    return `<div>${deleter} ${pubtag}</div>`;
   }
   formatAttribution({act, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/[deleter]+sharer+[hashtag]
+    const sharer = `<md-outlined-button class="share"><md-icon class="material-icons">ios_share</md-icon></md-outlined-button>`;
     const actions = this.formatAttributionActions({act, hashtag});
     const dataText = hashtag ? 'data-text=""' : ''; // Used in sharing.
     return `
 <div class="attribution" ${dataText}>
+  ${sharer}
   <minidenticon-svg username="${act}"></minidenticon-svg>
   <div class="times">
     <div>${new Date(originalPosting || issuedTime).toLocaleString()}</div>
