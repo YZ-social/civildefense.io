@@ -58,10 +58,15 @@ export const Hashtags = {
   },
   stripLeadingEmoji(string) { // Return string without any leading emoji (which might be of varying
     // length) followed by an optional emoji break character and any whitespace.
-    return string.replace(/^\p{Extended_Pictographic}*\uFE0F?\s*/u, '') || string;
+    // {Extended_Pictographic} is often recommended instead of {Emoji} as the latter includes numbers
+    // and symbols. However, the former misses, e.g., the flag emojis.
+    return string.replace(/^\p{Emoji}*\uFE0F?\s*/u, '') || string;
   },
   firstEmoji(tag) { // First emoji that appears in string, else falsy.
-    return tag.match(/\p{Extended_Pictographic}/u)?.[0];
+    // I would prefer that it take just the first emoji, but that doesn't grab double-wide ones
+    // such as flags. So instead this will return any leading emoji ending with a space, terminator, or normal character.
+    return tag.match(/\p{Emoji}+/u)?.[0];
+
   },
   identicon(tag, slot = '') { // HTML for an identicon representing tag.
     // Unneeded and not necessarilly meaningful if tag has emoji.
