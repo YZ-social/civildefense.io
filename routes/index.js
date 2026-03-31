@@ -79,6 +79,7 @@ router.ws('/ws', function(ws, req, next) {
     switch (type) {
     case 'pub':
       const subscribedSockets = Object.values(keySubs);
+      //console.log('publishing', eventName, 'to', Object.keys(keySubs));
       for (const ws of subscribedSockets) ws.send(message);
       setSticky(eventName, {eventName, subject, payload, ...rest, type: 'event'});
       break;

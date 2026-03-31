@@ -4,6 +4,7 @@ import { getPointInCell } from './s2.js';
 import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
 import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
 const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, URL, appVersion } = globalThis; // For linters.
+globalThis.getShareableURL = getShareableURL; // for development.
 
 document.getElementById('appVersion').textContent = appVersion;
 
