@@ -83,7 +83,7 @@ function checkOnline() { //true if online and visible, else cancel reconnectCoun
   if (navigator.onLine && !document.hidden) return true;
   clearTimeout(inactivityTimer);
   clearInterval(reconnectCountdown);
-  if (navigator.onLine) showMessage(Int`No network connection.`, 'error');
+  if (!navigator.onLine) showMessage(Int`No network connection.`, 'error');
   else console.warn('hidden');
   return false;
 }
@@ -214,6 +214,8 @@ async function initialize(event) { // Ensure there is a network promise and map,
 }
 document.addEventListener('visibilitychange', initialize);
 window.addEventListener('online', initialize);
+window.addEventListener('pagehide', () => networkPromise?.then(contact => contact.disconnect()));
+window.addEventListener('beforeunload', () => networkPromise?.then(contact => contact.disconnect()));
 
 // Set up text for the browser language.
 function initText(selector, content = selector) {
