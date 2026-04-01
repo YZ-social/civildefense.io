@@ -520,6 +520,8 @@ export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial m
   // Add OpenStreetMap tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
+    // Because we have a service worker AND rebuild dom structure within canvas in domtoimage, we need to tell Leaflet to not be opaque.
+    crossOrigin: 'anonymous',
     maxZoom: 19
   }).addTo(map);
 
@@ -561,6 +563,7 @@ export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial m
   };
 
   // Add a marker at user's current location
+  L.Icon.Default.prototype.options.crossOrigin = 'anonymous'; // Set default prop, as it is used on next line.
   yourLocation = L.marker([lat, lng], {autoPan: false})
     .addTo(map)
     .bindPopup(Int`Your Location`)
