@@ -195,7 +195,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	globalThis.contact = contact; // For debugging.
 	contact.detachment.then(onPurpose => {
 	  networkPromise = null;
-	  const message = onPurpose ? Int`Connection closed due to inactivity. Will reconnect on use.` :
+	  const message = onPurpose ? Int`Connection closed due to ${onPurpose.type}. Will reconnect on use.` : // FIXME: remove onPurpose.type after we find out what causes this.
 		(navigator.onLine ? Int`The service connection has closed. Please reload.` : Int`No network connection.`);
 	  console.log('contact detached', {onPurpose, onLine: navigator.onLine});
 	  // If/when we reconnect, we will make a new network object with a new GUID,
