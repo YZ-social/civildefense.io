@@ -41,19 +41,28 @@
       <img src="images/civil-defense-240.png" alt="civildefense" class="about-image">
     </div>
 
-    <div id="info" class="info-banner loading"></div>
-
-    <div class="button-container">
-      <button id="qrButton">
-        <img src="images/qr.svg" alt="qr code" class="button-image">
-      </button>
-      <button id="share">
-        <img src="images/share.svg" alt="share" class="button-image">
-      </button>
-      <button id="recenterButton">
-        <img src="images/recenter.svg" alt="recenter on position" class="button-image">
-      </button>
+    <div id="subPopoverControls">
+      <div class="about-container">
+	<div class="about-text">About</div>
+	<button id="aboutButton" class="about-button">
+          <img src="images/civil-defense-240.png" alt="civildefense" class="about-image"></img>
+	</button>;
+      </div>
+      <div class="button-container">
+	<button id="qrButton">
+          <img src="images/qr.svg" alt="qr code" class="button-image">
+	</button>
+	<button id="share">
+          <img src="images/share.svg" alt="share" class="button-image">
+	</button>
+	<button id="recenterButton">
+          <img src="images/recenter.svg" alt="recenter on position" class="button-image">
+	</button>
+      </div>
+      <md-chip-set class="watching-hashtags"></md-chip-set>
     </div>
+
+    <div id="info" class="info-banner loading"></div>
 
     <div id="qrDisplayContainer" class="hidden">
       <div id="qrDisplay"></div>
@@ -93,9 +102,6 @@
 	<md-elevated-button id="downloadDefer"></md-elevated-button>
       </div>
     </div>
-
-    <md-chip-set class="watching-hashtags">
-    </md-chip-set>
 
     <md-menu positioning="popover" id="popoverMenu"></md-menu>
   </body>

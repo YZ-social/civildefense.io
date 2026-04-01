@@ -124,6 +124,7 @@ export const Hashtags = {
 	this.onchange({redisplaySubscribers: false, resetSubscriptions: false});
       });
       element.onclick = event => {
+	event.stopPropagation();
 	resetInactivityTimer();
 	const chip = event.target;
 	const label = chip.label;

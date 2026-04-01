@@ -489,7 +489,8 @@ export function updateLocation(lat, lng, zoom) { // initMap if necessary, and se
   setTimeout(() => yourLocation.setLatLng(latLng), 100); // It seems that yourLocation can be set, but not yet ready to be moved?
 }
 
-export function recenterMap() {
+export function recenterMap(event) {
+  event.stopPropagation();
   resetInactivityTimer();
   Marker.closePopup();
   const latLng = [lastLatitude, lastLongitude];
@@ -535,6 +536,15 @@ export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial m
   // we handle map 'move' events by adjusting the about container element's style so as
   // to keep it 10px from the right edge of the viewport.
   const popupPane = document.querySelector('.leaflet-popup-pane');
+  const subPopoverControls = document.getElementById('subPopoverControls');
+  popupPane.parentElement.insertBefore(subPopoverControls, popupPane);
+  const mapPane = document.querySelector('.leaflet-map-pane');
+  map.on('move', () => {
+    const rect = mapPane.getBoundingClientRect();
+    subPopoverControls.style = `left: ${-rect.left}px; top: ${-rect.top}px;`;
+  });
+  /*
+  const aboutContainer = document.querySelector('.about-container');
   popupPane.insertAdjacentHTML('beforebegin', `
     <div class="about-container">
       <div class="about-text">About</div>
@@ -543,14 +553,6 @@ export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial m
       </button>;
     </div>`);
   const aboutContent = document.getElementById('aboutContent');
-  const mapElement = document.querySelector('#map');
-  const mapPane = document.querySelector('.leaflet-map-pane');
-  const aboutContainer = document.querySelector('.about-container');
-  const adjust = mapElement.clientWidth - aboutContainer.clientWidth - 10;
-  map.on('move', () => {
-    const rect = mapPane.getBoundingClientRect();
-    aboutContainer.style = `left: ${adjust - rect.left}px; top: ${-rect.top}px;`;
-  });
   document.getElementById('aboutButton').onclick = event => {
     resetInactivityTimer();
     event.stopPropagation();
@@ -561,6 +563,7 @@ export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial m
     resetInactivityTimer();
     aboutContent.classList.toggle('hidden', true);
   };
+  */
 
   // Add a marker at user's current location
   L.Icon.Default.prototype.options.crossOrigin = 'anonymous'; // Set default prop, as it is used on next line.

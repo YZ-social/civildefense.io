@@ -2,7 +2,7 @@ import { Int } from './translations.js';
 import { NetworkClass } from './pubSub.js';
 import { getPointInCell } from './s2.js';
 import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
-import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
+//import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
 const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, URL, appVersion } = globalThis; // For linters.
 globalThis.getShareableURL = getShareableURL; // for development.
 
@@ -11,9 +11,22 @@ document.getElementById('appVersion').textContent = appVersion;
 const RETRY_SECONDS = 90;
 const INACTIVITY_SECONDS = 5 * 60; // five minutes
 
+var aboutContent = document.getElementById('aboutContent');
+document.getElementById('aboutButton').onclick = event => {
+  resetInactivityTimer();
+  event.stopPropagation();
+  Marker.closePopup();
+  aboutContent.classList.toggle('hidden', false);
+};
+aboutContent.onclick = () => {
+  resetInactivityTimer();
+  aboutContent.classList.toggle('hidden', true);
+};
+
 var qrDisplayContainer = document.getElementById('qrDisplayContainer');
 var qrDisplay = document.getElementById('qrDisplay');
-document.getElementById('qrButton').onclick = () => { // generate (and display) qr code on-demand (in case url changes)
+document.getElementById('qrButton').onclick = event => { // generate (and display) qr code on-demand (in case url changes)
+  event.stopPropagation();
   resetInactivityTimer();
   const qr = new QRCodeStyling({
     width: 300,
@@ -37,11 +50,14 @@ document.getElementById('qrButton').onclick = () => { // generate (and display) 
   qr.append(qrDisplay);
   qrDisplayContainer.classList.toggle('hidden', false);
 }
-qrDisplayContainer.onclick = () => {
+qrDisplayContainer.onclick = event => {
   resetInactivityTimer();
   qrDisplayContainer.classList.toggle('hidden', true);
 }
-document.getElementById('share').onclick = () => share({text: "CivilDefense.io", url: getShareableURL().href });
+document.getElementById('share').onclick = event => {
+  event.stopPropagation();
+  share({text: "CivilDefense.io", url: getShareableURL().href });
+};
 
 document.getElementById('recenterButton').onclick = recenterMap;
 
@@ -205,7 +221,7 @@ function initText(selector, content = selector) {
   const text = Int([content]);
   element.textContent = text;
 }
-//initText('div.about-text', 'About');
+initText('div.about-text', 'About');
 initText('#aboutReport');
 initText('#aboutShared');
 initText('#aboutFade');
