@@ -1,5 +1,6 @@
 const { Request, Response, URL, localStorage, BroadcastChannel, appVersion } = globalThis;
 import { resetInactivityTimer } from './main.js';
+import { go } from './map.js';
 import { Int } from './translations.js';
 
 /*
@@ -160,21 +161,28 @@ await navigator.serviceWorker
     // addEventListener, allowing other code to listen for other messages.
     navigator.serviceWorker.addEventListener('message', async event => {
       const {method, params} = event.data;
-      if (method !== 'version') return;
-      console.log('Comparing service worker version', params, 'to app version', appVersion);
-      if (params === appVersion) {
-	//console.log('Checked version', appVersion);
-      } else {
-	await caches.delete(appVersion); // Must be before cacheSource, or we'll just recache the same files!
-	await cacheSource(params);
-	localStorage.removeItem(newVersionAvailableKey);
-	// Reload, but convince all browsers to re-"fetch" (through the new service worker that is now running).
-	const url = new URL(location.href);
-	url.searchParams.set('v', params); // Preserving any other searchParams.
-	//alert(`About to reload ${url.href} from ${appVersion} to ${params}.`); // fixme remove
-	// For any other tabs in THIS browser:
-	new BroadcastChannel('site_control').postMessage({method: 'reload', params: url.href});
-	window.location.assign(url.href);
+      switch (method) {
+      case 'version':
+	console.log('Comparing service worker version', params, 'to app version', appVersion);
+	if (params === appVersion) {
+	  //console.log('Checked version', appVersion);
+	} else {
+	  await caches.delete(appVersion); // Must be before cacheSource, or we'll just recache the same files!
+	  await cacheSource(params);
+	  localStorage.removeItem(newVersionAvailableKey);
+	  // Reload, but convince all browsers to re-"fetch" (through the new service worker that is now running).
+	  const url = new URL(location.href);
+	  url.searchParams.set('v', params); // Preserving any other searchParams.
+	  // For any other tabs in THIS browser:
+	  new BroadcastChannel('site_control').postMessage({method: 'reload', params: url.href});
+	  window.location.assign(url.href);
+	}
+	break;
+      case 'go':
+	go(params);
+	break;
+      default:
+	console.error('Unrecognized message from service worker', event.data);
       }
     });
   });

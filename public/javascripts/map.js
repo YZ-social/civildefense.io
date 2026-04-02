@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { s2 } from 's2js';
 import { Node } from '@yz-social/kdht';
 import { Int } from './translations.js';
-import { networkPromise, resetInactivityTimer, delay } from './main.js';
+import { networkPromise, resetInactivityTimer, delay, notificationsAllowed } from './main.js';
 import { Hashtags } from './hashtags.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 
@@ -224,6 +224,7 @@ export class Marker { // A wrapper around L.marker
 	openOnReceive = false;
 	marker.openPopup();
       }
+      wrapper.showNotification({tag: subject, act, issuedTime});
     } else {
       wrapper.needsRedisplay = true;
       wrapper.ensureContent();
@@ -343,11 +344,25 @@ export class Marker { // A wrapper around L.marker
     if (data.payload) {
       replies.push(data); // TODO: when we implement edited replies, we'll have to find the existing
       replies.sort((a, b) => a.issuedTime - b.issuedTime); // Could be slightly out of order.
+      const {act, issuedTime, payload} = data;
+      this.showNotification({act, issuedTime, body: payload.message || payload.name || payload});
     } else {
       replies.splice(replies.findIndex(reply => reply.subject === data.subject), 1);
     }
     this.needsRedisplay = true;
     this.ensureContent();
+  }
+  showNotification({issuedTime, body = '', act = this.act, tag = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
+    if (act == usertag && notificationsAllowed()) return;
+    navigator.serviceWorker.ready.then(registration => {
+      const timestamp = issuedTime;
+      const icon = new URL('./images/civil-defense-192.png', location.href).href;
+      const url = getShareableURL(tag, [hashtag]).href; // For opening page when it has been closed.
+      const data = {lat, lng, url};
+      const options = {icon, timestamp, tag, body, data};
+      console.log('showNotification', hashtag, options);
+      registration.showNotification(hashtag, options);
+    });
   }
   async postReply(event) { // Post a reply to this marker's subject, in response to a text-field change event.
     resetInactivityTimer();
@@ -449,6 +464,17 @@ export class Marker { // A wrapper around L.marker
   }
 }
 
+export function go({lat = null, lng = null, zoom = null, subject = null}) { // Go to specified location (if any) and open marker (if any).
+  if (lat !== null && lng !== null) {
+    if (zoom) map.flyTo({lat, lng}, zoom);
+    else map.flyTo({lat, lng});
+  }
+  openOnReceive = null;
+  if (subject) {
+    Marker.openPopup(subject) || (openOnReceive = subject);
+  }
+}
+
 let yourLocation; // marker
 let lastLatitude, lastLongitude;
 
@@ -466,12 +492,7 @@ export function updateLocation(lat, lng, zoom) { // initMap if necessary, and se
     const tagsArray = tags?.split(',') || [];
     tagsArray.forEach(tag => Hashtags.add(decodeURIComponent(tag)));
     Hashtags.onchange({resetSubscriptions: false}); // Too early to subscribe, but will be done during initialization.
-    if (params.has('lat') && params.has('lng')) {
-      map.flyTo({lat: params.get('lat'), lng: params.get('lng')}, params.get('z'));
-    }
-    openOnReceive = null;
-    const subject = params.get('sub');
-    if (subject) Marker.openPopup(subject) || (openOnReceive = subject);
+    go({lat: params.get('lat'), lng: params.get('lng'), zoom: params.get('z'), subject: params.get('sub')});
     // We don't need the query parameters now. Get rid of them. They're annoying. But preserve dht, if any.
     const copy = new URL(location);
     const dht = copy.searchParams.get('dht');

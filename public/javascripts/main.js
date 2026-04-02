@@ -3,7 +3,7 @@ import { NetworkClass } from './pubSub.js';
 import { getPointInCell } from './s2.js';
 import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
 import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
-const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, URL, appVersion } = globalThis; // For linters.
+const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, URL, Notification, appVersion } = globalThis; // For linters.
 globalThis.getShareableURL = getShareableURL; // for development.
 
 document.getElementById('appVersion').textContent = appVersion;
@@ -11,14 +11,67 @@ document.getElementById('appVersion').textContent = appVersion;
 const RETRY_SECONDS = 90;
 const INACTIVITY_SECONDS = 5 * 60; // five minutes
 
+export function delay(ms = 1e3) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+let inactivityTimer, reconnectCountdown, networkPromise = null;
+export { networkPromise };
+export async function resetInactivityTimer(clearMessage = true) { // if !network, initialize(false), else disconnect after INACTIVITY_SECONDSif not restarted
+  //console.log('resetInactivityTimer, networkPromise:', networkPromise);
+  if (clearMessage) showMessage('');
+  clearTimeout(inactivityTimer);
+  clearInterval(reconnectCountdown);
+  if (!networkPromise) return initialize(false);
+  // return inactivityTimer = setTimeout(() => {
+  //   networkPromise?.then(contact => contact.disconnect());
+  // }, INACTIVITY_SECONDS * 1e3);
+}
+
 var aboutContent = document.getElementById('aboutContent');
-document.getElementById('aboutButton').onclick = event => {
+var showNotifications = document.getElementById('showNotifications');
+var showNotificationsLabel = document.getElementById('showNotificationsLabel');
+function disabledNotifications() { return localStorage.getItem('disabledNotifications'); }
+function disableNotifications(force) { localStorage.setItem('disabledNotifications', force ? '1' : ''); }
+export function notificationsAllowed() { return (Notification.permission === 'granted') && !disabledNotifications(); }
+function noteNotificationPermission(permission) {
+  switch (permission) {
+  case 'default':
+    showNotifications.indeterminate = true;
+    showNotifications.toggleAttribute('disabled', false);
+    showNotificationsLabel.textContent = `Enable notifications`;
+    break;
+  case 'granted':
+    showNotifications.checked = !disabledNotifications();
+    showNotifications.toggleAttribute('disabled', false);
+    showNotificationsLabel.textContent = 'Allow notifications';
+    break;
+  default:
+    showNotifications.checked = false;
+    showNotifications.toggleAttribute('disabled', true);
+    showNotificationsLabel.innerHTML = `Permissions can be re-enabled through <a href="https://www.google.com/search?q=open+site+settings+${navigator.userAgent}" target="yz.sidebar">browser site settings</a>.`;
+    break;
+  }
+}
+document.getElementById('aboutButton').onclick = event => { // open about
   resetInactivityTimer();
   event.stopPropagation();
   Marker.closePopup();
   aboutContent.classList.toggle('hidden', false);
+  noteNotificationPermission(Notification.permission);
 };
-aboutContent.onclick = () => {
+showNotifications.parentElement.onclick = event => {
+  resetInactivityTimer();
+  event.stopPropagation();
+}
+showNotifications.onchange = () => {
+  if (Notification.permission === 'granted') {
+    disableNotifications(!showNotifications.checked);
+  } else {
+    Notification.requestPermission().then(noteNotificationPermission);
+  }
+};
+aboutContent.onclick = () => { // dismiss about
   resetInactivityTimer();
   aboutContent.classList.toggle('hidden', true);
 };
@@ -60,23 +113,6 @@ document.getElementById('share').onclick = event => {
 };
 
 document.getElementById('recenterButton').onclick = recenterMap;
-
-export function delay(ms = 1e3) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-let inactivityTimer, reconnectCountdown, networkPromise = null;
-export { networkPromise };
-export async function resetInactivityTimer(clearMessage = true) { // if !network, initialize(false), else disconnect after INACTIVITY_SECONDSif not restarted
-  //console.log('resetInactivityTimer, networkPromise:', networkPromise);
-  if (clearMessage) showMessage('');
-  clearTimeout(inactivityTimer);
-  clearInterval(reconnectCountdown);
-  if (!networkPromise) return initialize(false);
-  // return inactivityTimer = setTimeout(() => {
-  //   networkPromise?.then(contact => contact.disconnect());
-  // }, INACTIVITY_SECONDS * 1e3);
-}
 
 function checkOnline() { //true if online and visible, else cancel reconnectCountdown and inactivityTimeout, and show "offline"
   //console.log('checkOnline', navigator.onLine && !document.hidden);

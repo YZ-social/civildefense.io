@@ -78,3 +78,25 @@ self.addEventListener('message', async event => {
     console.warn(`Unrecognized service worker message: "${event.data}".`);
   }
 });
+
+self.addEventListener('notificationclick', event => {
+  const {notification} = event;
+  const {title, body, tag, data} = notification;
+  notification.close();
+  if (!data) return console.log('no data in notification', notification);
+  // This looks to see if the current is already open and focuses if it is. Else opens one.
+  event.waitUntil(
+    clients
+      .matchAll({type: 'window', includeUncontrolled: true})
+      .then(async clientList => {
+	console.log('notification', {title, body, data, clientList});
+        for (const client of clientList) {
+	  console.log('notification click found client');
+	  return client.focus().then(() => client.postMessage({method: 'go', params: {subject: tag, ...data}}));
+        }
+	// Client has been closed. Open one.
+	console.log('notification click opening client', data.url);
+	return clients.openWindow(data.url);
+      }),
+  );
+});
