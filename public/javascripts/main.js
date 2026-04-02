@@ -66,12 +66,12 @@ function noteNotificationPermission(permission) {
   case 'default':
     showNotifications.indeterminate = true;
     showNotifications.toggleAttribute('disabled', false);
-    showNotificationsLabel.textContent = `Enable notifications`;
+    showNotificationsLabel.innerHTML = `Enable notifications`;
     break;
   case 'granted':
     showNotifications.checked = !disabledNotifications();
     showNotifications.toggleAttribute('disabled', false);
-    showNotificationsLabel.textContent = 'Allow notifications';
+    showNotificationsLabel.innerHTML = `Allow notifications`;
     break;
   default:
     showNotifications.checked = false;
