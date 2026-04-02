@@ -48,7 +48,7 @@ var showNotifications = document.getElementById('showNotifications');
 var showNotificationsLabel = document.getElementById('showNotificationsLabel');
 function disabledNotifications() { return localStorage.getItem('disabledNotifications'); }
 function disableNotifications(force) { localStorage.setItem('disabledNotifications', force ? '1' : ''); }
-export function notificationsAllowed() { return (Notification.permission === 'granted') && !disabledNotifications(); }
+export function notificationsAllowed() { return (Notification?.permission === 'granted') && !disabledNotifications(); }
 function noteNotificationPermission(permission) {
   if (isWebView()) {
     showNotifications.indeterminate = true;
@@ -85,17 +85,17 @@ document.getElementById('aboutButton').onclick = event => { // open about
   event.stopPropagation();
   Marker.closePopup();
   aboutContent.classList.toggle('hidden', false);
-  noteNotificationPermission(Notification.permission);
+  noteNotificationPermission(window.Notification?.permission);
 };
 showNotifications.parentElement.onclick = event => {
   resetInactivityTimer();
   event.stopPropagation();
 }
 showNotifications.onchange = () => {
-  if (Notification.permission === 'granted') {
+  if (window.Notification?.permission === 'granted') {
     disableNotifications(!showNotifications.checked);
   } else {
-    Notification.requestPermission().then(noteNotificationPermission);
+    window.Notification?.requestPermission().then(noteNotificationPermission);
   }
 };
 aboutContent.onclick = () => { // dismiss about
