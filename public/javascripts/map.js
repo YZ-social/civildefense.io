@@ -52,9 +52,12 @@ export async function share(properties) {  // Invoke platform share API on prope
   if (!properties.files) {
     const target = document.getElementById('mapCapture');
     const icon = target.lastElementChild;
-    icon.style = 'opacity: 1';
+    const subPopoverControls = document.getElementById('subPopoverControls');
+    const leafletControls = document.querySelector('.leaflet-control-container');
+    subPopoverControls.style = leafletControls.style = 'opacity: 0;';
+    icon.style = 'opacity: 1;';
     const capture = await domtoimage.toPng(target);
-    icon.style = '';
+    subPopoverControls.style = leafletControls.style = icon.style = '';
     const file = await dataURL2file(capture, 'map.png');
     console.log({capture, file});
     properties.files = [file];
