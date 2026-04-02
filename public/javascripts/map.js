@@ -69,12 +69,12 @@ localStorage.setItem('usertag', usertag);
 function makeEventName(cell, hash) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
   return `s2:${cell}:${Hashtags.canonicalTag(hash)}`;
 }
-export function getShareableURL(subject = null, tags = Hashtags.getSubscribe().toString()) { // Answer a url that reflects application state.
+export function getShareableURL(subject = null, tags = Hashtags.getSubscribe()) { // Answer a url that reflects application state.
   const params = new URLSearchParams(location.search);
   const zoom = map.getZoom();
   const { lat, lng } = map.getCenter();
 
-  params.set('tags', tags);
+  params.set('tags', tags.map(tag => encodeURIComponent(tag)).join(','));
   if (lat !== null) params.set('lat', lat);
   if (lng !== null) params.set('lng', lng);
   if (zoom !== null) params.set('z', zoom);
@@ -459,7 +459,9 @@ export function updateLocation(lat, lng, zoom) { // initMap if necessary, and se
     initMap(lat, lng, zoom);
 
     const params = new URL(location).searchParams;
-    params.get('tags')?.split(',').forEach(tag => Hashtags.add(tag));
+    const tags = params.get('tags');
+    const tagsArray = tags?.split(',') || [];
+    tagsArray.forEach(tag => Hashtags.add(decodeURIComponent(tag)));
     Hashtags.onchange({resetSubscriptions: false}); // Too early to subscribe, but will be done during initialization.
     if (params.has('lat') && params.has('lng')) {
       map.flyTo({lat: params.get('lat'), lng: params.get('lng')}, params.get('z'));
