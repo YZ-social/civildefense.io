@@ -28,6 +28,21 @@ export async function resetInactivityTimer(clearMessage = true) { // if !network
   // }, INACTIVITY_SECONDS * 1e3);
 }
 
+function isWebView() { return /WebView|wv|(iPhone|iPod|iPad)(?!.*Safari)/.test(navigator.userAgent); }
+function isApple() { return navigator.platform.startsWith("Mac") || navigator.platform === "iPhone"; }
+function isMobile() { return navigator.userAgentData?.mobile || /iPhone|iPad|iPod/.test(navigator.userAgent); }
+function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches; }
+function mobilePlatformName() { return isApple() ? 'Apple' : 'Android'; }
+function mobileBrowserName() { return isApple() ? 'Safari' : 'Chrome'; }
+function browserName() {
+  if (isMobile()) return mobileBrowserName()
+  if (navigator.userAgent.includes("Firefox")) return "Firefox";
+  if (navigator.userAgent.includes("Edg")) return "Edge";
+  if (navigator.userAgent.includes("Chrome")) return "Chrome";
+  if (navigator.userAgent.includes("Safari")) return "Safari";
+  return '';
+}
+
 var aboutContent = document.getElementById('aboutContent');
 var showNotifications = document.getElementById('showNotifications');
 var showNotificationsLabel = document.getElementById('showNotificationsLabel');
@@ -35,6 +50,18 @@ function disabledNotifications() { return localStorage.getItem('disabledNotifica
 function disableNotifications(force) { localStorage.setItem('disabledNotifications', force ? '1' : ''); }
 export function notificationsAllowed() { return (Notification.permission === 'granted') && !disabledNotifications(); }
 function noteNotificationPermission(permission) {
+  if (isWebView()) {
+    showNotifications.indeterminate = true;
+    showNotifications.toggleAttribute('disabled', false);
+    showNotificationsLabel.innerHTML = `${mobilePlatformName()} does not support notifications on WebViews embedded in other programs. Please use CivilDefense.io in native ${mobileBrowserName}.`;
+    return;
+  }
+  if (isMobile() && isApple() && !isStandalone()) {
+    showNotifications.indeterminate = true;
+    showNotifications.toggleAttribute('disabled', false);
+    showNotificationsLabel.innerHTML = `Apple only supports mobile notifications for web pages that have been <a href="https://www.google.com/search?q=iphone+install+web+page+to+home+screen" target="yz.sidebar">installed to the home screen</a>.`;
+    return;
+  }
   switch (permission) {
   case 'default':
     showNotifications.indeterminate = true;
@@ -49,7 +76,7 @@ function noteNotificationPermission(permission) {
   default:
     showNotifications.checked = false;
     showNotifications.toggleAttribute('disabled', true);
-    showNotificationsLabel.innerHTML = `Permissions can be re-enabled through <a href="https://www.google.com/search?q=open+site+settings+${navigator.userAgent}" target="yz.sidebar">browser site settings</a>.`;
+    showNotificationsLabel.innerHTML = `Permissions can be re-enabled through <a href="https://www.google.com/search?q=open+site+settings+${browserName() || `"${navigator.userAgent}"`}" target="yz.sidebar">browser site settings</a>.`;
     break;
   }
 }
