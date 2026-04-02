@@ -353,7 +353,7 @@ export class Marker { // A wrapper around L.marker
     this.ensureContent();
   }
   showNotification({issuedTime, body = '', act = this.act, tag = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
-    if (act == usertag && notificationsAllowed()) return;
+    if (act == usertag || !notificationsAllowed()) return;
     navigator.serviceWorker.ready.then(registration => {
       const timestamp = issuedTime;
       const icon = new URL('./images/civil-defense-192.png', location.href).href;
