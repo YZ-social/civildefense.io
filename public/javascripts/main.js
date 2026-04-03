@@ -52,13 +52,13 @@ export function notificationsAllowed() { return (Notification?.permission === 'g
 function noteNotificationPermission(permission) {
   if (isWebView()) {
     showNotifications.indeterminate = true;
-    showNotifications.toggleAttribute('disabled', false);
+    showNotifications.toggleAttribute('disabled', true);
     showNotificationsLabel.innerHTML = `${mobilePlatformName()} does not support notifications on WebViews embedded in other programs. Please use CivilDefense.io in native ${mobileBrowserName}.`;
     return;
   }
   if (isMobile() && isApple() && !isStandalone()) {
     showNotifications.indeterminate = true;
-    showNotifications.toggleAttribute('disabled', false);
+    showNotifications.toggleAttribute('disabled', true);
     showNotificationsLabel.innerHTML = `Apple only supports mobile notifications for web pages that have been <a href="https://www.google.com/search?q=iphone+install+web+page+to+home+screen" target="yz.sidebar">installed to the home screen</a>.`;
     return;
   }
