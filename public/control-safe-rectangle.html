@@ -1,0 +1,34 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <style>
+      html, body {
+          padding: 0;
+          margin: 0;
+      }
+      .full {
+	  background: red;
+	  height: 100lvh;
+	  width: 100lvw;
+	  position: absolute;
+      }
+      .safe {
+	  background: green;
+	  height: 100svh;
+	  width: 100%;
+	  
+	  /* Alternative: Fixed positioning to span only visible area */
+	  position: fixed;
+	  top: 0;
+	  left: 0;
+	  right: 0;
+	  bottom: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="full">
+      <div class="safe"></div>
+    </div>
+  </body>
+</html>
