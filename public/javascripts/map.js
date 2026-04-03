@@ -565,10 +565,12 @@ export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial m
   const subPopoverControls = document.getElementById('subPopoverControls');
   popupPane.parentElement.insertBefore(subPopoverControls, popupPane);
   const mapPane = document.querySelector('.leaflet-map-pane');
-  map.on('move', () => {
+  function trackMap() {
     const rect = mapPane.getBoundingClientRect();
     subPopoverControls.style = `left: ${-rect.left}px; top: ${-rect.top}px;`;
-  });
+  }
+  trackMap();
+  map.on('move', trackMap);
 
   // Add a marker at user's current location
   L.Icon.Default.prototype.options.crossOrigin = 'anonymous'; // Set default prop, as it is used on next line.
