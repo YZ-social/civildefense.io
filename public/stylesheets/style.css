@@ -120,6 +120,7 @@ md-outlined-text-field.reply-input {
 }
 .about-container {
     position: absolute;
+    top: 5px;
     right: 5px;
     width: fit-content;
     display: flex;
@@ -153,8 +154,8 @@ md-outlined-text-field.reply-input {
     pointer-events: auto;
 }
 .button-container {
-    bottom: env(safe-area-inset-bottom, 0);
-    left: max(5px, env(safe-area-inset-left, 0));
+    bottom: 0;
+    left: 5px;
     position: absolute;
     display: flex;
     gap: 5px;
@@ -162,9 +163,9 @@ md-outlined-text-field.reply-input {
 
 .watching-hashtags {
     position: absolute;
-    bottom: max(18px, env(safe-area-inset-bottom, 0));
-    right: max(5px, env(safe-area-inset-right, 0));
     width: calc(100% - 130px);
+    bottom: max(18px, calc(100vh - 100dvh));
+    right: 5px;
     flex-direction: row-reverse;
     flex-wrap: wrap-reverse;
     align-items: flex-end;
@@ -341,7 +342,6 @@ input[type="file"] {
     font-family: Arial, sans-serif;
     font-size: 16px;
     font-weight: bold;
-    margin-top: 8px;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
