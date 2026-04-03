@@ -164,7 +164,7 @@ md-outlined-text-field.reply-input {
 .watching-hashtags {
     position: absolute;
     width: calc(100% - 130px);
-    bottom: max(18px, calc(100vh - 100dvh));
+    bottom: calc((sign(calc(100vh - 100dvh)) - 1) * -18px); /* 18px for attribution in desktop, none if iphone dynamic viewsize. */
     right: 5px;
     flex-direction: row-reverse;
     flex-wrap: wrap-reverse;
