@@ -569,27 +569,6 @@ export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial m
     const rect = mapPane.getBoundingClientRect();
     subPopoverControls.style = `left: ${-rect.left}px; top: ${-rect.top}px;`;
   });
-  /*
-  const aboutContainer = document.querySelector('.about-container');
-  popupPane.insertAdjacentHTML('beforebegin', `
-    <div class="about-container">
-      <div class="about-text">About</div>
-      <button id="aboutButton" class="about-button">
-        <img src="images/civil-defense-240.png" alt="civildefense" class="about-image"></img>
-      </button>;
-    </div>`);
-  const aboutContent = document.getElementById('aboutContent');
-  document.getElementById('aboutButton').onclick = event => {
-    resetInactivityTimer();
-    event.stopPropagation();
-    Marker.closePopup();
-    aboutContent.classList.toggle('hidden', false);
-  };
-  aboutContent.onclick = () => {
-    resetInactivityTimer();
-    aboutContent.classList.toggle('hidden', true);
-  };
-  */
 
   // Add a marker at user's current location
   L.Icon.Default.prototype.options.crossOrigin = 'anonymous'; // Set default prop, as it is used on next line.
