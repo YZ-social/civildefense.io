@@ -148,6 +148,7 @@ md-outlined-text-field.reply-input {
     width: 100dvw;
     height: 100dvh;
     position: fixed;
+    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
 }
 #subPopoverControls > * > * {
     pointer-events: auto;
@@ -158,7 +159,6 @@ md-outlined-text-field.reply-input {
     position: absolute;
     display: flex;
     gap: 5px;
-    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
 }
 
 .watching-hashtags {
