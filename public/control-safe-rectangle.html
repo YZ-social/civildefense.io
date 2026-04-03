@@ -2,27 +2,33 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <style>
-      html, body {
+      html, body { /* eg: 393 x 641 on my phone */
           padding: 0;
           margin: 0;
       }
+      /*
+	apple "compact" setting in portrait:
+	  top is below notch and top bar
+          bottom is through the middle of the overlayed control bars
+        apple "bottom" setting in portrait:
+          top is below notch and top bar
+          bottom is through lower third of overlayed control bars - probably same position
+        apple "top" setting in portrait:
+          top is blow address bar
+          bottom is at bezel, with control bars overlayed
+	apple landscape with "landscape tab bar" off.
+          full screen
+       */
       .full {
 	  background: red;
-	  height: 100lvh;
-	  width: 100lvw;
+	  height: 100vh; /* vw = lvw = 852; dvw = svw = 641*/
+	  width: 100vw; /* vw = lvw = dvw = 393*/
 	  position: absolute;
       }
       .safe {
 	  background: green;
-	  height: 100svh;
-	  width: 100%;
-	  
-	  /* Alternative: Fixed positioning to span only visible area */
-	  position: fixed;
-	  top: 0;
-	  left: 0;
-	  right: 0;
-	  bottom: 0;
+	  height: calc(100dvh - env(safe-area-inset-bottom, 0));
+	  width: clac(100dvw - env(safe-area-inset-left, 0));
       }
     </style>
   </head>
