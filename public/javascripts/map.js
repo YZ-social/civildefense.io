@@ -50,6 +50,8 @@ export async function share(properties) {  // Invoke platform share API on prope
     }
   }
   if (!properties.files) {
+    Marker.closePopup();
+    await delay(500); // Allow popup time to close. It doesn't render well because of the web component style sheets.
     const target = document.getElementById('mapCapture');
     const icon = target.lastElementChild;
     const subPopoverControls = document.getElementById('subPopoverControls');
@@ -59,7 +61,7 @@ export async function share(properties) {  // Invoke platform share API on prope
     const capture = await domtoimage.toPng(target);
     subPopoverControls.style = leafletControls.style = icon.style = '';
     const file = await dataURL2file(capture, 'map.png');
-    console.log({capture, file});
+    trackMap();
     properties.files = [file];
   }
   navigator.share({title: "CivilDefense.io", ...properties})
@@ -434,9 +436,7 @@ export class Marker { // A wrapper around L.marker
     let textBase = `New CivilDefense.io alert @${lat},${lng}`;
     const extendedText = text ? `${textBase}\n${text}` : textBase;
     const data = {text: extendedText, url};
-    Marker.closePopup();
     if (file) data.files = [await dataURL2file(file, name)];
-    else await delay(500); // Allow popup time to close. It doesn't render well because of the web component style sheets.
     share(data);
   }
   startFader(remaining) { // Set up or update fader.
@@ -523,6 +523,8 @@ export function recenterMap(event) {
   map.flyTo(latLng);
 }
 
+var trackMap;
+
 export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial map and handlers for this position.
   // Then show initial message and updateSubscriptions.
 
@@ -561,14 +563,14 @@ export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial m
   // viewport when there's a transform in between you and the viewport. So instead,
   // we handle map 'move' events by adjusting the about container element's style so as
   // to keep it 10px from the right edge of the viewport.
-  const popupPane = document.querySelector('.leaflet-popup-pane');
   const subPopoverControls = document.getElementById('subPopoverControls');
-  popupPane.parentElement.insertBefore(subPopoverControls, popupPane);
+  const popupPane = document.querySelector('.leaflet-popup-pane');
   const mapPane = document.querySelector('.leaflet-map-pane');
-  function trackMap() {
+  trackMap = () => {
     const rect = mapPane.getBoundingClientRect();
     subPopoverControls.style = `left: ${-rect.left}px; top: ${-rect.top}px;`;
-  }
+  };
+  popupPane.parentElement.insertBefore(subPopoverControls, popupPane);
   trackMap();
   map.on('move', trackMap);
 
