@@ -219,7 +219,7 @@ export class Marker { // A wrapper around L.marker
       const icon = this.makeIcon(hashtag);
       marker = wrapper.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
       marker.bindPopup('', {className: 'alert'})
-	.on('popupopen', event => wrapper.ensureContent(event.popup, remaining));
+	.on('popupopen', event => wrapper.ensureContent(event.popup));
       // Subscribe to replies to this subject, now that we're set up to receive them.
       networkPromise.then(async contact => contact.subscribe({eventName: subject, autoRenewal: true, handler: data => wrapper.handleReply(data)}));
       if (subject === openOnReceive) {
@@ -353,6 +353,7 @@ export class Marker { // A wrapper around L.marker
     }
     this.needsRedisplay = true;
     this.ensureContent();
+    delay(100).then(() => this.marker.getPopup().update());
   }
   showNotification({issuedTime, body = '', act = this.act, tag = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
     if (act == usertag || !notificationsAllowed()) return;
