@@ -67,7 +67,11 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   app.use(express.json());
   const portalServer = await import('@yz-social/kdht/router');
 
-  app.use('/images', express.static(path.join(__dirname, 'public/images'), {maxAge: '1d', immutable: true}));
+  app.use('/images', express.static(path.join(__dirname, 'public/images'), {
+    maxAge: '1d',
+    etag: true,
+    immutable: true
+  }));
   app.use(express.static(path.join(__dirname, 'public')));
   app.use('/', Yz.router);
   app.use('/kdht', portalServer.router);
