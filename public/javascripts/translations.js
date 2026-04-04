@@ -40,6 +40,14 @@ const translations = {
   ['This browser does not support sharing.']: {es: "Este navegador no admite la función de compartir."},
   ['This browser does not support file sharing.']: {es: "Este navegador no admite el intercambio de archivos."},
   ['This browser does not support sharing this type of file.']: {es: "Este navegador no admite compartir este tipo de archivo."},
+
+  ['does not support notifications on WebViews embedded in other programs. Please use CivilDefense.io in native']: {es: "no admite notificaciones en WebViews integrados en otros programas. Por favor, utilice CivilDefense.io en el navegador nativo"},
+  ['Apple only supports mobile notifications for web pages that have been']: {es: "Apple solo admite notificaciones móviles para páginas web que hayan sido"},
+  ['installed to the home screen']: {es: "instaladoi en la pantalla de inicio"},
+  ['Enable notifications']: {es: "Habilitar notificaciones"},
+  ['Allow notifications']: {es: "Permitir notificaciones"},
+  ['Permissions can be re-enabled through']: {es: "Los permisos se pueden volver a habilitar a través de"},
+  ['browser site settings']: {es: "configuración del sitio en el navegador"},
   
   ['#aboutReport']: {en: "Report immediate concerns to the public by tapping their location on the map.", es: "Informa de cualquier problema inmediato al público pulsando su ubicación en el mapa."},
   ['#aboutShared']: {en: "These locations are shared over anonymous p2p with other users in your area.", es: "Estas ubicaciones se comparten a través de redes P2P anónimas con otros usuarios de tu zona."},

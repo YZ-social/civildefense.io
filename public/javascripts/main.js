@@ -53,30 +53,30 @@ function noteNotificationPermission(permission) {
   if (isWebView()) {
     showNotifications.indeterminate = true;
     showNotifications.toggleAttribute('disabled', true);
-    showNotificationsLabel.innerHTML = `${mobilePlatformName()} does not support notifications on WebViews embedded in other programs. Please use CivilDefense.io in native ${mobileBrowserName}.`;
+    showNotificationsLabel.innerHTML = `${mobilePlatformName()} ${Int`does not support notifications on WebViews embedded in other programs. Please use CivilDefense.io in native`} ${mobileBrowserName}.`;
     return;
   }
   if (isMobile() && isApple() && !isStandalone()) {
     showNotifications.indeterminate = true;
     showNotifications.toggleAttribute('disabled', true);
-    showNotificationsLabel.innerHTML = `Apple only supports mobile notifications for web pages that have been <a href="https://www.google.com/search?q=iphone+install+web+page+to+home+screen" target="yz.sidebar">installed to the home screen</a>.`;
+    showNotificationsLabel.innerHTML = `${Int`Apple only supports mobile notifications for web pages that have been`} <a href="https://www.google.com/search?q=iphone+install+web+page+to+home+screen" target="yz.sidebar">${Int`installed to the home screen`}</a>.`;
     return;
   }
   switch (permission) {
   case 'default':
     showNotifications.indeterminate = true;
     showNotifications.toggleAttribute('disabled', false);
-    showNotificationsLabel.innerHTML = `Enable notifications`;
+    showNotificationsLabel.innerHTML = Int`Enable notifications`;
     break;
   case 'granted':
     showNotifications.checked = !disabledNotifications();
     showNotifications.toggleAttribute('disabled', false);
-    showNotificationsLabel.innerHTML = `Allow notifications`;
+    showNotificationsLabel.innerHTML = Int`Allow notifications`;
     break;
   default:
     showNotifications.checked = false;
     showNotifications.toggleAttribute('disabled', true);
-    showNotificationsLabel.innerHTML = `Permissions can be re-enabled through <a href="https://www.google.com/search?q=open+site+settings+${browserName() || `"${navigator.userAgent}"`}" target="yz.sidebar">browser site settings</a>.`;
+    showNotificationsLabel.innerHTML = `${Int`Permissions can be re-enabled through`} <a href="https://www.google.com/search?q=open+site+settings+${browserName() || `"${navigator.userAgent}"`}" target="yz.sidebar">${Int`browser site settings`}</a>.`;
     break;
   }
 }
