@@ -2,6 +2,7 @@ const { jdenticon, domtoimage, localStorage, URL, URLSearchParams, FileReader, F
 import * as L from 'leaflet';
 import { v4 as uuidv4 } from 'uuid';
 import { s2 } from 's2js';
+import { minidenticonSvg } from 'minidenticons';
 import { Node } from '@yz-social/kdht';
 import { Int } from './translations.js';
 import { networkPromise, resetInactivityTimer, delay, notificationsAllowed } from './main.js';

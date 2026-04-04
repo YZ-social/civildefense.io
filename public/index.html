@@ -13,10 +13,11 @@
     <script type="importmap">
       {
         "imports": {
-	  "leaflet": "./leaflet/leaflet-src.esm.js",
           "uuid": "https://unpkg.com/uuid@13.0.0/dist/index.js",
           "s2js": "https://esm.sh/s2js",
           "@material/web/": "https://esm.run/@material/web/",
+	  "leaflet": "./leaflet/leaflet-src.esm.js",
+	  "minidenticons": "./minidenticons/minidenticons.min.js",
           "@yz-social/kdht": "./kdht/index.js",
           "@yz-social/webrtc": "./webrtc/index.js"
         }
@@ -28,7 +29,6 @@
       document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
     </script>
     <script type="module">
-      import { minidenticonSvg } from "https://cdn.jsdelivr.net/npm/minidenticons@4.2.1/minidenticons.min.js";
     </script>
     <script src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
     <script src="https://unpkg.com/dom-to-image@2.6.0/dist/dom-to-image.min.js"></script>

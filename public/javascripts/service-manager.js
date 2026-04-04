@@ -84,13 +84,15 @@ async function cacheSource(version) { // Cache source in the given version.
     "kdht/nodes/nodePubSub.js",
     "kdht/nodes/node.js",
 
+    "webrtc/index.js",
+
     "leaflet/leaflet.css",
     "leaflet/leaflet-src.esm.js",
     "leaflet/images/marker-icon.png",
     "leaflet/images/marker-icon-2x.png",
     "leaflet/images/marker-shadow.png",
 
-    "webrtc/index.js",
+    "minidenticons/minidenticons.min.js"
 
     // TODO: the libraries
   ].map(name => new Request(name, {cache: 'no-store'}))); // Might not be necessary, but if any browsers insist on their own caching...
