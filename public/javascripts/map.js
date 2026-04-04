@@ -1,4 +1,5 @@
-const { L, jdenticon, domtoimage, localStorage, URL, URLSearchParams, FileReader, File } = globalThis; // Leaflet namespace, for linters.
+const { jdenticon, domtoimage, localStorage, URL, URLSearchParams, FileReader, File } = globalThis; // Leaflet namespace, for linters.
+import * as L from 'leaflet';
 import { v4 as uuidv4 } from 'uuid';
 import { s2 } from 's2js';
 import { Node } from '@yz-social/kdht';

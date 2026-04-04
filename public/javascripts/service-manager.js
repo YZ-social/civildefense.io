@@ -58,7 +58,7 @@ async function cacheSource(version) { // Cache source in the given version.
 
     "stylesheets/style.css",
 
-    "images/qr.svg",
+    "images/qr-scan.svg",
     "images/share.svg",
     "images/recenter.svg",
     "images/civil-defense-122.png",
@@ -83,6 +83,12 @@ async function cacheSource(version) { // Cache source in the given version.
     "kdht/nodes/nodeProbe.js",
     "kdht/nodes/nodePubSub.js",
     "kdht/nodes/node.js",
+
+    "leaflet/leaflet.css",
+    "leaflet/leaflet-src.esm.js",
+    "leaflet/images/marker-icon.png",
+    "leaflet/images/marker-icon-2x.png",
+    "leaflet/images/marker-shadow.png",
 
     "webrtc/index.js",
 
