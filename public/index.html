@@ -40,14 +40,14 @@
       <img src="images/civil-defense-240.png" alt="civildefense" class="about-image">
     </div>
 
-    <div id="subPopoverControls">
-      <div class="about-container">
-	<div class="about-text">About</div>
-	<button id="aboutButton" class="about-button">
-          <img src="images/civil-defense-240.png" alt="civildefense" class="about-image"></img>
-	</button>
-      </div>
+    <div id="subPopoverControls"> <!-- Our control, that appear within the map and the marker popups in stack order -->
+
+      <button id="aboutButton" class="about-button">
+        <img src="images/civil-defense-240.png" alt="civildefense" class="about-image"></img>
+      </button>
+
       <div id="info" class="info-banner loading"></div>
+
       <div class="button-container">
 	<button id="qrButton">
           <img src="images/qr-scan.svg" alt="qr code" class="button-image">
@@ -59,15 +59,16 @@
           <img src="images/recenter.svg" alt="recenter on position" class="button-image">
 	</button>
       </div>
+
       <md-chip-set class="watching-hashtags"></md-chip-set>
     </div>
 
-    <div id="qrDisplayContainer" class="hidden">
-      <div id="qrDisplay"></div>
+    <div id="qrContainer" class="hidden">
+      <div class="display-content"></div>
     </div>
 
-    <div id="aboutContent" class="hidden">
-      <div class="about-display">
+    <div id="aboutContainer" class="hidden">
+      <div class="display-content">
         <h1>Civil Defense.io</h1>
         <div class="source-updates">
           <md-elevated-button id="checkForUpdates"></md-elevated-button>
@@ -96,8 +97,9 @@
         <p><small><span id="version">Version</span> <span id="appVersion"></span></small></p>
       </div>
     </div>
+
     <div id="uploadAvailable" class="hidden">
-      <div class="about-display">
+      <div class="display-content">
         <h1 id="newVersionHeader">New version available</h1>
 	<p id="updateNowQuestion"></p>
 	<p id="updateReload"></p>

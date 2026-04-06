@@ -1,5 +1,6 @@
 const { Request, Response, URL, localStorage, BroadcastChannel, appVersion } = globalThis;
 import { resetInactivityTimer } from './main.js';
+import { openDisplay } from './display.js';
 import { go } from './map.js';
 import { Int } from './translations.js';
 
@@ -49,6 +50,7 @@ async function cacheSource(version) { // Cache source in the given version.
     "manifest.json",
 
     "javascripts/main.js",
+    "javascripts/display.js",
     "javascripts/map.js",
     "javascripts/hashtags.js",
     "javascripts/s2.js",
@@ -120,7 +122,6 @@ const checkButton = document.getElementById('checkForUpdates');
 const updateText = document.getElementById('updateStatus');
 const downloadButton = document.getElementById('downloadUpdates');
 const downloadButton2 = document.getElementById('downloadUpdates2');
-const dialog = document.getElementById('uploadAvailable');
 const newVersionAvailableKey = 'newVersionAvailable';
 
 function newVersionAvailable() {
@@ -129,11 +130,7 @@ function newVersionAvailable() {
   checkButton.classList.toggle('hidden', true);
   downloadButton.classList.toggle('hidden', false);
   updateText.textContent = `Update available.`;
-  dialog.classList.toggle('hidden', false);
-  dialog.onclick = () => {
-    resetInactivityTimer();
-    dialog.classList.toggle('hidden', true);
-  };
+  openDisplay('uploadAvailable');
 }
 
 // First time or after clearing cache, cache latest version of app.

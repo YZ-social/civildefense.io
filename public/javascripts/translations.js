@@ -7,7 +7,6 @@ export function Int([string]) { // A tagged template function that converts to l
 }
 
 const translations = {
-  About: {es: "Acerca de"},
   ['Your Location']: {es: "Tu Ubicación"},
   ['Tap anywhere to mark a concern. Markers fade after 24 hours.']: {es: "Toca cualquier punto para marcar una preocupación. Los marcadores desaparecen después de 24 horas."},
 

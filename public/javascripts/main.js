@@ -1,4 +1,5 @@
 import { Int } from './translations.js';
+import { openDisplay } from './display.js';
 import { NetworkClass } from './pubSub.js';
 import { getPointInCell } from './s2.js';
 import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
@@ -43,7 +44,6 @@ function browserName() {
   return '';
 }
 
-var aboutContent = document.getElementById('aboutContent');
 var showNotifications = document.getElementById('showNotifications');
 var showNotificationsLabel = document.getElementById('showNotificationsLabel');
 function disabledNotifications() { return localStorage.getItem('disabledNotifications'); }
@@ -80,13 +80,6 @@ function noteNotificationPermission(permission) {
     break;
   }
 }
-document.getElementById('aboutButton').onclick = event => { // open about
-  resetInactivityTimer();
-  event.stopPropagation();
-  Marker.closePopup();
-  aboutContent.classList.toggle('hidden', false);
-  noteNotificationPermission(window.Notification?.permission);
-};
 showNotifications.parentElement.onclick = event => {
   resetInactivityTimer();
   event.stopPropagation();
@@ -98,42 +91,39 @@ showNotifications.onchange = () => {
     window.Notification?.requestPermission().then(noteNotificationPermission);
   }
 };
-aboutContent.onclick = () => { // dismiss about
-  resetInactivityTimer();
-  aboutContent.classList.toggle('hidden', true);
+
+document.getElementById('aboutButton').onclick = event => { // open about
+  Marker.closePopup();
+  openDisplay('aboutContainer', event);
+  noteNotificationPermission(window.Notification?.permission);
 };
 
-var qrDisplayContainer = document.getElementById('qrDisplayContainer');
-var qrDisplay = document.getElementById('qrDisplay');
 document.getElementById('qrButton').onclick = event => { // generate (and display) qr code on-demand (in case url changes)
-  event.stopPropagation();
-  resetInactivityTimer();
+  const content = openDisplay('qrContainer', event, '');
   const qr = new QRCodeStyling({
     width: 300,
     height: 300,
+    margin: 0,
     type: "svg",
     data: getShareableURL().href,
     dotsOptions: {
       color: "#0A2E7C",
       type: "rounded"
     },
+    cornersSquareOptions: {type: "dot"},
+    cornersDotOptions: {type: "dot"},
     backgroundOptions: {
-      color: "#e9ebee",
+      color: "white",
     },
     image: "images/civil-defense-240.png",
     imageOptions: {
       crossOrigin: "anonymous",
-      margin: 10
+      margin:2
     }
   });
-  qrDisplay.innerHTML = '';
-  qr.append(qrDisplay);
-  qrDisplayContainer.classList.toggle('hidden', false);
+  qr.append(content);
 }
-qrDisplayContainer.onclick = event => {
-  resetInactivityTimer();
-  qrDisplayContainer.classList.toggle('hidden', true);
-}
+
 document.getElementById('share').onclick = event => {
   event.stopPropagation();
   share({text: "CivilDefense.io", url: getShareableURL().href });
@@ -286,7 +276,6 @@ function initText(selector, content = selector) {
   const text = Int([content]);
   element.textContent = text;
 }
-initText('div.about-text', 'About');
 initText('#aboutReport');
 initText('#aboutShared');
 initText('#aboutFade');
