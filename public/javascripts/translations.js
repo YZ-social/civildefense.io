@@ -52,7 +52,7 @@ const translations = {
   ['#aboutReport']: {en: "Report immediate concerns to the public by tapping their location on the map.", es: "Informa de cualquier problema inmediato al público pulsando su ubicación en el mapa."},
   ['#aboutShared']: {en: "These locations are shared over anonymous p2p with other users in your area.", es: "Estas ubicaciones se comparten a través de redes P2P anónimas con otros usuarios de tu zona."},
   ['#aboutFade']: {en: "Reported concerns will fade away over 24 hours.", es: "Las preocupaciones manifestadas se disiparán en 24 horas."},
-  ['#aboutAnyone1']: {en: "A mirror of this app can be", es: "Una réplica de esta aplicación puede ser"},
+  ['#aboutAnyone1']: {en: "A connected mirror of this app can be", es: "Una réplica conectada de esta aplicación puede ser"},
   ['#aboutAnyone2']: {en: "run by anyone,", es: "administrado por cualquier persona,"},
   ['#aboutAnyone3']: {en: "in case this site is taken down.", es: "en caso de que este sitio sea dado de baja."},
   ['#learnMore']: {en: 'Learn More', es: "Más Información"},
