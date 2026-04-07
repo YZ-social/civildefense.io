@@ -248,7 +248,10 @@ export class Marker { // A wrapper around L.marker
     let content = this.formatAttribution({act, issuedTime, originalPosting, hashtag});
     content += this.formatReplies();
     popup.setContent(content);
-    this.initializeHandlers(popup);
+    delay(100).then(() => {
+      this.marker.getPopup().update();
+      this.initializeHandlers(popup);
+    });
   }
   initializeHandlers(popup) { // subtle: Leaflet pupup will recreate from last setContent string. Need to re-establish handlers.
     const popupElement = popup.getElement();
@@ -355,7 +358,6 @@ export class Marker { // A wrapper around L.marker
     }
     this.needsRedisplay = true;
     this.ensureContent();
-    delay(100).then(() => this.marker.getPopup().update());
   }
   showNotification({issuedTime, body = '', act = this.act, tag = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
     if (act == usertag || !notificationsAllowed()) return;
