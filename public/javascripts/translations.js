@@ -64,6 +64,11 @@ const translations = {
   ['#updateDefer']: {en: "Alternatively, you can update later through the button in About.", es: "Alternativamente, puede actualizar más tarde a través del botón en «Acerca de»."},
   ['#downloadUpdates2']: {en: "yes, update", es: "Sí, actualizar."},
   ['#downloadDefer']: {en: "no, not yet", es: "No, todavía no."},
-  ['No update at']: {es: "No hay actualizaciones a las"}
-};
+  ['No update at']: {es: "No hay actualizaciones a las"},
 
+  ['#describePrivate1']: {en: "Here are your private labels for"},
+  ['#describePrivate2']: {en: "to help you recognize posts from them:"},
+  ['#describePublic']: {en: "The handles that they currently share publicly:"},
+  ['#describeSystem']: {en: "The internal system handles for this person:"},
+  ['#yourOptional']: {en: "Your optional"}
+};

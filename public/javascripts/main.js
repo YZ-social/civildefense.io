@@ -1,10 +1,11 @@
+const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, URL, Notification, appVersion } = globalThis; // For linters.
 import { Int } from './translations.js';
 import { openDisplay } from './display.js';
+import { Agent} from './agent.js';
 import { NetworkClass } from './pubSub.js';
 import { getPointInCell } from './s2.js';
 import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
 import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
-const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, URL, Notification, appVersion } = globalThis; // For linters.
 globalThis.getShareableURL = getShareableURL; // for development.
 
 document.getElementById('appVersion').textContent = appVersion;
@@ -92,10 +93,13 @@ showNotifications.onchange = () => {
   }
 };
 
-document.getElementById('aboutButton').onclick = event => { // open about
-  Marker.closePopup();
+export function openAbout(event) {
   openDisplay('aboutContainer', event);
   noteNotificationPermission(window.Notification?.permission);
+}
+document.getElementById('aboutButton').onclick = event => { // open about
+  Marker.closePopup();
+  openAbout(event);
 };
 
 document.getElementById('qrButton').onclick = event => { // generate (and display) qr code on-demand (in case url changes)
@@ -122,7 +126,11 @@ document.getElementById('qrButton').onclick = event => { // generate (and displa
     }
   });
   qr.append(content);
-}
+};
+document.querySelector('#correspondentContainer md-outlined-text-field').onclick = event => {
+  resetInactivityTimer();
+  event.stopPropagation();
+};
 
 document.getElementById('share').onclick = event => {
   event.stopPropagation();
@@ -292,6 +300,11 @@ initText('#updateReload');
 initText('#updateDefer');
 initText('#downloadUpdates2');
 initText('#downloadDefer');
+initText('#describePrivate1');
+initText('#describePrivate2');
+initText('#describePublic');
+initText('#describeSystem');
+initText('#yourOptional');
 
 initialize(false);
 document.querySelector('head > title').innerHTML = `CivilDefense @${location.hostname}`;

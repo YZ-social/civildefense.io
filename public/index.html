@@ -81,6 +81,11 @@
 	    <span id="showNotificationsLabel"></span>
 	  </label>
 	</div>
+	<div>
+	  <span id="yourOptional"></span>
+	  <md-outlined-text-field id="myHandle"></md-outlined-text-field>
+	  <md-outlined-icon-button id="myAvatar"></md-outlined-icon-button>
+	</div>
           <ul>
             <li id="aboutReport"></li>
             <li id="aboutShared"></li>
@@ -98,7 +103,40 @@
       </div>
     </div>
 
-    <div id="uploadAvailable" class="hidden">
+    <div id="correspondentContainer" class="hidden">
+      <div class="display-content">
+	<div class="private-label">
+	  <div class="describe">
+	    <span id="describePrivate1"></span>
+	    <span class="handle"></span>
+	    <md-icon class="avatar"></md-icon>
+	    <span id="describePrivate2"></span>
+	  </div>
+	  <md-outlined-text-field label="handle"></md-outlined-text-field>
+	  <md-outlined-icon-button></md-outlined-icon-button>
+	</div>
+	<div>
+	  You can pick the labels you like, or securely capture any of the following.
+	</div>
+	<div class="public-label">
+	  <div id="describePublic" class="describe"></div>
+	  <md-outlined-button></md-outlined-button>
+	  <md-outlined-icon-button><img></img></md-outlined-icon-button>
+	</div>
+	<div class="system-label">
+	  <div id="describeSystem" class="describe"></div>
+	  <md-outlined-button></md-outlined-button>
+	  <md-outlined-icon-button><md-icon><minidenticon-svg></minidenticon-svg></md-icon></md-outlined-icon-button>
+	</div>
+	<input type="file" accept="image/*"></input>
+	<div>
+	  <md-text-button id="correspondentCancel">Cancel</md-text-button>
+	  <md-text-button id="correspondentOK">OK</md-text-button>
+	</div>
+      </div>
+    </div>
+
+    <div id="updateContainer" class="hidden">
       <div class="display-content">
         <h1 id="newVersionHeader">New version available</h1>
 	<p id="updateNowQuestion"></p>

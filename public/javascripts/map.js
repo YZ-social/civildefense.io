@@ -1,11 +1,12 @@
-const { jdenticon, domtoimage, localStorage, URL, URLSearchParams, FileReader, File } = globalThis; // Leaflet namespace, for linters.
+const { domtoimage, localStorage, URL, URLSearchParams } = globalThis;
 import * as L from 'leaflet';
 import { v4 as uuidv4 } from 'uuid';
 import { s2 } from 's2js';
-import { minidenticonSvg } from 'minidenticons';
 import { Node } from '@yz-social/kdht';
 import { Int } from './translations.js';
-import { networkPromise, resetInactivityTimer, delay, notificationsAllowed } from './main.js';
+import { consume, openDisplay, file2dataURL, dataURL2file } from './display.js';
+import { Agent, usertag} from './agent.js';
+import { networkPromise, resetInactivityTimer, delay, notificationsAllowed, openAbout } from './main.js';
 import { Hashtags } from './hashtags.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 
@@ -31,11 +32,6 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   }
 }
 
-async function dataURL2file(url, name) {
-  const res = await fetch(url);
-  const blob = await res.blob();
-  return new File([blob], name, {type: blob.type});
-}
 export async function share(properties) {  // Invoke platform share API on properties.
   if (!navigator.share) {
     showMessage(navigator.userAgent.includes('Firefox') ? Int`In Firefox, sharing must be explicitly enabled through the <a target="civildefense_help" href="https://developer.mozilla.org/en-US/docs/Mozilla/Firefox/Experimental_features#webshare_api">dom.webshare.enabled</a> preference in about:config.` : Int`This browser does not support sharing.`);
@@ -69,9 +65,6 @@ export async function share(properties) {  // Invoke platform share API on prope
   navigator.share({title: "CivilDefense.io", ...properties})
     .catch(error => { if (!['AbortError', 'InvalidStateError'].includes(error.name)) throw error; });
 }
-
-const usertag = localStorage.getItem('usertag') || uuidv4();
-localStorage.setItem('usertag', usertag);
 
 function makeEventName(cell, hash) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
   return `s2:${cell}:${Hashtags.canonicalTag(hash)}`;
@@ -245,6 +238,7 @@ export class Marker { // A wrapper around L.marker
     }
     this.needsRedisplay = false;
     const {issuedTime, originalPosting, hashtag, act}  = this;
+    this.clearAvatars(popup);
     let content = this.formatAttribution({act, issuedTime, originalPosting, hashtag});
     content += this.formatReplies();
     popup.setContent(content);
@@ -252,6 +246,10 @@ export class Marker { // A wrapper around L.marker
       this.marker.getPopup().update();
       this.initializeHandlers(popup);
     });
+  }
+  clearAvatars(popup = this.marker.getPopup()) {
+    popup.getElement().querySelectorAll('.correspondent [data-tag]')
+      .forEach(icon => Agent.ensure(icon.dataset.tag).removeElement(icon, 'mixed', 'avatar'));
   }
   initializeHandlers(popup) { // subtle: Leaflet pupup will recreate from last setContent string. Need to re-establish handlers.
     const popupElement = popup.getElement();
@@ -269,9 +267,19 @@ export class Marker { // A wrapper around L.marker
       filenameDisplay.textContent = fileChooser.files.length ? (fileChooser.files[0].name || 'image') : '';
     };
     this.initChangeHashtag(popupElement);
-    for (const deleter of popupElement.querySelectorAll('.reply .attribution md-outlined-button')) {
+    for (const correspondent of popupElement.querySelectorAll('.correspondent')) {
+      const icon = correspondent.firstElementChild;
+      const tag = icon.dataset.tag;
+      const agent = Agent.ensure(tag);
+      agent.addElement(icon, 'mixed', 'avatar');
+      correspondent.onclick = event => {
+	if (tag === usertag) openAbout(event);
+	else agent.describe(event);
+      };
+    }
+    for (const deleter of popupElement.querySelectorAll('.reply .attribution > div:last-child md-outlined-icon-button')) {
       deleter.onclick = event => { // Delete reply.
-	event.stopPropagation();
+	consume(event);
 	this.deleteReply(event.currentTarget.closest('.reply'));
       };
     }
@@ -284,10 +292,9 @@ export class Marker { // A wrapper around L.marker
     const menu = document.getElementById('popoverMenu');
     menu.anchorElement = changeHashtag;
     changeHashtag.onclick = event => {
-      resetInactivityTimer();
-      event.stopPropagation();
+      consume(event);
       menu.open = !menu.open;
-      menu.onclick = event => event.stopPropagation(); // Must be onlick rather than addEventListener.
+      menu.onclick = consume; // Must be onlick rather than addEventListener.
       const handler = event => {
 	menu.removeEventListener('close-menu', handler);
 	this.updatePost(event.detail.initiator.dataset.tag);
@@ -313,18 +320,18 @@ export class Marker { // A wrapper around L.marker
   }
   formatAttributionActions({act, hashtag}) { // Anser div HTML containing: [deleter] sharer [hashtag]
     // Where deletere appears if it our reply (no hashtag), and hashtag if present is a button if ours (and otherwise just text).
-    const deleter = !hashtag && act === usertag ? `<md-outlined-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-button>` : '';
+    const deleter = !hashtag && act === usertag ? `<md-outlined-icon-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-icon-button>` : '';
     const pubtag = hashtag ? this.constructor.formatAttributionHashtag(act, hashtag) : '';
     return `<div>${deleter} ${pubtag}</div>`;
   }
   formatAttribution({act, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/[deleter]+sharer+[hashtag]
-    const sharer = `<md-outlined-button class="share"><md-icon class="material-icons">ios_share</md-icon></md-outlined-button>`;
+    const sharer = `<md-outlined-icon-button class="share"><md-icon class="material-icons">ios_share</md-icon></md-outlined-icon-button>`;
     const actions = this.formatAttributionActions({act, hashtag});
     const dataText = hashtag ? 'data-text=""' : ''; // Used in sharing.
     return `
 <div class="attribution" ${dataText}>
   ${sharer}
-  <minidenticon-svg username="${act}"></minidenticon-svg>
+  <md-outlined-icon-button class="correspondent"><md-icon data-tag="${act}"></md-icon></md-outlined-icon-button>
   <div class="times">
     <div>${new Date(originalPosting || issuedTime).toLocaleString()}</div>
     ${originalPosting ? `<div>${Int`updated`} ${new Date(issuedTime).toLocaleString()}</div>` : ''}
@@ -379,20 +386,27 @@ export class Marker { // A wrapper around L.marker
     let payload = inputElement.value.trim();
     const files = inputElement.parentElement.querySelector('input[type="file"]').files;
     if (files.length) {
-      await new Promise(resolve => {
-	const reader = new FileReader();
-	reader.onerror = () => resolve(showMessage(reader.error.message || reader.error.name || "Error reading attachment"));
-	reader.onload = () => {
-	  payload = {message: payload, file: reader.result, name: files[0].name};
-	  resolve();
-	};
-	reader.readAsDataURL(files[0]);
-      });
+      payload = {message: payload, file: await file2dataURL(files[0]), name: files[0].name};
     }
+    if (!payload) return;
     inputElement.value = '';
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
-    if (!payload) return;
-    networkPromise.then(contact => contact.publish({eventName, payload, subject: uuidv4(), act: usertag}));
+    networkPromise.then(async contact => {
+      contact.publish({eventName, payload, subject: uuidv4(), act: usertag});
+      // Extend the expiration of the original event, and of the public handle/avatar of all in the conversation.
+      // this is done by republishing with no payload.
+      const {lat, lng, subject, hashtag} = this;
+      const cells = getContainingCells(lat, lng);
+      for (const cell of cells) {
+	const eventName = `s2:${cell}:${hashtag}`;
+	await contact.publish({eventName, subject, hashtag});
+      }
+      for (const reply of this.replies) {
+	const eventName = Agent.networkPersistKey(reply.act);
+	await contact.publish({eventName, subject: 'handle'});
+	await contact.publish({eventName, subject: 'avatar'});
+      }
+    });
   }
   deleteReply(replyElement) {
     resetInactivityTimer();
@@ -462,6 +476,7 @@ export class Marker { // A wrapper around L.marker
   }
   destroy() { // Remove this Marker pin entirely.
     clearInterval(this.fader);
+    this.clearAvatars();
     // Unsubscribe from replies.
     networkPromise?.then(async contact => contact.subscribe({eventName: this.subject, handler: null}));
     this.marker.removeFrom(map);
@@ -521,8 +536,7 @@ export function updateLocation(lat, lng, zoom) { // initMap if necessary, and se
 }
 
 export function recenterMap(event) {
-  event.stopPropagation();
-  resetInactivityTimer();
+  consume(event);
   Marker.closePopup();
   const latLng = [lastLatitude, lastLongitude];
   map.flyTo(latLng);
@@ -606,4 +620,3 @@ export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial m
 
   showMessage(Int`Tap anywhere to mark a concern. Markers fade after 24 hours.`, 'instructions');
 }
-

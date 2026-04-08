@@ -130,7 +130,7 @@ function newVersionAvailable() {
   checkButton.classList.toggle('hidden', true);
   downloadButton.classList.toggle('hidden', false);
   updateText.textContent = `Update available.`;
-  openDisplay('uploadAvailable');
+  openDisplay('updateContainer');
 }
 
 // First time or after clearing cache, cache latest version of app.
