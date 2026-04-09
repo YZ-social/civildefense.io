@@ -248,7 +248,7 @@ export class Marker { // A wrapper around L.marker
     });
   }
   clearAvatars(popup = this.marker.getPopup()) {
-    popup.getElement().querySelectorAll('.correspondent [data-tag]')
+    popup.getElement().querySelectorAll('.correspondent[data-tag]')
       .forEach(icon => Agent.ensure(icon.dataset.tag).removeElement(icon, 'mixed', 'avatar'));
   }
   initializeHandlers(popup) { // subtle: Leaflet pupup will recreate from last setContent string. Need to re-establish handlers.
@@ -268,7 +268,7 @@ export class Marker { // A wrapper around L.marker
     };
     this.initChangeHashtag(popupElement);
     for (const correspondent of popupElement.querySelectorAll('.correspondent')) {
-      const icon = correspondent.firstElementChild;
+      const icon = correspondent;
       const tag = icon.dataset.tag;
       const agent = Agent.ensure(tag);
       agent.addElement(icon, 'mixed', 'avatar');
@@ -331,7 +331,7 @@ export class Marker { // A wrapper around L.marker
     return `
 <div class="attribution" ${dataText}>
   ${sharer}
-  <md-outlined-icon-button class="correspondent"><md-icon data-tag="${act}"></md-icon></md-outlined-icon-button>
+  <md-outlined-icon-button class="correspondent" data-tag="${act}"></md-outlined-icon-button>
   <div class="times">
     <div>${new Date(originalPosting || issuedTime).toLocaleString()}</div>
     ${originalPosting ? `<div>${Int`updated`} ${new Date(issuedTime).toLocaleString()}</div>` : ''}

@@ -195,6 +195,11 @@ md-filter-chip {
 md-filter-chip minidenticon-svg {
     background: white;
 }
+md-outlined-icon-button minidenticon-svg, md-outlined-icon-button img {
+    height: 40px;
+    width: 40px;
+    border-radius: 12px;
+}
 .alert span minidenticon-svg {
     display: inline-block;
     height: 20px;

@@ -99,7 +99,7 @@ export class Agent {
     return `<img src="${url}"></img>`;
   }
   static makeIdenticon(tag) {
-    return `<md-icon><minidenticon-svg username="${tag}"></minidenticon-svg></md-icon>`;
+    return `<minidenticon-svg username="${tag}"></minidenticon-svg>`;
   }
 
   // Track elements to be updated when something changes.
