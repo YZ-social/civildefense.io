@@ -66,9 +66,10 @@ const translations = {
   ['#downloadDefer']: {en: "no, not yet", es: "No, todavía no."},
   ['No update at']: {es: "No hay actualizaciones a las"},
 
-  ['#describePrivate1']: {en: "Here are your private labels for"},
-  ['#describePrivate2']: {en: "to help you recognize posts from them:"},
-  ['#describePublic']: {en: "The handles that they currently share publicly:"},
-  ['#describeSystem']: {en: "The internal system handles for this person:"},
-  ['#yourOptional']: {en: "Your optional"}
+  ['#describePrivate1']: {en: "Here are your private labels for", es: "Aquí están sus etiquetas privadas para"},
+  ['#describePrivate2']: {en: "to help you recognize posts from them:", es: "Para ayudarte a reconocer publicaciones de ellas:"},
+  ['#describePublic']: {en: "The handles that they currently share publicly:", es: "Los nombres de usuario que comparten públicamente en la actualidad:"},
+  ['#describeSystem']: {en: "The internal system handles for this person:", es: "El sistema interno gestiona lo siguiente para esta persona:"},
+  ['#yourOptional']: {en: "Your optional", es: "Tu opcional"},
+  ['handle']: {es: "el título"}
 };

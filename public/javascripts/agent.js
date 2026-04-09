@@ -126,6 +126,7 @@ export class Agent {
     const publicAvatar = content.querySelector('.public-label md-outlined-icon-button');
     const privateAvatar = content.querySelector('.private-label md-outlined-icon-button');
     const fileChooser = content.querySelector('input[type="file"]');
+    privateHandle.label = Int`handle`;
     const ok = document.getElementById('correspondentOK');
     const cancel = document.getElementById('correspondentCancel');
     const oldPrivateHandle = this.getValue('private', 'handle');
@@ -194,42 +195,42 @@ export class Agent {
       content.parentElement.classList.toggle('hidden', true);
     };
   }
+  static initialize() { // Initialize what the agent needs from the about screen
+    localStorage.setItem('usertag', usertag);
+    const myAgent = Agent.ensure(usertag);
+    myAgent.updateFromLocal('public', 'handle');
+    myAgent.updateFromLocal('public', 'avatar');
+    const myHandle = document.getElementById('myHandle');
+    const myAvatar = document.getElementById('myAvatar');
+    myAgent.addElement(myHandle, 'public', 'handle');
+    myAgent.addElement(myAvatar, 'mixed', 'avatar'); // display the mixed result
+    myHandle.label = Int`handle`;
+    myHandle.onclick = consume;
+    myHandle.onchange = event => {
+      resetInactivityTimer();
+      const value = myHandle.value || null;
+      myAgent.updateValue(value, 'public', 'handle');
+      myAgent.persistPrivate(value, 'handle'); // So that we'll have it next session.
+    };
+    myAvatar.onclick = event => {
+      consume(event);
+      const fileChooser = document.getElementById('correspondentContainer').querySelector('input[type="file"]');
+      resetInactivityTimer();
+      fileChooser.oncancel = event => {
+	resetInactivityTimer();
+	myAgent.updateValue(null, 'public', 'avatar');
+	myAgent.persistPrivate(null, 'avatar'); // So that we'll have it next session.
+      };
+      fileChooser.onchange = async event => {
+	resetInactivityTimer();
+	if (!fileChooser.files.length) return;
+	const url = await file2dataURL(fileChooser.files[0]);
+	myAgent.updateValue(url, 'public', 'avatar');
+	myAgent.persistPrivate(url, 'avatar'); // So that we'll have it next session.
+      };
+      fileChooser.click();
+    };
+  }
 }
 
 export const usertag = localStorage.getItem('usertag') || uuidv4();
-window.addEventListener('load', () => {
-  localStorage.setItem('usertag', usertag);
-  const myAgent = Agent.ensure(usertag);
-  myAgent.updateFromLocal('public', 'handle');
-  myAgent.updateFromLocal('public', 'avatar');
-  const myHandle = document.getElementById('myHandle');
-  const myAvatar = document.getElementById('myAvatar');
-  myAgent.addElement(myHandle, 'public', 'handle');
-  myAgent.addElement(myAvatar, 'mixed', 'avatar'); // display the mixed result
-  myHandle.placeholder = Int`handle`;
-  myHandle.onclick = consume;
-  myHandle.onchange = event => {
-    resetInactivityTimer();
-    const value = myHandle.value || null;
-    myAgent.updateValue(value, 'public', 'handle');
-    myAgent.persistPrivate(value, 'handle'); // So that we'll have it next session.
-  };
-  myAvatar.onclick = event => {
-    consume(event);
-    const fileChooser = document.getElementById('correspondentContainer').querySelector('input[type="file"]');
-    resetInactivityTimer();
-    fileChooser.oncancel = event => {
-      resetInactivityTimer();
-      myAgent.updateValue(null, 'public', 'avatar');
-      myAgent.persistPrivate(null, 'handle'); // So that we'll have it next session.      
-    };
-    fileChooser.onchange = async event => {
-      resetInactivityTimer();
-      if (!fileChooser.files.length) return;
-      const url = await file2dataURL(fileChooser.files[0]);
-      myAgent.updateValue(url, 'public', 'avatar');
-      myAgent.persistPrivate(url, 'handle'); // So that we'll have it next session.            
-    };
-    fileChooser.click();
-  };
-});
