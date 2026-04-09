@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { s2 } from 's2js';
 import { Node } from '@yz-social/kdht';
 import { Int } from './translations.js';
-import { consume, openDisplay, file2dataURL, dataURL2file } from './display.js';
+import { consume, openDisplay, file2dataURL, dataURL2file, downsampledFile2dataURL } from './display.js';
 import { Agent, usertag} from './agent.js';
 import { networkPromise, resetInactivityTimer, delay, notificationsAllowed, openAbout } from './main.js';
 import { Hashtags } from './hashtags.js';
@@ -386,7 +386,7 @@ export class Marker { // A wrapper around L.marker
     let payload = inputElement.value.trim();
     const files = inputElement.parentElement.querySelector('input[type="file"]').files;
     if (files.length) {
-      payload = {message: payload, file: await file2dataURL(files[0]), name: files[0].name};
+      payload = {message: payload, file: await downsampledFile2dataURL(files[0]), name: files[0].name};
     }
     if (!payload) return;
     inputElement.value = '';

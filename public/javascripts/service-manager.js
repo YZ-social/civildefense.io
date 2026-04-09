@@ -94,6 +94,7 @@ async function cacheSource(version) { // Cache source in the given version.
     "leaflet/images/marker-icon-2x.png",
     "leaflet/images/marker-shadow.png",
 
+    "pica/pica.min.js",
     "minidenticons/minidenticons.min.js"
 
     // TODO: the libraries

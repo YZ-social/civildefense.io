@@ -2,7 +2,7 @@ const { localStorage } = globalThis;
 import { v4 as uuidv4 } from 'uuid';
 import { minidenticonSvg } from 'minidenticons';
 import { Int } from './translations.js';
-import { consume, openDisplay, file2dataURL } from './display.js';
+import { consume, openDisplay, downsampledFile2dataURL } from './display.js';
 import { networkPromise, resetInactivityTimer } from './main.js';
 
 export class Agent {
@@ -13,8 +13,10 @@ export class Agent {
     // represent this as two types, like everything else.
     this.values.handle.system = this.values.avatar.system = tag;
     // Our private choice for this user is stored locally.
-    this.updateFromLocal('private', 'handle');
-    this.updateFromLocal('private', 'avatar');
+    // But for our own avatar, is the public choice.
+    const scope = tag == usertag ? 'public' : 'private';
+    this.updateFromLocal(scope, 'handle');
+    this.updateFromLocal(scope, 'avatar');
 
     networkPromise.then(contact => contact.subscribe({
       eventName: this.networkPersistKey(tag),
@@ -95,6 +97,7 @@ export class Agent {
   static avatar(element, value) { // Update avatar element with value.
     element.innerHTML = value === null ? '(none)' : (value.startsWith('data') ? this.makeImage(value) : Agent.makeIdenticon(value));
   }
+  static downsampleResolution = 128; // max height or width
   static makeImage(url) {
     return `<img src="${url}"></img>`;
   }
@@ -166,14 +169,15 @@ export class Agent {
     privateAvatar.onclick = event => {
       consume(event);
       fileChooser.oncancel = event => {
-	resetInactivityTimer();
+	consume(event);
 	this.updateValue(null, 'private', 'avatar');
       };
       fileChooser.onchange = async event => {
-	resetInactivityTimer();
+	consume(event);
 	if (!fileChooser.files.length) return;
-	const url = await file2dataURL(fileChooser.files[0]);
+	const url = await downsampledFile2dataURL(fileChooser.files[0], Agent.downsampleResolution);
 	this.updateValue(url, 'private', 'avatar');
+	console.log('clearing avatar selection');
       };
       fileChooser.click();
     };
@@ -198,8 +202,6 @@ export class Agent {
   static initialize() { // Initialize what the agent needs from the about screen
     localStorage.setItem('usertag', usertag);
     const myAgent = Agent.ensure(usertag);
-    myAgent.updateFromLocal('public', 'handle');
-    myAgent.updateFromLocal('public', 'avatar');
     const myHandle = document.getElementById('myHandle');
     const myAvatar = document.getElementById('myAvatar');
     myAgent.addElement(myHandle, 'public', 'handle');
@@ -215,16 +217,16 @@ export class Agent {
     myAvatar.onclick = event => {
       consume(event);
       const fileChooser = document.getElementById('correspondentContainer').querySelector('input[type="file"]');
-      resetInactivityTimer();
       fileChooser.oncancel = event => {
-	resetInactivityTimer();
+	consume(event);
 	myAgent.updateValue(null, 'public', 'avatar');
 	myAgent.persistPrivate(null, 'avatar'); // So that we'll have it next session.
+	console.log('clearing avatar selection');
       };
       fileChooser.onchange = async event => {
-	resetInactivityTimer();
+	consume(event);
 	if (!fileChooser.files.length) return;
-	const url = await file2dataURL(fileChooser.files[0]);
+	const url = await downsampledFile2dataURL(fileChooser.files[0], Agent.downsampleResolution);
 	myAgent.updateValue(url, 'public', 'avatar');
 	myAgent.persistPrivate(url, 'avatar'); // So that we'll have it next session.
       };
