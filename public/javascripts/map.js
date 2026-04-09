@@ -247,8 +247,8 @@ export class Marker { // A wrapper around L.marker
       this.initializeHandlers(popup);
     });
   }
-  clearAvatars(popup = this.marker.getPopup()) {
-    popup.getElement().querySelectorAll('.correspondent[data-tag]')
+  clearAvatars(popup = this.marker?.getPopup()) {
+    popup?.getElement()?.querySelectorAll('.correspondent[data-tag]')
       .forEach(icon => Agent.ensure(icon.dataset.tag).removeElement(icon, 'mixed', 'avatar'));
   }
   initializeHandlers(popup) { // subtle: Leaflet pupup will recreate from last setContent string. Need to re-establish handlers.
