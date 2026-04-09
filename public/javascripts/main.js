@@ -30,7 +30,7 @@ export async function resetInactivityTimer(clearMessage = true) { // if !network
   // }, INACTIVITY_SECONDS * 1e3);
 }
 
-function isWebView() { return /WebView|wv|(iPhone|iPod|iPad)(?!.*Safari)/.test(navigator.userAgent); }
+function isWebView() { return /WebView|wv|(iPhone|iPod|iPad|CriOS)(?!.*Safari)/.test(navigator.userAgent); }
 function isApple() { return navigator.platform.startsWith("Mac") || navigator.platform === "iPhone"; }
 function isMobile() { return navigator.userAgentData?.mobile || /iPhone|iPad|iPod/.test(navigator.userAgent); }
 function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches; }
@@ -99,6 +99,9 @@ showNotifications.onchange = () => {
     window.Notification?.requestPermission().then(noteNotificationPermission);
   }
 };
+// Safari never fires 'change': https://webkit.org/b/259432
+navigator.permissions.query({ name: 'notifications'})
+  .then(status => status.onchange = () => noteNotificationPermission(window.Notification?.permission));
 
 export function openAbout(event) {
   openDisplay('aboutContainer', event);
