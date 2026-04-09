@@ -17,7 +17,7 @@ export function delay(ms = 1e3) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-let inactivityTimer, reconnectCountdown, networkPromise = null;
+var inactivityTimer = null, reconnectCountdown, networkPromise = null;
 export { networkPromise };
 export async function resetInactivityTimer(clearMessage = true) { // if !network, initialize(false), else disconnect after INACTIVITY_SECONDSif not restarted
   //console.log('resetInactivityTimer, networkPromise:', networkPromise);

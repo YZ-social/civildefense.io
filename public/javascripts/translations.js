@@ -66,6 +66,7 @@ const translations = {
   ['#downloadUpdates2']: {en: "yes, update", es: "Sí, actualizar."},
   ['#downloadDefer']: {en: "no, not yet", es: "No, todavía no."},
   ['No update at']: {es: "No hay actualizaciones a las"},
+  ['Update available.']: {es: "Actualización disponible."},
 
   ['#describePrivate1']: {en: "Here are your private labels for", es: "Aquí están sus etiquetas privadas para"},
   ['#describePrivate2']: {en: "to help you recognize posts from them:", es: "Para ayudarte a reconocer publicaciones de ellas:"},

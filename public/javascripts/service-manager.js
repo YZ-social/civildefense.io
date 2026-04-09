@@ -129,7 +129,7 @@ function newVersionAvailable() {
   // and then open the popup.
   checkButton.classList.toggle('hidden', true);
   downloadButton.classList.toggle('hidden', false);
-  updateText.textContent = `Update available.`;
+  updateText.textContent = Int`Update available.`;
   openDisplay('updateContainer');
 }
 
