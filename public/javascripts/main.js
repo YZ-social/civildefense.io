@@ -34,10 +34,12 @@ function isWebView() { return /WebView|wv|(iPhone|iPod|iPad)(?!.*Safari)/.test(n
 function isApple() { return navigator.platform.startsWith("Mac") || navigator.platform === "iPhone"; }
 function isMobile() { return navigator.userAgentData?.mobile || /iPhone|iPad|iPod/.test(navigator.userAgent); }
 function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches; }
-function mobilePlatformName() { return isApple() ? 'Apple' : 'Android'; }
+function osName() { return navigator.userAgentData?.platform || navigator.platform; }
+function mobilePlatformName() { return isMobile() && (isApple() ? 'iOS' : 'Android'); }
+function mobileVendorName() { return isMobile() && (isApple() ? 'Apple' : 'Android'); }
 function mobileBrowserName() { return isApple() ? 'Safari' : 'Chrome'; }
 function browserName() {
-  if (isMobile()) return mobileBrowserName()
+  if (isMobile()) return mobileBrowserName();
   if (navigator.userAgent.includes("Firefox")) return "Firefox";
   if (navigator.userAgent.includes("Edg")) return "Edge";
   if (navigator.userAgent.includes("Chrome")) return "Chrome";
@@ -54,7 +56,7 @@ function noteNotificationPermission(permission) {
   if (isWebView()) {
     showNotifications.indeterminate = true;
     showNotifications.toggleAttribute('disabled', true);
-    showNotificationsLabel.innerHTML = `${mobilePlatformName()} ${Int`does not support notifications on WebViews embedded in other programs. Please use CivilDefense.io in native`} ${mobileBrowserName}.`;
+    showNotificationsLabel.innerHTML = `${mobileVendorName()} ${Int`does not support notifications on WebViews embedded in other programs. Please use CivilDefense.io in native`} ${mobileBrowserName}.`;
     return;
   }
   if (isMobile() && isApple() && !isStandalone()) {
@@ -77,7 +79,12 @@ function noteNotificationPermission(permission) {
   default:
     showNotifications.checked = false;
     showNotifications.toggleAttribute('disabled', true);
-    showNotificationsLabel.innerHTML = `${Int`Permissions can be re-enabled through`} <a href="https://www.google.com/search?q=open+site+settings+${browserName() || `"${navigator.userAgent}"`}" target="yz.sidebar">${Int`browser site settings`}</a>.`;
+    const isApp = isStandalone();
+    const search = isApp ?
+	  `https://www.google.com/search?q=${osName()}+open+app+settings` :
+	  `https://www.google.com/search?q=open+site+settings+${browserName() || `"${navigator.userAgent}"`}`;
+    const label = isApp ? `CivilDefense.io ${Int`app`}` : Int`browser site settings`;
+    showNotificationsLabel.innerHTML = `${Int`Permissions can be re-enabled through the`} <a href="${search}" target="yz.sidebar">${label}</a>.`;
     break;
   }
 }

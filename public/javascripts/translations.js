@@ -45,7 +45,8 @@ const translations = {
   ['installed to the home screen']: {es: "instaladoi en la pantalla de inicio"},
   ['Enable notifications']: {es: "Habilitar notificaciones"},
   ['Allow notifications']: {es: "Permitir notificaciones"},
-  ['Permissions can be re-enabled through']: {es: "Los permisos se pueden volver a habilitar a través de"},
+  ['Permissions can be re-enabled through the']: {es: "Los permisos se pueden volver a habilitar a través de"},
+  ['app']: {es: "Aplicación"},
   ['browser site settings']: {es: "configuración del sitio en el navegador"},
   
   ['#aboutReport']: {en: "Report immediate concerns to the public by tapping their location on the map.", es: "Informa de cualquier problema inmediato al público pulsando su ubicación en el mapa."},
