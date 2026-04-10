@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import process from 'node:process';
+import { exec } from 'node:child_process';
 import {cpus, availableParallelism } from 'node:os';
 import cluster from 'node:cluster';
 import path from 'node:path';
@@ -31,6 +32,11 @@ const argv = yargs(hideBin(process.argv))
 	default: '',
 	description: "The base URL of the some other portal server to which we should connect ours, if any."
       })
+      .option('announce', {
+	type: 'boolean',
+	default: false,
+	description: "Announce our availability on the DHT, so that other nodes can enter through us if their original portal goes down."
+      })
       .option('fixedSpacing', {
 	type: 'number',
 	default: 2,
@@ -44,6 +50,7 @@ const argv = yargs(hideBin(process.argv))
       .option('verbose', {
 	alias: 'v',
 	type: 'boolean',
+	default: false,
 	description: "Run with verbose logging."
       })
       .parse();
@@ -55,6 +62,22 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   process.title = 'yz.social';
   const app = express();
   app.use(logger(':date[iso] :status :method :url :res[content-length] - :response-time ms'));
+
+  if (argv.announce) { // The default is to not announce.
+    let announce = null;
+    // Different portals can be set up in different ways, with no easy place to look to know our domain name.
+    // So here we wait until someone connects to the server, and make note of the request host.
+    app.use((req, res, next) => {
+      if (!announce && req.hostname !== 'localhost') {
+	const host = req.headers["x-forwarded-host"] || req.headers.host; // Including port, if specified
+	announce = `node ${path.resolve(__dirname, 'announce.js')} --portalURL https://${host}/kdht`;
+	console.log(announce);
+	exec(announce);
+	setInterval(() => exec(announce), 12 * 60 * 60e3); // Every 12 hours that we are running.
+      }
+      next();
+    });
+  }
 
   // We must allow expressWs to bach the internals of app before
   // pulling in routes/index.js. Thus a dynamic import is used so that

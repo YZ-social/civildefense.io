@@ -6,7 +6,6 @@ import { NetworkClass } from './pubSub.js';
 import { getPointInCell } from './s2.js';
 import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
 import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
-globalThis.getShareableURL = getShareableURL; // for development.
 
 document.getElementById('appVersion').textContent = appVersion;
 
@@ -238,7 +237,8 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
 }
 
 let checking = false; // For debouncing.
-let auxPortals = JSON.parse(localStorage.getItem('auxPortals') || '[]');
+// On startup, get last persisted portals list, else the portal we came in on.
+let portals = new Set(JSON.parse(localStorage.getItem('portals') || `["${new URL('/kdht', window.location).href}"]`));
 async function initialize(event) { // Ensure there is a network promise and map, and reset geolocation:
   // debounce
   // if !checkOnline(), return
@@ -273,8 +273,15 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	  // so as not to confuse other nodes that have given up on the unresponsive old GUID.
 	  showMessage(message, 'error');
 	});
-	const portals = [new URL('/kdht', window.location).href, ...auxPortals];
-	contact.connect(...portals);
+	contact.connect(...portals)
+	  .then(() => contact.subscribe({ // Add and persist any new portals we haven't heard about.
+	    eventName: 'sys:portals',
+	    handler: data => {
+	      const operation = data.payload ? 'add' : 'delete';
+	      const resultSet = portals[operation](data.subject);
+	      localStorage.setItem('portals', JSON.stringify([...resultSet]));
+	    }
+	  }));
       });
     }
     if (event) await delay();
