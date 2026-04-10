@@ -11,7 +11,8 @@ export class Agent {
   constructor({tag}) { // Subscribe to public data for tag.
     // The system value for handle and avatar is the same, but it is convenient to
     // represent this as two types, like everything else.
-    this.values.handle.system = this.values.avatar.system = tag;
+    this.updateValue(tag, 'system', 'handle');
+    this.updateValue(tag, 'system', 'avatar');
     // Our private choice for this user is stored locally.
     // But for our own avatar, is the public choice.
     const scope = tag == usertag ? 'public' : 'private';
@@ -59,6 +60,8 @@ export class Agent {
     return this.values[type][scope];
   }
   updateValue(value, scope, type, publish = true) { // Updates dependent elements, and if necessary, the mixed values/elements as well.
+    if (this.values[type][scope] === value) return;
+
     // Persist. For public, that will boomerang through subscription.
     if (scope === 'private') this.persistPrivate(value, type);
     else if (publish && (scope === 'public')) return this.persistPublic(value, type);
@@ -110,9 +113,11 @@ export class Agent {
     handle: {system: new Set(), public: new Set(), private: new Set(), mixed: new Set()},
     avatar: {system: new Set(), public: new Set(), private: new Set(), mixed: new Set()}
   };
-  addElement(element, scope, type) { // Update element, and add it to th set that will stay updated.
+  addElement(element, scope, type) { // If not already present, Update element, add it to th set that will stay updated, and return true.
+    if (this.elements[type][scope].has(element)) return false;
     this.updateElement(element, type, this.values[type][scope]);
     this.elements[type][scope].add(element);
+    return true;
   }
   removeElement(element, scope, type) { // Remove element from getting updated.
     this.elements[type][scope].delete(element);

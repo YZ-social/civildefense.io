@@ -224,7 +224,6 @@ export class Marker { // A wrapper around L.marker
       wrapper.showNotification({tag: subject, act, issuedTime});
     } else {
       wrapper.needsRedisplay = true;
-      wrapper.ensureContent();
     }
     wrapper.startFader(remaining); // From the new value of remaining, after marker is set in wrapper, regardless of popup/dirty state.
     return wrapper;
@@ -271,11 +270,12 @@ export class Marker { // A wrapper around L.marker
       const icon = correspondent;
       const tag = icon.dataset.tag;
       const agent = Agent.ensure(tag);
-      agent.addElement(icon, 'mixed', 'avatar');
-      correspondent.onclick = event => {
-	if (tag === usertag) openAbout(event);
-	else agent.describe(event);
-      };
+      if (agent.addElement(icon, 'mixed', 'avatar')) {
+	correspondent.onclick = event => {
+	  if (tag === usertag) openAbout(event);
+	  else agent.describe(event);
+	};
+      }
     }
     for (const deleter of popupElement.querySelectorAll('.reply .attribution > div:last-child md-outlined-icon-button')) {
       deleter.onclick = event => { // Delete reply.
