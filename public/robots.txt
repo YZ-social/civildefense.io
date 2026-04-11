@@ -1,2 +1,5 @@
 User-agent: *
+Allow: /$
+Allow: /images/hero.png
+Allow: /images/civil-defense.png
 Disallow: /

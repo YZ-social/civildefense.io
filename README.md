@@ -3,7 +3,7 @@
 ## The App
 
 CivilDefense.io lets you report an immediate concern to the public by tapping its location on the map.
-The locations are shared over anonymous p2p with other users in your area, then fade away over 10 minutes. 
+The locations are shared over anonymous p2p with other users in your area, then fade away over 24 hours.
 There is no login and no global tracking of your Internet address or physical location.
 
 See [here](https://yz.social/civildefense.html).
