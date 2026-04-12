@@ -1,5 +1,5 @@
 const { Request, Response, URL, clients} = self;
-const serviceVersion = '0.0.60';
+const serviceVersion = '0.0.61';
 
 async function cacheFirst({request, event}) {
   // Handle request from any cache, else fetch and store it in serviceCache.
