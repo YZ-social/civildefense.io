@@ -459,19 +459,27 @@ export class Marker { // A wrapper around L.marker
     share(data);
   }
   startFader(remaining) { // Set up or update fader.
-    // It would be nice to use CSS transitions, but, that's not the API presented by L.marker.
-    const minOpacity = 0.25;
-    const interval = 2000; // milliseconds per adjustment (a tiny increment at a time)
-    const fade = (1 - minOpacity) * interval / ttl; // Change in opacity per adjustment.
     const { marker } = this;
-    let opacity = remaining / ttl; // Do not start at 1 if it was reported some time ago.
-    marker.setOpacity(opacity);
+    const fraction = remaining / ttl; // Start at 1 and go to 0, but we may be some way along that.
+    const endOpacity = 0.5; // Fully transparent is 0, but that's too hard to see. :-)
+    const endGrayscale = 1; // Fully gray.
+    let opacity = Math.max(endOpacity, fraction);
+    let grayscale = 1 - fraction;
+    const element = marker.getElement();
+    element.style.filter = `grayscale(${grayscale})`;
+    element.style.opacity = opacity;
+    // I'd like to let css transitions do the work, but as we zoom, we make different subscriptions and thus start
+    // the "same" marker over again. This initial setup clashes with zooming if done with a next-tick step opacity+filter value.
+    const interval = 2e3; // Milliseconds / step
+    const opacityFade = (opacity - endOpacity) *  interval / remaining; // change / step
+    const grayscaleFade = (endGrayscale - grayscale) * remaining / interval;
     clearInterval(this.fader);
-    clearInterval(this.destroyer);
     this.fader = setInterval(() => {
-      marker.setOpacity(opacity -= fade);
-      if (opacity < minOpacity) clearInterval(this.fader);
+      element.style.filter = `grayscale(${grayscale -= grayscaleFade})`;
+      element.style.opacity = (opacity -= opacityFade);
     }, interval);
+
+    clearInterval(this.destroyer);
     this.destroyer = setTimeout(() => this.destroy(), remaining);
   }
   destroy() { // Remove this Marker pin entirely.
