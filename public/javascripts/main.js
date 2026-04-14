@@ -321,7 +321,7 @@ initText('#describePrivate1');
 initText('#describePrivate2');
 initText('#describePublic');
 initText('#describeSystem');
-initText('#yourOptional');
+initText('#pickLabels');
 
 initialize(false);
 document.querySelector('head > title').innerHTML = `CivilDefense @${location.hostname}`;

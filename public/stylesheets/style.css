@@ -376,8 +376,16 @@ input[type="file"] {
 .display-content > * {
     margin-top: 10px;
 }
+.display-content ul {
+    margin-left: 15px;
+}
 #correspondentContainer md-outlined-button {
     max-width: 70vw;
+}
+.handle-avatar {
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 #correspondentContainer .handle {
     color: var(--md-sys-color-secondary);

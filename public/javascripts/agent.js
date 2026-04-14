@@ -211,7 +211,7 @@ export class Agent {
     const myAvatar = document.getElementById('myAvatar');
     myAgent.addElement(myHandle, 'public', 'handle');
     myAgent.addElement(myAvatar, 'mixed', 'avatar'); // display the mixed result
-    myHandle.label = Int`handle`;
+    myHandle.label = Int`your handle`;
     myHandle.onclick = consume;
     myHandle.onchange = event => {
       resetInactivityTimer();

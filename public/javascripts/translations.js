@@ -72,6 +72,7 @@ const translations = {
   ['#describePrivate2']: {en: "to help you recognize posts from them:", es: "Para ayudarte a reconocer publicaciones de ellas:"},
   ['#describePublic']: {en: "The handles that they currently share publicly:", es: "Los nombres de usuario que comparten públicamente en la actualidad:"},
   ['#describeSystem']: {en: "The internal system handles for this person:", es: "El sistema interno gestiona lo siguiente para esta persona:"},
-  ['#yourOptional']: {en: "Your optional", es: "Tu opcional"},
-  ['handle']: {es: "el título"}
+  ['#pickLabels']: {en: "You can pick the labels you like, or securely capture any of the following...", es: "Puede elegir las etiquetas que prefiera o capturar de forma segura cualquiera de las siguientes..."},
+  ['handle']: {es: "el título"},
+  ['your handle']: {es: "tu título"}
 };
