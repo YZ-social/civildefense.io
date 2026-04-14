@@ -189,6 +189,13 @@ md-outlined-text-field.reply-input {
     75% { filter: saturate(0); }
     100% { filter: saturate(1); }
 }
+@keyframes pulse2 { /* for restarting */
+    0% { filter: saturate(1); }
+    25% { filter: saturate(4); }
+    50% { filter: saturate(1); }
+    75% { filter: saturate(0); }
+    100% { filter: saturate(1); }
+}
 
 #checkForUpdates, #downloadUpdates, #updateContainer md-elevated-button {
     width: 150px;

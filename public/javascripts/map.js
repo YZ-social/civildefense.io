@@ -354,10 +354,13 @@ export class Marker { // A wrapper around L.marker
   replies = [];
   handleReply(data) { // Add or update reply for this marker.
     // TODO: handle update/removal.
-    const { replies } = this;
+    const { replies, marker } = this;
     if (data.payload) {
       replies.push(data); // TODO: when we implement edited replies, we'll have to find the existing
       replies.sort((a, b) => a.issuedTime - b.issuedTime); // Could be slightly out of order.
+      const element = marker.getElement();
+      // Restart the pulse animation by setting animationName to something it isn't.
+      element.style.animationName = element.style.animationName === 'pulse2' ? 'pulse' : 'pulse2';
       const {act, issuedTime, payload} = data;
       this.showNotification({act, issuedTime, body: payload.message || payload.name || payload});
     } else {
@@ -393,8 +396,8 @@ export class Marker { // A wrapper around L.marker
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     networkPromise.then(async contact => {
       contact.publish({eventName, payload, subject: uuidv4(), act: usertag});
-      // Extend the expiration of the original event, and of the public handle/avatar of all in the conversation.
-      // this is done by republishing with no payload.
+      // Extend the expiration of the original event, and of the public handle/avatar of everyone in the conversation.
+      // this is done by republishing with no payload (not null!).
       const {lat, lng, subject, hashtag} = this;
       const cells = getContainingCells(lat, lng);
       for (const cell of cells) {
