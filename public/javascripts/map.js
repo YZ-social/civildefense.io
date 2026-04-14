@@ -362,6 +362,8 @@ export class Marker { // A wrapper around L.marker
       // Restart the pulse animation by setting animationName to something it isn't.
       element.style.animationName = element.style.animationName === 'pulse2' ? 'pulse' : 'pulse2';
       const {act, issuedTime, payload} = data;
+      if (replies[replies.length - 1] !== data) return; // Replies can come out of order.
+      this.startFader(issuedTime + ttl - Date.now());
       this.showNotification({act, issuedTime, body: payload.message || payload.name || payload});
     } else {
       replies.splice(replies.findIndex(reply => reply.subject === data.subject), 1);
