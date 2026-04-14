@@ -41,7 +41,7 @@ body {
     color: var(--md-sys-color-primary);
     border-color: var(--md-sys-color-primary);
 }
-md-icon {
+:not(md-filled-icon-button) > md-icon {
     color: var(--md-sys-color-primary);
 }
 .remove, .icon.leading, .reply-input md-tonal-icon-button md-icon  {
@@ -260,10 +260,6 @@ md-outlined-icon-button minidenticon-svg, md-outlined-icon-button img {
 .alert md-filled-button {
     width: 100px;
 }
-.alert .attribution md-outlined-icon-button {
-    /* padding-left: 5px; */
-    /* padding-right: 5px; */
-}
 .alert md-icon {
     width: 22px;
     height: 22px;
@@ -272,6 +268,7 @@ md-menu {
     min-width: 150px;
 }
 .attribution {
+    padding: 5px;
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -295,6 +292,9 @@ md-menu-item minidenticon-svg {
 }
 .reply {
     margin-top: 5px;
+}
+.reply > span {
+    padding: 5px;
 }
 .reply > img {
     width: 100%;
