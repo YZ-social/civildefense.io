@@ -425,10 +425,10 @@ export class Marker { // A wrapper around L.marker
       let attachment = '';
       if (file?.startsWith('data:image')) attachment = `<img class="attachment" src="${file}"></img>`;
       else if (file) attachment = `
-<span class="attachment ${message ? '' : 'message'}">
+<div class="attachment ${message ? '' : 'message'}">
   <md-icon class="material-icons">attachment</md-icon>
   ${name}
-</span>`;
+</div>`;
       const messageDisplay = message ? `<span class="message">${text}</span>` : '';
       let dataAttributes = `data-subject="${subject}" data-text="${message}"`;
       if (file) dataAttributes += ` data-file="${file}" data-name="${name}"`;

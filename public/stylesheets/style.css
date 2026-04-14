@@ -302,7 +302,7 @@ md-menu-item minidenticon-svg {
 .reply > span {
     padding: 5px;
 }
-.reply > img {
+.reply > img, .reply > .attachment {
     width: 100%;
     border-style: solid;
 }
