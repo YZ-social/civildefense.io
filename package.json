@@ -1,7 +1,7 @@
 {
   "name": "civildefense.io",
   "description": "Browser app to safely share live sightings on a map.",
-  "version": "0.0.64",
+  "version": "0.0.65",
   "keywords": [
     "map",
     "browser",
