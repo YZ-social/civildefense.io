@@ -138,7 +138,7 @@ md-outlined-text-field {
     cursor: pointer;
     padding: 0;
 }
-button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon-button, md-filled-icon-button, md-tonal-icon-button, md-elevated-button, md-checkbox {
+button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon-button, md-filled-icon-button, md-tonal-icon-button, md-elevated-button, md-checkbox, .attachment > md-icon {
     transition: transform 0.2s ease;
     &:hover { transform: scale(1.1); }
 }
@@ -302,7 +302,7 @@ md-menu-item minidenticon-svg {
 .reply > span {
     padding: 5px;
 }
-.reply > img, .reply > .attachment {
+.reply > img, .reply > .attachment, .reply img {
     width: 100%;
     border-style: solid;
 }

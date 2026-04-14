@@ -423,11 +423,13 @@ export class Marker { // A wrapper around L.marker
       const {message = payload, file, name} = payload;
       let text = message.replace(/https?:\/\/\S+/g, url => `<a href="${url}" target="yz.sidebar">${url}</a>`); // show urls as links
       let attachment = '';
-      if (file?.startsWith('data:image')) attachment = `<img class="attachment" src="${file}"></img>`;
+      if (file?.startsWith('data:image')) attachment = `<a href="${file}" download><img class="attachment" src="${file}"></img></a>`;
       else if (file) attachment = `
-<div class="attachment ${message ? '' : 'message'}">
-  <md-icon class="material-icons">attachment</md-icon>
-  ${name}
+<div class="attachment file">
+  <a href="${file}" download>
+    <md-icon class="material-icons">attachment</md-icon>
+    ${name}
+  </a>
 </div>`;
       const messageDisplay = message ? `<span class="message">${text}</span>` : '';
       let dataAttributes = `data-subject="${subject}" data-text="${message}"`;
