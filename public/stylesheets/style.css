@@ -41,6 +41,11 @@ body {
     color: var(--md-sys-color-primary);
     border-color: var(--md-sys-color-primary);
 }
+.leaflet-touch .leaflet-bar {
+    border-radius: 12px;
+    & > a:first-child { border-top-left-radius: 12px; border-top-right-radius: 12px; }
+    & > a:last-child { border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
+}
 :not(md-filled-icon-button) > md-icon {
     color: var(--md-sys-color-primary);
 }
@@ -49,7 +54,7 @@ body {
     --md-menu-item-supporting-text-color: var(--md-sys-color-primary);
     --md-menu-item-label-text-color: var(--md-sys-color-primary);
 }
-md-outlined-text-field.reply-input {
+md-outlined-text-field {
     --md-outlined-text-field-label-text-color: var(--md-sys-color-secondary);
     --md-outlined-text-field-focus-outline-color: var(--md-sys-color-primary);
     --md-outlined-field-outline-color: var(--md-sys-color-primary);
@@ -132,11 +137,12 @@ md-outlined-text-field.reply-input {
     border: none;
     cursor: pointer;
     padding: 0;
+}
+button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon-button, md-filled-icon-button, md-tonal-icon-button, md-elevated-button, md-checkbox {
     transition: transform 0.2s ease;
+    &:hover { transform: scale(1.1); }
 }
-.about-button:hover {
-    transform: scale(1.1);
-}
+.leaflet-marker-icon:hover { filter: saturate(4) !important; }
 .about-image {
     width: var(--about-image-size);
     height: auto;
@@ -320,9 +326,6 @@ md-menu-item minidenticon-svg {
     flex-direction: column;
     align-items: end;
 }
-/* .pub { */
-/*     --md-sys-color-secondary-container: #DE9797; */
-/* } */
 .alert {
     font-family: roboto;
 }
