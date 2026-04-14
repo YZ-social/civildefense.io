@@ -471,12 +471,12 @@ export class Marker { // A wrapper around L.marker
     // I'd like to let css transitions do the work, but as we zoom, we make different subscriptions and thus start
     // the "same" marker over again. This initial setup clashes with zooming if done with a next-tick step opacity+filter value.
     const interval = 2e3; // Milliseconds / step
-    const opacityFade = (opacity - endOpacity) *  interval / remaining; // change / step
-    const grayscaleFade = (endGrayscale - grayscale) * remaining / interval;
+    const opacityFade = (endOpacity - opacity) *  interval / remaining; // change / step
+    const grayscaleFade = (endGrayscale - grayscale) * interval / remaining;
     clearInterval(this.fader);
     this.fader = setInterval(() => {
-      element.style.filter = `grayscale(${grayscale -= grayscaleFade})`;
-      element.style.opacity = (opacity -= opacityFade);
+      element.style.filter = `grayscale(${grayscale += grayscaleFade})`;
+      element.style.opacity = (opacity += opacityFade);
     }, interval);
 
     clearInterval(this.destroyer);

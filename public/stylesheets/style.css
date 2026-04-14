@@ -180,7 +180,16 @@ md-outlined-text-field.reply-input {
     font-size: 40px;
     line-height: 40px;
     text-align: center;
+    animation: pulse ease 0.8s 1;
 }
+@keyframes pulse {
+    0% { filter: saturate(1); }
+    25% { filter: saturate(4); }
+    50% { filter: saturate(1); }
+    75% { filter: saturate(0); }
+    100% { filter: saturate(1); }
+}
+
 #checkForUpdates, #downloadUpdates, #updateContainer md-elevated-button {
     width: 150px;
 }
