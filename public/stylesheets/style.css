@@ -41,7 +41,10 @@ body {
     color: var(--md-sys-color-primary);
     border-color: var(--md-sys-color-primary);
 }
-.remove, .remove > md-icon, .icon.leading, .reply-input md-tonal-icon-button md-icon  {
+md-icon {
+    color: var(--md-sys-color-primary);
+}
+.remove, .icon.leading, .reply-input md-tonal-icon-button md-icon  {
     color: var(--md-sys-color-primary);
     --md-menu-item-supporting-text-color: var(--md-sys-color-primary);
     --md-menu-item-label-text-color: var(--md-sys-color-primary);
