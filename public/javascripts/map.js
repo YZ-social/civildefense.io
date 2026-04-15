@@ -344,10 +344,10 @@ export class Marker { // A wrapper around L.marker
     const {lat, lng, hashtag, subject, issuedTime, originalPosting = issuedTime} = this;
     if (!tag) return publish({lat, lng, subject, hashtag, payload: null, cancel: null});
     if (tag === hashtag) return this.needsRedisplay = true;
-    const cancel = {lat, lng, hashtag, subject};
+    const cancel = {lat, lng, subject, hashtag};
     Hashtags.setPublish(tag);
     Hashtags.onchange({redisplaySubscribers: false, resetSubscriptions: false});
-    return publish({lat, lng, subject, originalPosting, cancel}); // immediate for canceled and new, before we remove old hash
+    return publish({lat, lng, subject, hashtag: tag, originalPosting, cancel}); // immediate for canceled and new, before we remove old hash
   }
 
   // Each reply is separately published by its author, and only they can modify/unpublish it.
@@ -402,14 +402,15 @@ export class Marker { // A wrapper around L.marker
       // this is done by republishing with no payload (not null!).
       const {lat, lng, subject, hashtag} = this;
       const cells = getContainingCells(lat, lng);
+      const issuedTime = Date.now();
       for (const cell of cells) {
-	const eventName = `s2:${cell}:${hashtag}`;
-	await contact.publish({eventName, subject, hashtag});
+	const eventName = makeEventName(cell, hashtag);
+	await contact.publish({eventName, subject, issuedTime, hashtag});
       }
       for (const reply of this.replies) {
 	const eventName = Agent.networkPersistKey(reply.act);
-	await contact.publish({eventName, subject: 'handle'});
-	await contact.publish({eventName, subject: 'avatar'});
+	await contact.publish({eventName, subject: 'handle', issuedTime});
+	await contact.publish({eventName, subject: 'avatar', issuedTime});
       }
     });
   }
