@@ -1,7 +1,7 @@
 const lang = navigator.language.split('-')[0].toLowerCase(); // Get the language the the user has their browser to.
 
 export function Int([string]) { // A tagged template function that converts to lang.
-  // E.g., if the browser lang is 'es', Int`About` => "Acera de", and Int`version` => "Versión"
+  // E.g., if the browser lang is 'es', Int`Your Location` => "Tu Ubicación", and Int`#version` => "Versión"
   let content = translations[string];
   return content?.[lang] || content?.["en"] || string;
 }

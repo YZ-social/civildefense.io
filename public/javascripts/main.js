@@ -245,7 +245,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
   // set network to promise a new Contact, set ondisconnect, and connect.
   // delay if asked
   // initializeGeolocation
-  if (checking) return;
+  if (checking)  return;
   checking = true;
   try {
     // If networkPromise has not yet been set (or cleared by disconnect), we will be subscribing.
@@ -264,6 +264,20 @@ async function initialize(event) { // Ensure there is a network promise and map,
       networkPromise.then(contact => {
 	console.log('Created node', contact.name);
 	globalThis.contact = contact; // For debugging.
+	// On leaving, we would like to copy stored data and politely say 'bye' (so others can clean up their connections). Alas:
+	// - The events we get will be, in order: beforeunload (except iOS Safari), pagehide, visibilitychange, unload
+	// - None of these will wait for any asynchronous operation.
+	// - The two unload events are not fired when mobile background tabs are killed.
+	// - visibilitychange is also fired when tab is switched.
+	// And so the best we can do is:
+	// - When tabs are switched, we try to replicate storage.
+	//   I think we will always get time to complete this.
+	//   But we will stay online as long as we're allowed, at which point we may be asked to store more that will not get replicated if killed.
+	// - On pagehide and unload, we synchronously say 'bye' with disconnectTransports.
+	//   These two are assigned now with a resolved networkPromise => contact so that we don't have to await.
+	window.onpagehide = () => contact.disconnectTransports();
+	window.onunload = () => contact.disconnectTransports(); // Safe if called multiple times.
+
 	contact.detachment.then(onPurpose => {
 	  networkPromise = null;
 	  const message = onPurpose ? Int`Connection closed. Will reconnect on use.` :
@@ -292,8 +306,6 @@ async function initialize(event) { // Ensure there is a network promise and map,
 }
 document.addEventListener('visibilitychange', initialize);
 window.addEventListener('online', initialize);
-window.addEventListener('pagehide', () => networkPromise?.then(contact => contact.disconnect()));
-window.addEventListener('beforeunload', () => networkPromise?.then(contact => contact.disconnect()));
 
 // Set up text for the browser language.
 function initText(selector, content = selector) {
