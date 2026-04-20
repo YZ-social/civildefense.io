@@ -115,23 +115,32 @@ async function cacheSource(version) { // Cache source in the given version.
 }
 
 
-function getServiceVersion(registration) { // Ask the service worker to send back it's version, which will trigger a compare.
-  registration.active.postMessage({method: 'version', params: appVersion});
-}
-
 const checkButton = document.getElementById('checkForUpdates');
 const updateText = document.getElementById('updateStatus');
 const downloadButton = document.getElementById('downloadUpdates');
 const downloadButton2 = document.getElementById('downloadUpdates2');
-const newVersionAvailableKey = 'newVersionAvailable';
 
-function newVersionAvailable() {
+function getServiceVersion(registration) { // Ask the service worker to send back it's version, which will trigger a compare.
+  console.log('requesting service-worker version');
+  registration.active.postMessage({method: 'version', params: appVersion});
+}
+function newVersionAvailable(newVersion) {
   // Set up all the buttons and displays in case the user declines the popup,
   // and then open the popup.
   checkButton.classList.toggle('hidden', true);
   downloadButton.classList.toggle('hidden', false);
-  updateText.textContent = Int`Update available.`;
+  updateText.textContent = `${Int`Version`} ${newVersion} ${Int`available`}.`;
   openDisplay('updateContainer');
+}
+async function installUpdate(newVersion) {
+  await caches.delete(appVersion); // Must be before cacheSource, or we'll just recache the same files!
+  await cacheSource(newVersion);
+  // Reload, but convince all browsers to re-"fetch" (through the new service worker that is now running).
+  const url = new URL(location.href);
+  url.searchParams.set('v', newVersion); // Preserving any other searchParams.
+  // For any other tabs in THIS browser:
+  new BroadcastChannel('site_control').postMessage({method: 'reload', params: url.href});
+  window.location.assign(url.href);
 }
 
 // First time or after clearing cache, cache latest version of app.
@@ -140,11 +149,12 @@ if (!(await caches.has(appVersion))) cacheSource(appVersion);
 await navigator.serviceWorker
   .register("/service-worker.js", {updateViaCache: 'none'})
   .then(registration => {
+    let serviceVersion;
     // No need to reset button/status on click, because we will be reloading.
-    downloadButton.onclick = () => getServiceVersion(registration); // We don't know the new version here yet.
+    downloadButton.onclick = () => installUpdate(serviceVersion);
     downloadButton2.onclick = event => {
       event.stopPropagation();
-      getServiceVersion(registration);
+      installUpdate(serviceVersion);
     };
     checkButton.onclick = async event => {
       resetInactivityTimer();
@@ -154,16 +164,19 @@ await navigator.serviceWorker
     };
     registration.onupdatefound = () => { // A new service worker has been installed because of a service worker script change.
       const newWorker = registration.installing;
-      //console.log('updatefound', newWorker.state, navigator.serviceWorker, navigator.serviceWorker.controller);
+      console.log('updatefound', newWorker.state, navigator.serviceWorker, navigator.serviceWorker.controller);
       newWorker.onstatechange = () => {
-	//console.log('statechange', newWorker.state, navigator.serviceWorker, navigator.serviceWorker.controller);
+	console.log('statechange', newWorker.state, navigator.serviceWorker, navigator.serviceWorker.controller);
 	// We don't want to nag/confuse the user when installing fresh/first-time. There will not be a controller that time.
-	if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-	  localStorage.setItem(newVersionAvailableKey, 'true');
-	  newVersionAvailable();
-	}
+	// if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+	//   getServiceVersion(registration);
+	// }
       };
     };
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      console.log('controllerchange',  navigator.serviceWorker, navigator.serviceWorker.controller);
+      getServiceVersion(registration);
+    });
     // addEventListener, allowing other code to listen for other messages.
     navigator.serviceWorker.addEventListener('message', async event => {
       const {method, params} = event.data;
@@ -173,15 +186,8 @@ await navigator.serviceWorker
 	if (params === appVersion) {
 	  //console.log('Checked version', appVersion);
 	} else {
-	  await caches.delete(appVersion); // Must be before cacheSource, or we'll just recache the same files!
-	  await cacheSource(params);
-	  localStorage.removeItem(newVersionAvailableKey);
-	  // Reload, but convince all browsers to re-"fetch" (through the new service worker that is now running).
-	  const url = new URL(location.href);
-	  url.searchParams.set('v', params); // Preserving any other searchParams.
-	  // For any other tabs in THIS browser:
-	  new BroadcastChannel('site_control').postMessage({method: 'reload', params: url.href});
-	  window.location.assign(url.href);
+	  serviceVersion = params;
+	  newVersionAvailable(params);
 	}
 	break;
       case 'go':
@@ -191,8 +197,8 @@ await navigator.serviceWorker
 	console.error('Unrecognized message from service worker', event.data);
       }
     });
+    navigator.serviceWorker.ready.then(getServiceVersion);
   });
-if (localStorage.getItem(newVersionAvailableKey)) newVersionAvailable();
 new BroadcastChannel('site_control').onmessage = event => {
   const {method, params} = event.data;
   if (method === 'reload') window.location.assign(params);

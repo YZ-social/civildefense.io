@@ -1,5 +1,5 @@
 const { Request, Response, URL, clients} = self;
-const serviceVersion = '0.0.67';
+const serviceVersion = '0.0.68';
 
 async function cacheFirst({request, event}) {
   // Handle request from any cache, else fetch and store it in serviceCache.
@@ -52,7 +52,10 @@ self.addEventListener('install', event => {
   // or setting location.href will keep the old service worker around. This means that a reload
   // after panic will cause a harmless but confusing "new version available" popup. Instead,
   // one must manually close the tab after panic.
-  self.skipWaiting();
+  let p = self.skipWaiting();
+  console.log('skipWaiting promise', p);
+  event.waitUntil(p);
+  console.log('after witUntil', p);
 });
 
 self.addEventListener('activate', async event => {
@@ -72,6 +75,7 @@ self.addEventListener('message', async event => {
   const {method, params} = event.data;
   switch (method) {
   case 'version':
+    console.log('service-worker reporting serviceVersion', serviceVersion);
     event.waitUntil(event.source.postMessage({method: 'version', params: serviceVersion}));
     break;
   default:

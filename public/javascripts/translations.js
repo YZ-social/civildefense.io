@@ -66,7 +66,7 @@ const translations = {
   ['#downloadUpdates2']: {en: "yes, update", es: "Sí, actualizar."},
   ['#downloadDefer']: {en: "no, not yet", es: "No, todavía no."},
   ['No update at']: {es: "No hay actualizaciones a las"},
-  ['Update available.']: {es: "Actualización disponible."},
+  ['is available']: {es: "está disponible"},
 
   ['#describePrivate1']: {en: "Here are your private labels for", es: "Aquí están sus etiquetas privadas para"},
   ['#describePrivate2']: {en: "to help you recognize posts from them:", es: "Para ayudarte a reconocer publicaciones de ellas:"},
@@ -74,5 +74,7 @@ const translations = {
   ['#describeSystem']: {en: "The internal system handles for this person:", es: "El sistema interno gestiona lo siguiente para esta persona:"},
   ['#pickLabels']: {en: "You can pick the labels you like, or securely capture any of the following...", es: "Puede elegir las etiquetas que prefiera o capturar de forma segura cualquiera de las siguientes..."},
   ['handle']: {es: "el título"},
-  ['your handle']: {es: "tu título"}
+  ['your handle']: {es: "tu título"},
+
+  ['#wipe']: {en: "Wipe all CivilDefense.io data.", es: "Eliminar todos los datos de CivilDefense.io."}
 };

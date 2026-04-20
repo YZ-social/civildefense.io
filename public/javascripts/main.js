@@ -110,6 +110,13 @@ document.getElementById('aboutButton').onclick = event => { // open about
   Marker.closePopup();
   openAbout(event);
 };
+document.getElementById('wipe').onclick = async event => {
+  await networkPromise?.then(contact => contact.disconnect());
+  localStorage.clear();
+  await caches.keys().then(keys => Promise.all(keys.map(key => caches.delete(key))));
+  await navigator.serviceWorker.getRegistrations().then(registrations => Promise.all(registrations.map(r => r.unregister())));
+  window.location.replace('https://yz.social/civildefense.html');
+};
 
 document.getElementById('qrButton').onclick = event => { // generate (and display) qr code on-demand (in case url changes)
   const content = openDisplay('qrContainer', event, '');
@@ -334,6 +341,7 @@ initText('#describePrivate2');
 initText('#describePublic');
 initText('#describeSystem');
 initText('#pickLabels');
+initText('#wipe');
 
 initialize(false);
 document.querySelector('head > title').innerHTML = `CivilDefense @${location.hostname}`;
