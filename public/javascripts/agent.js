@@ -15,7 +15,7 @@ export class Agent {
     this.updateValue(tag, 'system', 'avatar');
     // Our private choice for this user is stored locally.
     // But for our own avatar, is the public choice.
-    const scope = tag == usertag ? 'public' : 'private';
+    const scope = tag == Agent.tag ? 'public' : 'private';
     this.updateFromLocal(scope, 'handle');
     this.updateFromLocal(scope, 'avatar');
 
@@ -204,9 +204,15 @@ export class Agent {
       content.parentElement.classList.toggle('hidden', true);
     };
   }
+  static current = null;
+  static tag = null;
+  static switchUser(tag) { // Set/persist/ensure the current user, return Agent
+    this.tag = tag; // Before the ensure().
+    localStorage.setItem('usertag', this.tag);
+    return this.current = this.ensure(this.tag);
+  }
   static initialize() { // Initialize what the agent needs from the about screen
-    localStorage.setItem('usertag', usertag);
-    const myAgent = Agent.ensure(usertag);
+    const myAgent = Agent.switchUser(localStorage.getItem('usertag') || uuidv4());
     const myHandle = document.getElementById('myHandle');
     const myAvatar = document.getElementById('myAvatar');
     myAgent.addElement(myHandle, 'public', 'handle');
@@ -240,4 +246,3 @@ export class Agent {
   }
 }
 
-export const usertag = localStorage.getItem('usertag') || uuidv4();

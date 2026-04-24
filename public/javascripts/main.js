@@ -12,8 +12,8 @@ document.getElementById('appVersion').textContent = appVersion;
 const RETRY_SECONDS = 90;
 const INACTIVITY_SECONDS = 5 * 60; // five minutes
 
-export function delay(ms = 1e3) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+export function delay(ms = 800, value = undefined) { // Promise resolves to value after specified milliseconds.
+  return new Promise(resolve => setTimeout(resolve, ms, value));
 }
 
 var inactivityTimer = null, reconnectCountdown, networkPromise = null;
@@ -49,7 +49,7 @@ function browserName() {
 var showNotifications = document.getElementById('showNotifications');
 var showNotificationsLabel = document.getElementById('showNotificationsLabel');
 function disabledNotifications() { return localStorage.getItem('disabledNotifications'); }
-function disableNotifications(force) { localStorage.setItem('disabledNotifications', force ? '1' : ''); }
+export function disableNotifications(force) { localStorage.setItem('disabledNotifications', force ? '1' : ''); }
 export function notificationsAllowed() { return (Notification?.permission === 'granted') && !disabledNotifications(); }
 function noteNotificationPermission(permission) {
   if (isWebView()) {
@@ -111,7 +111,7 @@ document.getElementById('aboutButton').onclick = event => { // open about
   openAbout(event);
 };
 document.getElementById('wipe').onclick = async event => {
-  await networkPromise?.then(contact => contact.disconnect());
+  await networkPromise?.then(contact => contact.disconnectTransports());
   localStorage.clear();
   await caches.keys().then(keys => Promise.all(keys.map(key => caches.delete(key))));
   await navigator.serviceWorker.getRegistrations().then(registrations => Promise.all(registrations.map(r => r.unregister())));
@@ -178,7 +178,8 @@ function resetReconnectCountdown() { // if !checkOnline each second, show time r
   }, 1e3);
 }
 
-let positionWatch, subscribeOneShot;
+export let positionWatch;
+let subscribeOneShot;
 function initializeGeolocation(subscribe = false) { // Arrange to constantly updateLocation, but:
   // if no support, message and defaultInit
   // if no permission, message and defaultInit
@@ -204,6 +205,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
 	[lat, lng] = [37.7749, -122.4194]; // San Fransisco
       }
     }
+    console.log('initializeGeolocation updateLocation');
     updateLocation(lat, lng, zoom);
     if (!subscribeOneShot) return;
     subscribeOneShot = false;
@@ -241,6 +243,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
       maximumAge: 0
     }
   );
+  console.log('hrs set watch position', positionWatch);
 }
 
 let checking = false; // For debouncing.

@@ -175,6 +175,7 @@ await navigator.serviceWorker
     };
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       console.log('controllerchange',  navigator.serviceWorker, navigator.serviceWorker.controller);
+      if (!navigator.serviceWorker.controller) return;
       getServiceVersion(registration);
     });
     // addEventListener, allowing other code to listen for other messages.

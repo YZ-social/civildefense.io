@@ -1,11 +1,11 @@
-const { domtoimage, localStorage, URL, URLSearchParams } = globalThis;
+const { domtoimage, localStorage, URL, URLSearchParams, getComputedStyle } = globalThis;
 import * as L from 'leaflet';
 import { v4 as uuidv4 } from 'uuid';
 import { s2 } from 's2js';
 import { Node } from '@yz-social/kdht';
 import { Int } from './translations.js';
 import { consume, openDisplay, file2dataURL, dataURL2file, downsampledFile2dataURL } from './display.js';
-import { Agent, usertag} from './agent.js';
+import { Agent } from './agent.js';
 import { networkPromise, resetInactivityTimer, delay, notificationsAllowed, openAbout } from './main.js';
 import { Hashtags } from './hashtags.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
@@ -28,7 +28,7 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   if (infoBanner.className !== className) infoBanner.className = className;
 
   if (type === 'instructions') {
-    setTimeout(() => infoBanner.style.display = 'none', 4000);
+    setTimeout(() => infoBanner.style.display = 'none', 5e3);
   }
 }
 
@@ -66,7 +66,7 @@ export async function share(properties) {  // Invoke platform share API on prope
     .catch(error => { if (!['AbortError', 'InvalidStateError'].includes(error.name)) throw error; });
 }
 
-function makeEventName(cell, hash) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
+export function makeEventName(cell, hash) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
   return `s2:${cell}:${Hashtags.canonicalTag(hash)}`;
 }
 export function getShareableURL(subject = null, tags = Hashtags.getSubscribe()) { // Answer a url that reflects application state.
@@ -85,18 +85,19 @@ export function getShareableURL(subject = null, tags = Hashtags.getSubscribe()) 
 let subscriptions = []; // array of stringy keys s2:<cellID>:<hashtag>
 // We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
 let lastLevel9Cell; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
-export function updateSubscriptions(oldKeys = subscriptions) { // Update current subscriptions to the new map bounds.
+export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Update current subscriptions to the new map bounds.
   // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
   if (!networkPromise) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
-  const center = map.getCenter();
-  const bounds = map.getBounds();
-  const northEast = bounds.getNorthEast();
-  const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
-  const newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => makeEventName(cell, hash)));
-
-  // Record a zoomed-out cell id in case next session does not have geolocation services.
-  let level9Cell = getContainingCells(center.lat, center.lng)[9];
-  if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
+  if (!newKeys) {
+    const center = map.getCenter();
+    const bounds = map.getBounds();
+    const northEast = bounds.getNorthEast();
+    const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
+    newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => makeEventName(cell, hash)));
+    // Record a zoomed-out cell id in case next session does not have geolocation services.
+    let level9Cell = getContainingCells(center.lat, center.lng)[9];
+    if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
+  }
 
   console.log('Subscribing', {newKeys, length: newKeys.length, oldKeys});
   const subscribe = (key, handler, autoRenewal = false) =>
@@ -127,7 +128,7 @@ async function publish({lat, lng, // Publish the given data to all applicable ev
   // To do this, we must hash the eventName ourselves.
 
   const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
-  const act = usertag;
+  const act = Agent.tag;
   let oldCells = null, oldHash, oldSubject = null; // Recorded for logging, below.
   if (cancel) {
     const {lat, lng, hashtag, subject} = cancel;
@@ -166,7 +167,16 @@ export class Marker { // A wrapper around L.marker
   }
   static openPopup(subject) { // Open the marker specified by subject.
     const wrapper = this.markers[subject];
-    wrapper?.marker.openPopup();
+    wrapper?.openPopup();
+  }
+  async openPopup() { // Open this wrapper's popup, and resolve any waiting promise.
+    const { resolveGo } = this; // A handy hook for scripting.
+    if (resolveGo) {
+      resolveGo(this);
+      delete this.resolveGo;
+      await delay(100);
+    }
+    this.marker.openPopup();
   }
   static makeIcon(hashtag) { // Return a Leaflet icon
     return L.divIcon({
@@ -197,7 +207,7 @@ export class Marker { // A wrapper around L.marker
   static ensure(data) { // Add marker at position with appropriate fade if not already present.
     let { payload, subject, issuedTime, act, hashtag, immediateLocalAction = false } = data;
     let wrapper = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
-    console.log('Handling event', {wrapper, subject, payload, act, usertag, immediateLocalAction, data});
+    console.log('Handling event', {wrapper, subject, payload, act, usertag: Agent.tag, immediateLocalAction, data});
 
     if (!payload) return wrapper?.destroy();
     const now = Date.now(),
@@ -219,7 +229,7 @@ export class Marker { // A wrapper around L.marker
       networkPromise.then(async contact => contact.subscribe({eventName: subject, autoRenewal: true, handler: data => wrapper.handleReply(data)}));
       if (subject === openOnReceive) {
 	openOnReceive = false;
-	marker.openPopup();
+	wrapper.openPopup();
       }
       wrapper.showNotification({tag: subject, act, issuedTime});
     } else {
@@ -256,14 +266,20 @@ export class Marker { // A wrapper around L.marker
     const replyButton = replyInput.querySelector('md-filled-icon-button');
     const replyAttachButton = replyInput.querySelector('md-tonal-icon-button');
     const fileChooser = popupElement.querySelector('input[type="file"]');
-    replyInput.oninput = event => { replyButton.removeAttribute('disabled'); };
+    replyInput.oninput = event => {
+      replyButton.removeAttribute('disabled');
+      const input = event.currentTarget;
+      const textarea = input.shadowRoot.querySelector('textarea');
+      const internalHighWater = Math.round(textarea.scrollHeight / parseFloat(getComputedStyle(textarea).lineHeight));
+      input.rows = internalHighWater;
+    };
     replyButton.onclick = event => { this.postReply(event); };
     replyAttachButton.onclick = event => { resetInactivityTimer(); fileChooser.click(); };
     fileChooser.onchange = event => {
       resetInactivityTimer();
       replyButton.removeAttribute('disabled');
       let filenameDisplay = popupElement.querySelector('.attachment-preview');
-      filenameDisplay.textContent = fileChooser.files.length ? (fileChooser.files[0].name || 'image') : '';
+      filenameDisplay.textContent = fileChooser.files.length ? (fileChooser.files[0].name || 'camera') : '';
     };
     this.initChangeHashtag(popupElement);
     for (const correspondent of popupElement.querySelectorAll('.correspondent')) {
@@ -272,7 +288,7 @@ export class Marker { // A wrapper around L.marker
       const agent = Agent.ensure(tag);
       if (agent.addElement(icon, 'mixed', 'avatar')) {
 	correspondent.onclick = event => {
-	  if (tag === usertag) openAbout(event);
+	  if (tag === Agent.tag) openAbout(event);
 	  else agent.describe(event);
 	};
       }
@@ -305,7 +321,7 @@ export class Marker { // A wrapper around L.marker
   static formatAttributionHashtag(act, hashtag) { // Answer HTML for the hashtag button/display in an a post attribution.
     // It will be either a simple HTML element with pubtag.
     const pubtag = Hashtags.formatPubtag(hashtag);
-    if (act !== usertag) return `<span>${pubtag}</span>`;
+    if (act !== Agent.tag) return `<span>${pubtag}</span>`;
 
     // ... or an HTML button, with a side-effect of populating the popoverMenu with the choices to display when the button is pressed.
     document.getElementById('popoverMenu').innerHTML = `
@@ -320,7 +336,7 @@ export class Marker { // A wrapper around L.marker
   }
   formatAttributionActions({act, hashtag}) { // Anser div HTML containing: [deleter] sharer [hashtag]
     // Where deletere appears if it our reply (no hashtag), and hashtag if present is a button if ours (and otherwise just text).
-    const deleter = !hashtag && act === usertag ? `<md-outlined-icon-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-icon-button>` : '';
+    const deleter = !hashtag && act === Agent.tag ? `<md-outlined-icon-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-icon-button>` : '';
     const pubtag = hashtag ? this.constructor.formatAttributionHashtag(act, hashtag) : '';
     return `<div>${deleter} ${pubtag}</div>`;
   }
@@ -371,8 +387,9 @@ export class Marker { // A wrapper around L.marker
     this.needsRedisplay = true;
     this.ensureContent();
   }
-  showNotification({issuedTime, body = '', act = this.act, tag = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
-    if (act == usertag || !notificationsAllowed()) return;
+  showNotification({issuedTime = this.issuedTime, body = '', act = this.act, tag = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
+    // Give OS notification that comes back to here, unless act is us.
+    if (act == Agent.tag || !notificationsAllowed()) return;
     navigator.serviceWorker.ready.then(registration => {
       const timestamp = issuedTime;
       const icon = new URL('./images/civil-defense-192.png', location.href).href;
@@ -397,7 +414,7 @@ export class Marker { // A wrapper around L.marker
     inputElement.value = '';
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     networkPromise.then(async contact => {
-      contact.publish({eventName, payload, subject: uuidv4(), act: usertag});
+      contact.publish({eventName, payload, subject: uuidv4(), act: Agent.tag});
       // Extend the expiration of the original event, and of the public handle/avatar of everyone in the conversation.
       // this is done by republishing with no payload (not null!).
       const {lat, lng, subject, hashtag} = this;
@@ -416,7 +433,7 @@ export class Marker { // A wrapper around L.marker
   }
   deleteReply(replyElement) {
     resetInactivityTimer();
-    networkPromise.then(contact => contact.publish({eventName: this.subject, subject: replyElement.dataset.subject, payload: null, act: usertag}));
+    networkPromise.then(contact => contact.publish({eventName: this.subject, subject: replyElement.dataset.subject, payload: null, act: Agent.tag}));
   }
   formatReplies() { // Answer HTML for the replies and input box.
     const { replies, act, originalPosting } = this;
@@ -441,7 +458,7 @@ export class Marker { // A wrapper around L.marker
     return `
 <div class="replies">${formattedReplies}</div>
 <div class="attachment-preview"></div>
-<md-outlined-text-field class="reply-input" label="${Int`reply here`}">
+<md-outlined-text-field class="reply-input" type="textarea" rows="1" label="${Int`reply here`}">
   <md-tonal-icon-button slot="leading-icon">
     <md-icon class="material-icons">attach_file</md-icon>
   </md-tonal-icon-button>
@@ -515,7 +532,7 @@ let yourLocation; // marker
 let lastLatitude, lastLongitude;
 
 export function updateLocation(lat, lng, zoom) { // initMap if necessary, and set our position.
-  //console.log('updateLocation', lat, lng);
+  //console.log('updateLocation', lat, lng, map, yourLocation);
   // Can't call getCurrentPosition while watching. So set it here for use in recenterMap.
   lastLatitude = lat;
   lastLongitude = lng;

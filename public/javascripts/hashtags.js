@@ -27,7 +27,7 @@ export const Hashtags = {
   canonical2extended: {},
   add(label, active = true, updateMarkers = true) { // Ensure label is a hashtag, initialized to active, and if existing, forcing it active.
     // Return our (possibly new) understanding of the extended hashtag.
-    // Note that only startup-poplation of tags from persistence would ever specify active=false.
+    // Note that only startup-population of tags from persistence would ever specify active=false.
     // Here we accept a canonical or extended label, updating our records keyed by the canonical part,
     // but if we currently have just a canonical part we update our records to capture the extended.
     // (We do not change the emoji of an existing extended.)
@@ -119,28 +119,20 @@ export const Hashtags = {
       element.addEventListener('remove', event => {
 	resetInactivityTimer();
 	const chip = event.target;
-	delete this.hashtags[chip.label];
-	delete this.canonical2extended[this.canonicalTag(chip.label)];
-	this.onchange({redisplaySubscribers: false, resetSubscriptions: false});
+	this.remove(chip);
       });
       element.onclick = event => {
 	event.stopPropagation();
 	resetInactivityTimer();
 	const chip = event.target;
-	const label = chip.label;
-	const isPub = label === this.getPublish();
-	const altPub = isPub && this.getSubscribe().find(tag => tag != label);
-	if (altPub) this.setPublish(altPub);
-	else if (isPub && !chip.selected) { chip.selected = true; return; } // Don't allow deselecting the only pub tag.
-	this.hashtags[label] = chip.selected;
-	chip.removable = !chip.selected;
+	this.toggleChip(chip);
 	Marker.closePopup();
 	this.onchange({redisplaySubscribers: false});
       };
     });
     this.chipset.insertAdjacentHTML("afterbegin",  // Chip to add a new hashtag.
 				    `<md-filled-text-field class="newtag" placeholder="➕${Int`add topic`}"></md-filled-text-field>`);
-    this.chipset.firstChild.onclick = event => event.stopPropagation();
+    this.chipset.firstChild.onclick = event => { event.stopPropagation(); Marker.closePopup(); };
     this.chipset.firstChild.onchange = event => { // Add the new hashtag.
       resetInactivityTimer();
       const tag = event.target.value.trim();
@@ -150,6 +142,26 @@ export const Hashtags = {
       this.setPublish(tag);
       this.onchange();
     };
+  },
+  remove(chip, redisplaySubscribers = false) {
+    delete this.hashtags[chip.label];
+    delete this.canonical2extended[this.canonicalTag(chip.label)];
+    this.onchange({redisplaySubscribers, resetSubscriptions: false});
+  },
+  toggleChip(chip) {
+    const label = chip.label;
+    const isPub = label === this.getPublish();
+    const altPub = isPub && this.getSubscribe().find(tag => tag != label);
+    if (altPub) this.setPublish(altPub);
+    else if (isPub && !chip.selected) { chip.selected = true; return; } // Don't allow deselecting the only pub tag.
+    this.hashtags[label] = chip.selected;
+    chip.removable = !chip.selected;
+  },
+  getChip(label) {
+    for (const chip of this.chipset.children) {
+      if (chip.label === label) return chip;
+    }
+    return null;
   },
   setPublish(newTag) {
     const oldTag = this.getPublish();
@@ -168,3 +180,4 @@ export const Hashtags = {
 const persisted = JSON.parse(localStorage.getItem('hashtags') ||
 			     `{"🍰 ${Int`cake`}": true, "🔥 ${Int`fire`}": true, "🌊 ${Int`flood`}": true, "🆘 ${Int`help`}": "pub", "🧊 ${Int`ice`}": true}`);
 Object.entries(persisted).forEach(([tag, active]) => Hashtags.add(tag, active, false));
+if (!Hashtags.getPublish()) Hashtags.setPublish(Hashtags.getSubscribe()[0]);
