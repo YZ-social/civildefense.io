@@ -135,7 +135,8 @@ export const Hashtags = {
     this.chipset.firstChild.onclick = event => { event.stopPropagation(); Marker.closePopup(); };
     this.chipset.firstChild.onchange = event => { // Add the new hashtag.
       resetInactivityTimer();
-      const tag = event.target.value.trim();
+      let tag = event.target.value.trim().replace(/^#/, '').toLocaleLowerCase();
+      if (tag.startsWith('#'))
       if (!tag) return;
       Marker.closePopup();
       this.add(tag);
