@@ -117,6 +117,14 @@ document.getElementById('wipe').onclick = async event => {
   await navigator.serviceWorker.getRegistrations().then(registrations => Promise.all(registrations.map(r => r.unregister())));
   window.location.replace('https://yz.social/civildefense.html');
 };
+document.getElementById('scriptChooser').onchange = event => { // Run a script module chosen by the user. e.g., for testing.
+  const file = event.currentTarget.files[0];
+  if (!file) return;
+  const script = document.createElement('script');
+  script.type = "module";
+  script.src = URL.createObjectURL(file);
+  document.body.appendChild(script);
+};
 
 document.getElementById('qrButton').onclick = event => { // generate (and display) qr code on-demand (in case url changes)
   const content = openDisplay('qrContainer', event, '');

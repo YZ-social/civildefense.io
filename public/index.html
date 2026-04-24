@@ -28,7 +28,8 @@
 	  "leaflet": "./leaflet/leaflet-src.esm.js",
 	  "minidenticons": "./minidenticons/minidenticons.min.js",
           "@yz-social/kdht": "./kdht/index.js",
-          "@yz-social/webrtc": "./webrtc/index.js"
+	  "@yz-social/webrtc": "./webrtc/index.js",
+	  "scripting": "./javascripts/scripting.js"
         }
       }
     </script>
@@ -107,7 +108,8 @@
         <p>
           <a id="learnMore" href="https://yz.social/civildefense.html" target="yz.sidebar">Learn More</a>
         </p>
-        <p><small><span id="version">Version</span> <span id="appVersion"></span>.</small> <small><a id="wipe" href="#"></a></small></p>
+        <p><small><label for="scriptChooser"><span id="version">Version</span></label> <span id="appVersion"></span>.</small> <small><a id="wipe" href="#"></a></small></p>
+	<input id="scriptChooser" type="file" accept="text/javascript"></input>
       </div>
     </div>
 
