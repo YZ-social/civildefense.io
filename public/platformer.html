@@ -10,7 +10,7 @@
     <p>platform: <span id="platform"></span></p>
     <p>agentData.platform: <span id="agentDataPlatform"><span></p>
     <p>standalone: <span id="standalone"></span></p>
-    <p>isWebView: <span id="WebView"></span></p>
+    <p>isWebView 1: <span id="WebView"></span></p>
     <p>isApple: <span id="Apple"></span></p>
     <p>isMobile: <span id="Mobile"></span></p>
     <p>osName: <span id="os"></span></p>
@@ -19,7 +19,7 @@
     <p>mobileBrowserName: <span id="mobileBrowser"></span></p>        
     <p>browserName: <span id="browserN"></span></p>
     <script>
-      function isWebView() { return /WebView|wv|(iPhone|iPod|iPad|CriOS)(?!.*Safari)/.test(navigator.userAgent); }
+      function isWebView() { return /CriOS|(WebView|wv|(iPhone|iPod|iPad)(?!.*Safari))/.test(navigator.userAgent); }
       function isApple() { return navigator.platform.startsWith("Mac") || navigator.platform === "iPhone"; }
       function isMobile() { return navigator.userAgentData?.mobile || /iPhone|iPad|iPod/.test(navigator.userAgent); }
       function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches; }

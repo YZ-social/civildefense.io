@@ -29,7 +29,7 @@ export async function resetInactivityTimer(clearMessage = true) { // if !network
   // }, INACTIVITY_SECONDS * 1e3);
 }
 
-function isWebView() { return /WebView|wv|(iPhone|iPod|iPad|CriOS)(?!.*Safari)/.test(navigator.userAgent); }
+function isWebView() { return /CriOS|(WebView|wv|(iPhone|iPod|iPad)(?!.*Safari))/.test(navigator.userAgent); }
 function isApple() { return navigator.platform.startsWith("Mac") || navigator.platform === "iPhone"; }
 function isMobile() { return navigator.userAgentData?.mobile || /iPhone|iPad|iPod/.test(navigator.userAgent); }
 function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches; }
