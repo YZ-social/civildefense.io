@@ -8,6 +8,7 @@ export function Int([string]) { // A tagged template function that converts to l
 
 const translations = {
   ['Your Location']: {es: "Tu Ubicación"},
+  ['Default location. Geolocation unavailable.']: {es: "Ubicación predeterminada. Geoubicación no disponible."},
   ['Tap anywhere to mark a concern. Markers fade after 24 hours.']: {es: "Toca cualquier punto para marcar una preocupación. Los marcadores desaparecen después de 24 horas."},
 
   ['Location access denied. Using default location.']: {es: "Acceso a la ubicación denegado. Se utilizará la ubicación predeterminada."},

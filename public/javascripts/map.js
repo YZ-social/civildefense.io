@@ -531,14 +531,14 @@ export function go({lat = null, lng = null, zoom = null, subject = null}) { // G
 let yourLocation; // marker
 let lastLatitude, lastLongitude;
 
-export function updateLocation(lat, lng, zoom) { // initMap if necessary, and set our position.
+export function updateLocation(lat, lng, zoom, positionLabel) { // initMap if necessary, and set our position.
   //console.log('updateLocation', lat, lng, map, yourLocation);
   // Can't call getCurrentPosition while watching. So set it here for use in recenterMap.
   lastLatitude = lat;
   lastLongitude = lng;
 
   if (!map) {
-    initMap(lat, lng, zoom);
+    initMap(lat, lng, zoom, positionLabel);
 
     const params = new URL(location).searchParams;
     const tags = params.get('tags');
@@ -557,6 +557,7 @@ export function updateLocation(lat, lng, zoom) { // initMap if necessary, and se
     return;
   }
   // Otherwise just update the yourLocation marker if appropriate (and not update zoom).
+  if (positionLabel) yourLocation.getPopup().setContent(positionLabel);
 
   // setLatLng can cause the map to autoPan to put the marker within bounds.
   // It seems like that shouldn't happen with autoPan:false, above, but it does.
@@ -577,7 +578,7 @@ export function recenterMap(event) {
 
 var trackMap;
 
-export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial map and handlers for this position.
+export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate zoomed initial map and handlers for this position.
   // Then show initial message and updateSubscriptions.
 
   showMessage(Int`Getting your location...`);
@@ -630,7 +631,7 @@ export function initMap(lat, lng, zoom) { // Set up appropriate zoomed initial m
   L.Icon.Default.prototype.options.crossOrigin = 'anonymous'; // Set default prop, as it is used on next line.
   yourLocation = L.marker([lat, lng], {autoPan: false})
     .addTo(map)
-    .bindPopup(Int`Your Location`)
+    .bindPopup(positionLabel)
     .openPopup();
   // We close the popup on move, because the map will try to keep an open popup from straddling the bounds,
   // which can be confusing. It also closes when another marker is made, so it's nice to just close it

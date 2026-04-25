@@ -188,6 +188,8 @@ function resetReconnectCountdown() { // if !checkOnline each second, show time r
 
 export let positionWatch;
 let subscribeOneShot;
+const goodPositionLabel = Int`Your Location`;
+
 function initializeGeolocation(subscribe = false) { // Arrange to constantly updateLocation, but:
   // if no support, message and defaultInit
   // if no permission, message and defaultInit
@@ -202,8 +204,9 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
   console.log('Initializing geolocation.', subscribe ? 'Will subscribe.' : 'Has subscriptions.');
   subscribeOneShot = subscribe;
   const initMap = (lat, lng) => {
-    let zoom = 14;
+    let zoom = 14, positionLabel = goodPositionLabel;
     if (lat === undefined) {
+      positionLabel = Int`Default location. Geolocation unavailable.`;
       const level9Cell = localStorage.getItem('level9Cell');
       if (level9Cell) { // Zoomed out near where we last where, but not too exact for security.
 	zoom = 12;
@@ -214,7 +217,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
       }
     }
     console.log('initializeGeolocation updateLocation');
-    updateLocation(lat, lng, zoom);
+    updateLocation(lat, lng, zoom, positionLabel);
     if (!subscribeOneShot) return;
     subscribeOneShot = false;
     resetInactivityTimer(false);
