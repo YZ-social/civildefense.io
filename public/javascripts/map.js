@@ -648,7 +648,7 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
   // Add click event to note position
   map.on('click', async function(e) {
     resetInactivityTimer();
-    if (map.getContainer().querySelector('.leaflet-popup')) return; // Ignore clicks with popup open.
+    if (document.getElementById('map').querySelector('.leaflet-popup')) return; // Ignore clicks with popup open.
     const { lat, lng } = e.latlng;
     Marker.openPopup(await publish({lat, lng}));
   });
