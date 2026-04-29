@@ -41,6 +41,7 @@ function browserName() {
   if (navigator.userAgent.includes("Firefox")) return "Firefox";
   if (navigator.userAgent.includes("Edg")) return "Edge";
   if (navigator.userAgent.includes("Chrome")) return "Chrome";
+  if (navigator.userAgent.includes("CriOS")) return "Chrome";
   if (navigator.userAgent.includes("Safari")) return "Safari";
   return '';
 }

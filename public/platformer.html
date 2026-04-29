@@ -14,9 +14,9 @@
     <p>isApple: <span id="Apple"></span></p>
     <p>isMobile: <span id="Mobile"></span></p>
     <p>osName: <span id="os"></span></p>
-    <p>mobilePlatformName: <span id="mobilePlatform"></span></p>
-    <p>mobileVendorName: <span id="mobileVendor"></span></p>
-    <p>mobileBrowserName: <span id="mobileBrowser"></span></p>        
+    <p>regularized mobilePlatformName (i.e., iOS or Android IF mobile): <span id="mobilePlatform"></span></p>
+    <p>regularized mobileVendorName (i.e, Apple or Android IF mobile): <span id="mobileVendor"></span></p>
+    <p>native mobileBrowserName (i.e., Safari or Chrom IF mobile): <span id="mobileBrowser"></span></p>
     <p>browserName: <span id="browserN"></span></p>
     <script>
       function isWebView() { return /CriOS|(WebView|wv|(iPhone|iPod|iPad)(?!.*Safari))/.test(navigator.userAgent); }
@@ -32,6 +32,7 @@
 	if (navigator.userAgent.includes("Firefox")) return "Firefox";
 	if (navigator.userAgent.includes("Edg")) return "Edge";
 	if (navigator.userAgent.includes("Chrome")) return "Chrome";
+	if (navigator.userAgent.includes("CriOS")) return "Chrome";
 	if (navigator.userAgent.includes("Safari")) return "Safari";
 	return '';
       }
@@ -43,7 +44,7 @@
       Apple.textContent = isApple();
       Mobile.textContent = isMobile();
       os.textContent = osName();
-      mobilePlatform.textContent = mobileBrowserName();
+      mobilePlatform.textContent = mobilePlatformName();
       mobileVendor.textContent = mobileVendorName();
       mobileBrowser.textContent = mobileBrowserName();
       browserN.textContent = browserName();
