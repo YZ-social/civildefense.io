@@ -30,15 +30,14 @@ export async function resetInactivityTimer(clearMessage = true) { // if !network
 }
 
 function isWebView() { return /CriOS|(WebView|wv|(iPhone|iPod|iPad)(?!.*Safari))/.test(navigator.userAgent); }
-function isApple() { return navigator.platform.startsWith("Mac") || navigator.platform === "iPhone"; }
+function isApple() { return navigator.platform.startsWith('Mac') || ['iPhone', 'iPad'].includes(navigator.platform); }
 function isMobile() { return navigator.userAgentData?.mobile || /iPhone|iPad|iPod/.test(navigator.userAgent); }
 function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches; }
-function osName() { return navigator.userAgentData?.platform || navigator.platform; }
+function osName() { return navigator.userAgentData?.platform || navigator.userAgent.match(/Android/)?.[0] || navigator.platform; }
 function mobilePlatformName() { return isMobile() && (isApple() ? 'iOS' : 'Android'); }
 function mobileVendorName() { return isMobile() && (isApple() ? 'Apple' : 'Android'); }
 function mobileBrowserName() { return isApple() ? 'Safari' : 'Chrome'; }
 function browserName() {
-  if (isMobile()) return mobileBrowserName();
   if (navigator.userAgent.includes("Firefox")) return "Firefox";
   if (navigator.userAgent.includes("Edg")) return "Edge";
   if (navigator.userAgent.includes("Chrome")) return "Chrome";
