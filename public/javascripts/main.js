@@ -55,7 +55,7 @@ function noteNotificationPermission(permission) {
   if (isWebView()) {
     showNotifications.indeterminate = true;
     showNotifications.toggleAttribute('disabled', true);
-    showNotificationsLabel.innerHTML = `${mobileVendorName()} ${Int`does not support notifications on WebViews embedded in other programs. Please use CivilDefense.io in native`} ${mobileBrowserName}.`;
+    showNotificationsLabel.innerHTML = `${mobileVendorName()} ${Int`does not support notifications on WebViews embedded in other programs. Please use CivilDefense.io in native`} ${mobileBrowserName()}.`;
     return;
   }
   if (isMobile() && isApple() && !isStandalone()) {
