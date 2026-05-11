@@ -439,7 +439,13 @@ export class Marker { // A wrapper around L.marker
     const { replies, act, originalPosting } = this;
     const formatReply = ({subject, payload, ...rest}) => {
       const {message = payload, file, name} = payload;
-      let text = message.replace(/https?:\/\/\S+/g, url => `<a href="${url}" target="yz.sidebar">${url}</a>`); // show urls as links
+      let text = message.replace(/https?:\/\/\S+/g, url => {
+        const audioExtensions = /\.(mp3|flac|ogg|wav|aac|m4a)$/i;
+        if (audioExtensions.test(url)) {
+          return `<audio controls src="${url}"></audio>`;
+        }
+        return `<a href="${url}" target="yz.sidebar">${url}</a>`;
+      }); // show urls as links, audio as players
       let attachment = '';
       if (file?.startsWith('data:image')) attachment = `<a href="${file}" download><img class="attachment" src="${file}"></img></a>`;
       else if (file) attachment = `
