@@ -86,9 +86,8 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   const Yz = await import('./routes/index.js');
 
   console.log(`${cpus()[0].model}, ${logicalCores} logical cores. Starting ${argv.nPortals}.`);
-  for (let i = 0; i < argv.nPortals; i++) cluster.fork();
   app.use(express.json());
-  const portalServer = await import('@yz-social/kdht/router');
+  const {router, initWorkers} = await import('@yz-social/kdht/router');
 
   app.use('/images', express.static(path.join(__dirname, 'public/images'), {
     maxAge: '1d',
@@ -97,10 +96,12 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   }));
   app.use(express.static(path.join(__dirname, 'public')));
   app.use('/', Yz.router);
-  app.use('/kdht', portalServer.router);
+  app.use('/kdht', router);
 
   app.listen(port);
   console.log('Listening on', port);
+  for (let i = 0; i < argv.nPortals; i++) cluster.fork();
+  initWorkers();
 
 } else {
   const portalNode = await import('@yz-social/kdht/portal');
