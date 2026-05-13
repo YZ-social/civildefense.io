@@ -115,3 +115,4 @@ if (!params.has('dht') || (params.get('dht') !== '0')) {
 }
 
 export { NetworkClass };
+globalThis.NetworkClass = NetworkClass;
