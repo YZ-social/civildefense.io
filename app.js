@@ -6,7 +6,7 @@ import cluster from 'node:cluster';
 import path from 'node:path';
 import http from 'node:http';
 import express from 'express';
-import expressWs from 'express-ws';
+//import expressWs from 'express-ws';
 import logger from 'morgan';
 import { fileURLToPath } from 'url';
 import yargs from 'yargs';
@@ -82,12 +82,12 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   // We must allow expressWs to bach the internals of app before
   // pulling in routes/index.js. Thus a dynamic import is used so that
   // we can control when routes/index.js is processed.
-  expressWs(app);
-  const Yz = await import('./routes/index.js');
+  // expressWs(app);
+  // const Yz = await import('./routes/index.js');
 
-  console.log(`${cpus()[0].model}, ${logicalCores} logical cores. Starting ${argv.nPortals}.`);
+  //console.log(`${cpus()[0].model}, ${logicalCores} logical cores. Starting ${argv.nPortals}.`);
   app.use(express.json());
-  const {router, initWorkers} = await import('@yz-social/kdht/router');
+  //const {router, initWorkers} = await import('@yz-social/kdht/router');
 
   app.use('/images', express.static(path.join(__dirname, 'public/images'), {
     maxAge: '1d',
@@ -95,16 +95,16 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
     immutable: true
   }));
   app.use(express.static(path.join(__dirname, 'public')));
-  app.use('/', Yz.router);
-  app.use('/kdht', router);
+  //app.use('/', Yz.router);
+  //app.use('/kdht', router);
 
   app.listen(port);
   console.log('Listening on', port);
-  for (let i = 0; i < argv.nPortals; i++) cluster.fork();
-  initWorkers();
+  //for (let i = 0; i < argv.nPortals; i++) cluster.fork();
+  //initWorkers();
 
 } else {
-  const portalNode = await import('@yz-social/kdht/portal');
-  const {baseURL, externalBaseURL, fixedSpacing, variableSpacing, verbose} = argv;
-  portalNode.setup({baseURL, externalBaseURL, fixedSpacing, variableSpacing, verbose});
+  // const portalNode = await import('@yz-social/kdht/portal');
+  // const {baseURL, externalBaseURL, fixedSpacing, variableSpacing, verbose} = argv;
+  // portalNode.setup({baseURL, externalBaseURL, fixedSpacing, variableSpacing, verbose});
 }
