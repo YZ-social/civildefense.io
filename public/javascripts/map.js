@@ -372,6 +372,8 @@ export class Marker { // A wrapper around L.marker
     // TODO: handle update/removal.
     const { replies, marker } = this;
     if (data.payload) {
+      const existing = replies.find(reply => reply.subject === data.subject);
+      if (existing) return; // Until we do editing.
       replies.push(data); // TODO: when we implement edited replies, we'll have to find the existing
       replies.sort((a, b) => a.issuedTime - b.issuedTime); // Could be slightly out of order.
       const element = marker.getElement();
