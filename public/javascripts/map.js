@@ -6,6 +6,7 @@ import { Node } from '@yz-social/kdht';
 import { Int } from './translations.js';
 import { consume, openDisplay, file2dataURL, dataURL2file, downsampledFile2dataURL } from './display.js';
 import { Agent } from './agent.js';
+import { getRegionPublisher } from './pubSub.js';
 import { networkPromise, resetInactivityTimer, delay, notificationsAllowed, openAbout } from './main.js';
 import { Hashtags } from './hashtags.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
@@ -88,11 +89,13 @@ let lastLevel9Cell; // S2 level 9 cells average a radius of about 10km ~ 6.5 mil
 export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Update current subscriptions to the new map bounds.
   // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
   if (!networkPromise) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
+  let publisher; // Not used for oldKeys or for empty newKeys array.
   if (!newKeys) {
     const center = map.getCenter();
     const bounds = map.getBounds();
     const northEast = bounds.getNorthEast();
     const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
+    publisher = getRegionPublisher(center.lat, center.lng);
     newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => makeEventName(cell, hash)));
     // Record a zoomed-out cell id in case next session does not have geolocation services.
     let level9Cell = getContainingCells(center.lat, center.lng)[9];
@@ -100,11 +103,12 @@ export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Updat
   }
 
   console.log('Subscribing', {newKeys, length: newKeys.length, oldKeys});
-  const subscribe = (key, handler, autoRenewal = false) =>
-	networkPromise.then(async contact => contact.subscribe({eventName: key, handler, autoRenewal}));
+  const subscribe = (key, handler, publisher, autoRenewal = false) =>
+	networkPromise.then(async contact => contact.subscribe({eventName: key, publisher, handler, autoRenewal}));
 
   // For each entry in the new subscription set that was not previously subscribed, subscribe now.
-  for (const key of newKeys) oldKeys.includes(key) || subscribe(key, data => Marker.ensure(data), true);
+
+  for (const key of newKeys) oldKeys.includes(key) || subscribe(key, data => Marker.ensure(data), publisher, true);
 
   // For each existing subscription, if it does not appear in the new set then unsubscribe.
   for (const key of oldKeys) newKeys.includes(key) || subscribe(key, null);
@@ -135,23 +139,25 @@ async function publish({lat, lng, // Publish the given data to all applicable ev
     const time = issuedTime - 1;
     oldCells = getContainingCells(lat, lng);
     oldHash = hashtag; oldSubject = subject;
+    const publisher = getRegionPublisher(lat, lng);
     for (const cell of oldCells) {
       const eventName = makeEventName(cell, hashtag);
       const key = await Node.key(eventName);
       // Note: we cannot unpublish replies by others, but they expire after a while anyway.
-      contact.publish({eventName, key, subject, payload: null, issuedTime: time, hashtag, act, immediate, ...rest});
+      contact.publish({eventName, key, publisher, subject, payload: null, issuedTime: time, hashtag, act, immediate, ...rest});
     }
   }
 
   const cells = getContainingCells(lat, lng);
+  const publisher = getRegionPublisher(lat, lng);
   last = payload && {lat, lng, hashtag, subject}; // Capture the new subject and eventName data for next time.
   for (const cell of cells) {
     const _level = s2.cellid.level(cell); // add _level for debugging
     const eventName = makeEventName(cell, hashtag);
     const key = await Node.key(eventName);
-    contact.publish({eventName, key, subject, payload, _level, issuedTime, hashtag, act, immediate, ...rest});
+    contact.publish({eventName, key, publisher, subject, payload, _level, issuedTime, hashtag, act, immediate, ...rest});
   }
-  console.log('Published', {cells, n: cells.length, hashtag, subject, payload, oldCells, oldHash, oldSubject});
+  console.log('Published', {cells, n: cells.length, publisher, hashtag, subject, payload, oldCells, oldHash, oldSubject});
   return subject;
 }
 
@@ -226,7 +232,9 @@ export class Marker { // A wrapper around L.marker
       marker.bindPopup('', {className: 'alert'})
 	.on('popupopen', event => wrapper.ensureContent(event.popup));
       // Subscribe to replies to this subject, now that we're set up to receive them.
-      networkPromise.then(async contact => contact.subscribe({eventName: subject, autoRenewal: true, handler: data => wrapper.handleReply(data)}));
+      const publisher = getRegionPublisher(lat, lng);
+      console.log('*** handle replies', publisher, subject);
+      networkPromise.then(async contact => contact.subscribe({eventName: subject, publisher, autoRenewal: true, handler: data => wrapper.handleReply(data)}));
       if (subject === openOnReceive) {
 	openOnReceive = false;
 	wrapper.openPopup();
@@ -416,15 +424,17 @@ export class Marker { // A wrapper around L.marker
     inputElement.value = '';
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     networkPromise.then(async contact => {
-      contact.publish({eventName, payload, subject: uuidv4(), act: Agent.tag});
+      const {lat, lng, subject, hashtag} = this;
+      const publisher = getRegionPublisher(lat, lng);
+      console.log('*** sending reply', publisher, eventName);
+      contact.publish({eventName, publisher, payload, subject: uuidv4(), act: Agent.tag});
       // Extend the expiration of the original event, and of the public handle/avatar of everyone in the conversation.
       // this is done by republishing with no payload (not null!).
-      const {lat, lng, subject, hashtag} = this;
       const cells = getContainingCells(lat, lng);
       const issuedTime = Date.now();
       for (const cell of cells) {
 	const eventName = makeEventName(cell, hashtag);
-	await contact.publish({eventName, subject, issuedTime, hashtag});
+	await contact.publish({eventName, publisher, subject, issuedTime, hashtag});
       }
       for (const reply of this.replies) {
 	const eventName = Agent.networkPersistKey(reply.act);
