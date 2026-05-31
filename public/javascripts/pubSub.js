@@ -12,12 +12,10 @@ const { BigInt } = globalThis;
 let NetworkClass;
 const REGION = geoCellCenter(geoCellId(37.468467587148844, -122.25860595703126));
 console.log('region:', REGION);
-function regionSynthPublisher({ lat, lng }) {
-  const s2 = geoCellId(lat, lng, 8);
-  // 2 hex chars (S2 prefix) + 64 zero hex chars = 66 char synthetic id.
-  return s2.toString(16).padStart(2, '0') + '0'.repeat(64);
+export function getRegionPublisher(lat, lng) { // Answer the "area code" prefix (8-bit s2 cell id as a hex  bit-flag).
+  return geoCellId(lat, lng).toString(16).padStart(2, '0') + '0'.repeat(64);
 }
-const publisher = regionSynthPublisher(REGION);
+
 async function makePeer({ network, region }) {
   // 2a. Derive a 264-bit Ed25519 identity in this region's S2 cell.
   const identity = await deriveIdentity(region);
@@ -89,7 +87,7 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
     const { maxSubscriptionAgeMs } = alice._axonaManager;
     const fixme = {peer:alice, identity:aliceId, maxSubscriptionAgeMs};
     Object.assign(contact, fixme);
-    console.log({maxSubscriptionAgeMs, fixme, contact});
+    //console.log({maxSubscriptionAgeMs, fixme, contact});
 
     /* SIM version
     const { peer: bob,   identity: bobId   } = await makePeer({ network, region: REGION });
@@ -146,12 +144,13 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
   extendableData = {}; // eventName+subject => original {payload, act}
   subscriptions = {}; // eventName => subscription
   subscriptionRenewals = {}; // eventName = intervalTimer;
-  async subscribe({eventName, autoRenewal, handler}) { // Assign handler for eventName, or remove any handler if falsy.
-    console.log('subscribe', eventName, autoRenewal, !!handler, this.maxSubscriptionAgeMs);
+  async subscribe({eventName, publisher = null, autoRenewal, handler}) { // Assign handler for eventName, or remove any handler if falsy.
+    // publisher is not used when unsubscribing.
+    //console.log('subscribe', eventName, autoRenewal, !!handler, this.maxSubscriptionAgeMs);
     if (handler) {
       const callback = ({message, signerPubkey, ts}) => {
 	// TODO: do not respond to immediate inFlight
-	console.log('fired:', {eventName, message, ts});
+	//console.log('fired:', {eventName, message, ts});
 	const key = eventName + message.subject;
 	if (message.payload === undefined) {
 	  //Object.assign(message, this.extendableData[key]);
@@ -175,12 +174,12 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
       delete this.subscriptions[eventName];
     }
   }
-  async publish({eventName, key, subject, immediate = false, issuedTime = Date.now(), ...rest}) { // Publish data to subscribers of eventName.
+  async publish({eventName, key, publisher = null, subject, immediate = false, issuedTime = Date.now(), ...rest}) { // Publish data to subscribers of eventName.
     // key is ignored.
     const message = {subject, immediate, ...rest};
     if (rest.payload === undefined) return false; // FIXME: Find out how to extend timeouts of other people's publications to a given subject (WITHIn the eventName/topic).
 
-    console.log('published', {eventName, message});
+    //console.log('published', {eventName, message});
     // TODO: Execute immediate handlers right away, and then not again when it gets handled later.
     // TODO: Find out how get just the most recent from the original sender on a given subject (WITHIN the eventName/topic).
     await this.peer.pub(eventName, message, { publisher }); // answers a msgId

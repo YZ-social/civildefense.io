@@ -83,6 +83,7 @@ export class Agent {
   persistPublic(value, type) { // Publish (and we will act on subscription).
     networkPromise.then(contact => contact.publish({
       eventName: this.networkPersistKey(),
+      publisher: null,
       subject: type,
       payload: value,
       immediate: true
