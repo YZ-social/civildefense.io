@@ -1,118 +1,191 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Node, WebContact } from '@yz-social/kdht';
-const { WebSocket, URLSearchParams } = globalThis; // For linters.
+import {
+  AxonaPeer, AxonaDomain, NeuronNode, AxonaManager, Synapse,
+  SimNetwork, simTransport,
+  deriveIdentity,
+  geoCellId, geoCellCenter, clz264,
+} from '@axona/protocol';
+import { webTransport } from '@axona/web';
+const { BigInt } = globalThis;
 
+// TODO: simplify all this outside-of-class stuff.
 let NetworkClass;
-const params = new URLSearchParams(location.search);
-if (!params.has('dht') || (params.get('dht') !== '0')) {
-
-  NetworkClass = WebContact;
-
-} else {
-
-  NetworkClass = class WebSocketPubSubClient { // A websocket-baed emulation of KDHT WebContact's connect/disconnect/subscribe/publish
-    static async create({name = uuidv4()} = {}) {
-      const contact = new this();
-      const {promise:attachment, resolve:attached} = Promise.withResolvers();
-      const {promise:detachment, resolve:detached} = Promise.withResolvers();
-      Object.assign(contact, {attachment, detachment, attached, detached, name});
-      return Promise.resolve(contact); // WebContact returns a Promise, so we do, too.
-    }
-    async disconnect() { // Close network connection, if any.
-      const socket = await this.connection;
-      socket?.close(3000, 'inactivity');
-      this.connection = null;
-    }
-    async replicateStorage() { // In the KDHT, this ensure that the data we store is replicated on other nodes. No-op for server-based storage
-    }
-    connection = null; // Promise established at start of connect(), that resolves to socket/channel when open.
-    attachment = null; // In the DHT, this promise resolves to self when joined, but here it happens at the same time as connection.
-    detachment = null; // Promise established at start of connect(), that resolves when closed.
-    async connect(baseURL) { // Establish or re-establish a connection.
-      baseURL = new URL(baseURL).origin.replace(/^http/, 'ws') + '/ws';
-      if ((await this.connection)?.readyState === WebSocket.OPEN) {
-	//console.log('already connected');
-	return this;
-      }
-      this.connection = new Promise(resolveConnection => { // Resolves to connection when open, b/c sending over a still-opening socket gives error.
-	const socket = new WebSocket(baseURL); // baseURL falsey to debug locally
-	socket.onmessage = event => this.receive(JSON.parse(event.data));
-	socket.onopen = () => {
-	  if (socket.readyState !== WebSocket.OPEN) return; // You would think that can't happen, but...
-	  console.log('connection open', baseURL);
-	  resolveConnection(socket);
-	  this.attached(this);
-	};
-
-	// onerror is of no help, as the event is generic.
-	socket.onclose = event => {
-	  console.warn('websocket close', event.code, event.wasClean, event.reason);
-	  this.detached(event.reason ===  'inactivity');
-	  this.attached(this);
-	  resolveConnection( null); // If anyone is waiting or will wait.
-	  this.connection = this.attachment = this.detachment = null;
-	};
-      });
-      await this.connection;
-      return this;
-    }
-
-    // In the DHT, there is storeValue(key, storageItems).
-    // For server-based pubsub, the eventName string is embedded within each storageItem in each sent/received message.
-
-    async send(eventName, messageObject) { // Send serialized message when ready, or nothing if no connection.
-      //console.log('send', eventName, messageObject);
-      (await this.connection)?.send(JSON.stringify({eventName, ...messageObject}));
-    };
-    receive(message) {  // Call the handler previously set using subscribe, if any.
-      const {eventName, subject, issuedTime, ...rest} = message;
-      //console.log('receive', {eventName, subject, issuedTime, ...rest});
-      const handler = this.handlers[eventName];
-      if (!handler) return;
-
-      // If the publish was tagged for filtering by its publisher, check to see if the publisher was here.
-      if (subject) {
-	const index = this.inFlight.indexOf(subject + issuedTime);
-	if (index >= 0) {
-	  this.inFlight.splice(index, 1);
-	  return;
-	}
-      }
-
-      handler({subject, issuedTime, ...rest}, eventName);
-    }
-    handlers = {}; // Mapping eventName => function(messageData) for all active subcriptions
-    inFlight = [];    
-    async subscribe({eventName, handler}) { // Assign handler for eventName, or remove any handler if falsy.
-      eventName = eventName.toString();
-      if (handler) {
-	this.handlers[eventName] = handler;
-	await this.send(eventName, {type: 'sub', subject: this.name, payload: this.name});
-      } else {
-	delete this.handlers[eventName];
-	await this.send(eventName, {type: 'sub', subject: this.name, payload: null});
-      }
-    }
-    async publish({eventName, key, subject, immediate = false, issuedTime = Date.now(), ...rest}) { // Publish data to subscribers of eventName.
-      // key is ignored in server/websocket implemention.
-      eventName = eventName.toString();
-
-      // IFF this client has a handler for this eventName, evaluate it immediately and tag the
-      // publish with a recognizable value so that we can ignore its receipt.
-      if (immediate && this.handlers[eventName]) { // Execute immediately.
-	//console.log('acting immediately on', {eventName, subject, issuedTime, ...rest});
-	this.inFlight.push(subject + issuedTime);
-	this.handlers[eventName]({subject, issuedTime, ...rest, immediateLocalAction: true}, eventName);
-      }
-
-      await this.send(eventName, {subject, issuedTime, ...rest, type: 'pub'});
-    }
-    async extend({eventName, subject, issuedTime = Date.now(), ...rest}) { // Extend the expiration of a publish by someone else, without changing the payload.
-      eventName = eventName.toString();
-      await this.send(eventName, {subject, issuedTime, ...rest, type: 'ext'});
-    }
-  };
+const REGION = geoCellCenter(geoCellId(37.468467587148844, -122.25860595703126));
+console.log('region:', REGION);
+function regionSynthPublisher({ lat, lng }) {
+  const s2 = geoCellId(lat, lng, 8);
+  // 2 hex chars (S2 prefix) + 64 zero hex chars = 66 char synthetic id.
+  return s2.toString(16).padStart(2, '0') + '0'.repeat(64);
 }
+const publisher = regionSynthPublisher(REGION);
+async function makePeer({ network, region }) {
+  // 2a. Derive a 264-bit Ed25519 identity in this region's S2 cell.
+  const identity = await deriveIdentity(region);
+
+  // 2b. Open a SimTransport on the shared SimNetwork.
+  /* SIM version
+  const transport = simTransport({ network, identity, heartbeatMs: 0 });
+  */
+  ///* WEBRTC version
+  const transport = webTransport({ bridgeUrl: 'wss://bridge.axona.net', identity});
+  //*/
+
+  await transport.start(identity.id);
+
+  // 2c. Build the local DHT node.  NeuronNode holds the synaptome and
+  //     routing state; AxonaDomain holds parameters shared across peers.
+  //     NeuronNode XORs ids as BigInts internally, so convert from
+  //     identity.id (hex string) to BigInt at construction time.
+  const node     = new NeuronNode({
+    id:  BigInt('0x' + identity.id),
+    lat: region.lat, lng: region.lng,
+  });
+  node.transport = transport;
+  const domain   = new AxonaDomain({ k: 20 }); // What's the difference between this and AxonaManger.rootSetSize ?
+
+  // 2d. AxonaPeer is the per-node DHT contract implementation.
+  const peer = new AxonaPeer({ domain, node, identity, transport });
+  await peer.start();
+
+  // 2e. AxonaManager handles pub/sub.  It needs a `dht` adapter that
+  //     forwards K-closest, sendDirect, routeMessage, and handler
+  //     registration to our AxonaPeer.  Most of these are 1-line
+  //     delegations; sendDirect special-cases self-target for local
+  //     dispatch.
+  const dht = {
+    getSelfId:       () => peer.getNodeId(),
+    findKClosest:    (...args) => peer.findKClosest(...args),
+    routeMessage:    (...args) => peer.routeMessage(...args),
+    sendDirect:      async (peerId, type, payload) => {
+      if (peerId === peer.getNodeId()) {
+        // Local-loopback: dispatch into our own direct handler table.
+        const h = peer._directHandlers?.get(type);
+        if (!h) return false;
+        try { await h(payload, { fromId: peer.getNodeId(), type }); return true; }
+        catch (err) { console.error('self-sendDirect threw:', err); return false; }
+      }
+      return peer.sendDirect(peerId, type, payload);
+    },
+    onRoutedMessage: (type, h) => peer.onRoutedMessage(type, h),
+    onDirectMessage: (type, h) => peer.onDirectMessage(type, h),
+  };
+  const axonaManager = new AxonaManager({ dht,
+					  // replayCacheSize: 1000, // How much is enough?
+					  rootGraceMs: 30 * 24 * 60 * 60e3
+					});
+  peer._axonaManager = axonaManager;       // hand the AM directly to the peer
+  return { peer, identity };
+}
+
+NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT WebContact's connect/disconnect/subscribe/publish
+  static async create({name = uuidv4()} = {}) { // FIXME: use identity.pubHexKey for name. (Not identity.id, which includes region.)
+    const contact = new this();
+    const {promise:attachment, resolve:attached} = Promise.withResolvers();
+    const {promise:detachment, resolve:detached} = Promise.withResolvers();
+    Object.assign(contact, {attachment, detachment, attached, detached, name});
+
+    const network = new SimNetwork(); // Can be null for webrtc
+    const { peer: alice, identity: aliceId } = await makePeer({ network, region: REGION });    
+    const { maxSubscriptionAgeMs } = alice._axonaManager;
+    const fixme = {peer:alice, identity:aliceId, maxSubscriptionAgeMs};
+    Object.assign(contact, fixme);
+    console.log({maxSubscriptionAgeMs, fixme, contact});
+
+    /* SIM version
+    const { peer: bob,   identity: bobId   } = await makePeer({ network, region: REGION });
+    // Open a SimNetwork channel between alice and bob so they're directly
+    // reachable, then admit each other to their synaptomes.  Real transports
+    // (WebRTC mesh, WebSocket bridge) do this admission via the axona:hello
+    // / hello-ack handshake at channel-open time — see axona-peer's
+    // axona_node.js for the production wiring.
+    await alice._transport.openConnection(bobId.id);
+    function admitSynapse(localPeer, remoteBigInt) {
+      const localId = localPeer._node.id;
+      const stratum = clz264(localId ^ remoteBigInt);
+      const syn = new Synapse({ peerId: remoteBigInt, latencyMs: 1, stratum });
+      syn.weight   = 0.5;
+      syn.inertia  = 0;
+      syn._addedBy = 'demo';
+      localPeer._node.synaptome.set(remoteBigInt, syn);
+    }
+    admitSynapse(alice, BigInt('0x' + bobId.id));
+    admitSynapse(bob,   BigInt('0x' + aliceId.id));
+    // Give the kernel a tick to admit each other to their synaptomes.
+    await new Promise(r => setTimeout(r, 50));
+    */
+    ///* WEBRTC version
+    const READY_SYNAPSE_COUNT = 4;
+    const READY_TIMEOUT_MS    = 10_000;
+    async function waitForMeshReady() {
+      const t0 = Date.now();
+      while (Date.now() - t0 < READY_TIMEOUT_MS) {
+	if (alice._node.synaptome.size >= READY_SYNAPSE_COUNT) return alice._node.synaptome.size;
+	await new Promise(r => setTimeout(r, 200));
+      }
+      return alice._node.synaptome.size;
+    }
+    await waitForMeshReady();
+    //*/
+    console.log('created', contact.peer, !!contact.peer.pub, !!contact.peer.sub);
+
+    return contact;
+  }
+  async disconnect() { // Close network connection, if any.
+  }
+  async disconnectTransports() {
+  }
+  async replicateStorage() { // No-op.
+  }
+  connection = null; // Promise established at start of connect(), that resolves to socket/channel when open.
+  attachment = null; // In the DHT, this promise resolves to self when joined, but here it happens at the same time as connection.
+  detachment = null; // Promise established at start of connect(), that resolves when closed.
+  async connect(baseURL) { // Establish or re-establish a connection.
+    return this;
+  }
+
+  extendableData = {}; // eventName+subject => original {payload, act}
+  subscriptions = {}; // eventName => subscription
+  subscriptionRenewals = {}; // eventName = intervalTimer;
+  async subscribe({eventName, autoRenewal, handler}) { // Assign handler for eventName, or remove any handler if falsy.
+    console.log('subscribe', eventName, autoRenewal, !!handler, this.maxSubscriptionAgeMs);
+    if (handler) {
+      const callback = ({message, signerPubkey, ts}) => {
+	// TODO: do not respond to immediate inFlight
+	console.log('fired:', {eventName, message, ts});
+	const key = eventName + message.subject;
+	if (message.payload === undefined) {
+	  //Object.assign(message, this.extendableData[key]);
+	  return; // fixme. The above is an attempt to handle extensions, but is is confusing the debugging picture.
+	  // (It seems to work fine in single user sim network.)
+	} else {
+	  this.extendableData[key] = message;
+	}
+	const {payload, act, hashtag, subject, immediate} = message;
+	handler({ payload, subject, issuedTime: ts, act, hashtag, immediateLocalAction: false });
+      };
+      const subscribeOnce = async () => {
+	return this.subscriptions[eventName] = await this.peer.sub(eventName, callback, { publisher, since: 'all' });
+      };
+      await subscribeOnce();
+      if (autoRenewal) this.subscriptionRenewals[eventName] = setInterval(subscribeOnce, 0.9 * this.maxSubscriptionAgeMs);
+    } else {
+      clearInterval(this.subscriptionRenewals[eventName]);
+      delete this.subscriptionRenewals[eventName];
+      this.subscriptions[eventName]?.stop();
+      delete this.subscriptions[eventName];
+    }
+  }
+  async publish({eventName, key, subject, immediate = false, issuedTime = Date.now(), ...rest}) { // Publish data to subscribers of eventName.
+    // key is ignored.
+    const message = {subject, immediate, ...rest};
+    if (rest.payload === undefined) return false; // FIXME: Find out how to extend timeouts of other people's publications to a given subject (WITHIn the eventName/topic).
+
+    console.log('published', {eventName, message});
+    // TODO: Execute immediate handlers right away, and then not again when it gets handled later.
+    // TODO: Find out how get just the most recent from the original sender on a given subject (WITHIN the eventName/topic).
+    await this.peer.pub(eventName, message, { publisher }); // answers a msgId
+  }
+};
 
 export { NetworkClass };
 globalThis.NetworkClass = NetworkClass;
