@@ -6,7 +6,7 @@ import { Node } from '@yz-social/kdht';
 import { Int } from './translations.js';
 import { consume, openDisplay, file2dataURL, dataURL2file, downsampledFile2dataURL } from './display.js';
 import { Agent } from './agent.js';
-import { getRegionPublisher } from './pubSub.js';
+import { getRegionPublisher, setSessionRegion } from './pubSub.js';
 import { networkPromise, resetInactivityTimer, delay, notificationsAllowed, openAbout } from './main.js';
 import { Hashtags } from './hashtags.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
@@ -103,7 +103,7 @@ export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Updat
   }
 
   console.log('Subscribing', {newKeys, length: newKeys.length, oldKeys});
-  const subscribe = (key, handler, publisher, autoRenewal = false) =>
+  const subscribe = (key, handler, publisher = null, autoRenewal = false) =>
 	networkPromise.then(async contact => contact.subscribe({eventName: key, publisher, handler, autoRenewal}));
 
   // For each entry in the new subscription set that was not previously subscribed, subscribe now.
@@ -213,7 +213,7 @@ export class Marker { // A wrapper around L.marker
   static ensure(data) { // Add marker at position with appropriate fade if not already present.
     let { payload, subject, issuedTime, act, hashtag, immediateLocalAction = false } = data;
     let wrapper = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
-    console.log('Handling event', {wrapper, subject, payload, act, usertag: Agent.tag, immediateLocalAction, data});
+    console.log('Handling event', {wrapper, hashtag, subject, payload, act, usertag: Agent.tag, immediateLocalAction, data});
 
     if (!payload) return wrapper?.destroy();
     const now = Date.now(),
@@ -594,6 +594,7 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
   // Then show initial message and updateSubscriptions.
 
   showMessage(Int`Getting your location...`);
+  setSessionRegion(lat, lng);
 
   // Map will be centered at the given current location marker, unless overriden by query parameters.
   let center = {lat, lng};
