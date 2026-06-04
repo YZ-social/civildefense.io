@@ -1,12 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 import {
-  AxonaPeer, AxonaDomain, NeuronNode, AxonaManager, Synapse,
-  SimNetwork, simTransport,
-  deriveIdentity,
+  AxonaPeer, AxonaDomain, NeuronNode, AxonaManager,
+  //Synapse, SimNetwork, simTransport,
+  deriveTopicId,
+  deriveIdentity, loadIdentity, dumpIdentity,
   geoCellId, geoCellCenter, clz264,
 } from '@axona/protocol';
 import { webTransport } from '@axona/web';
-const { BigInt } = globalThis;
+const { BigInt, localStorage } = globalThis;
 
 // TODO: simplify all this outside-of-class stuff.
 let NetworkClass;
@@ -23,7 +24,16 @@ export function getRegionPublisher(lat, lng) { // Answer the "area code" prefix 
 
 async function makePeer({ network, region }) {
   // 2a. Derive a 264-bit Ed25519 identity in this region's S2 cell.
-  const identity = await deriveIdentity(region);
+  let identity;
+  // The network will not let us kill publications from previous sessions unless we persist and reuse the identity.
+  const identityPersistenceKey = 'nodeIdentity';
+  const identityString = localStorage.getItem(identityPersistenceKey);
+  if (identityString) {
+    identity = await loadIdentity(JSON.parse(identityString));
+  } else {
+    identity = await deriveIdentity(region);
+    localStorage.setItem(identityPersistenceKey, JSON.stringify(await dumpIdentity(identity)));
+  }
 
   // 2b. Open a SimTransport on the shared SimNetwork.
   /* SIM version
@@ -88,7 +98,7 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
     const {promise:detachment, resolve:detached} = Promise.withResolvers();
     Object.assign(contact, {attachment, detachment, attached, detached, name});
 
-    const network = new SimNetwork(); // Can be null for webrtc
+    const network = null;// fixme remove new SimNetwork(); // Can be null for webrtc
     const { peer: alice, identity: aliceId } = await makePeer({ network, region: REGION });    
     const { maxSubscriptionAgeMs } = {maxSubscriptionAgeMs: 30e3}; //fixme ialice._axonaManager;
     const fixme = {peer:alice, identity:aliceId, maxSubscriptionAgeMs};
@@ -140,7 +150,7 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
     await this.peer.stop();
   }
   disconnectTransports() {
-    return this.fixme.peer.leave();
+    return this.peer.leave();
   }
   async replicateStorage() { // No-op.
   }
@@ -151,31 +161,30 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
     return this;
   }
 
-  deletableData = {}; // msgId => subject
+  deletableSubjects = {}; // msgId => subject
+  deletableMsgIds = {}; // eventName+subject => msgId
   extendableData = {}; // eventName+subject => original {payload, act, hashtag}
-  ourPublications = {}; // eventName+subject => msgId
   subscriptions = {}; // eventName => subscription
-  subscriptionRenewals = {}; // eventName = intervalTimer;
   async subscribe({eventName, publisher = null, autoRenewal, handler}) { // Assign handler for eventName, or remove any handler if falsy.
     // publisher is not used when unsubscribing.
-    console.log('subscribe', {eventName, publisher, autoRenewal, maxSubscriptionAgeMs: this.maxSubscriptionAgeMs});
+    //console.log('subscribe', {eventName, publisher, autoRenewal, maxSubscriptionAgeMs: this.maxSubscriptionAgeMs});
     if (handler) {
-      const callback = envelope => {
-	const {message, deleted, msgId, signerPubkey, ts} = envelope;
+      const callback = async envelope => {
+	const {message, deleted, msgId, signerPubkey, topic, ts} = envelope;
 	// TODO: do not respond to immediate inFlight
 	if (deleted) {
-	  const subject = this.deletableData[msgId];
+	  const subject = this.deletableSubjects[msgId];
 	  if (!subject) throw new Error(`No subject found for ${JSON.stringify(envelope)}.`);
 	  const key = eventName + subject;
 	  const data = this.extendableData[key];
 	  if (!data) throw new Error(`No data found for ${subject} ${JSON.stringify(envelope)}.`);
-	  delete this.deletableData[msgId];
+	  delete this.deletableSubjects[msgId];
 	  delete this.extendableData[key];
-	  console.log('deleted:', {eventName, subject, data});
+	  //console.log('deleted:', {eventName, subject, data});
 	  handler({...data, subject, issuedTime: ts, payload: null});
 	  return;
 	}
-	console.log('fired:', {eventName, deleted, message, ts});
+	console.log('fired:', {eventName, topic, publisher, topicId: await deriveTopicId(publisher, topic), deleted, message, ts});
 	const key = eventName + message.subject;
 	if (message.payload === undefined) {
 	  //Object.assign(message, this.extendableData[key]);
@@ -183,20 +192,14 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
 	  // (It seems to work fine in single user sim network.)
 	}
 	const {payload, act, hashtag, subject, immediate} = message;
-	this.deletableData[msgId] = subject;
+	this.deletableSubjects[msgId] = subject;
+	//console.log(`recorded msgId ${msgId} for key ${key}`);
 	this.extendableData[key] = message;
 	handler({ payload, subject, issuedTime: ts, act, hashtag, immediateLocalAction: false });
       };
-      const subscribeOnce = async () => {
-	this.subscriptions[eventName] = await this.peer.sub(eventName, callback, { publisher, since: 'all' });
-	console.log('subscribed to', eventName, publisher, this.subscriptions[eventName]);
-	return this.subscriptions[eventName];
-      };
-      await subscribeOnce();
-      if (autoRenewal) this.subscriptionRenewals[eventName] = setInterval(subscribeOnce, 0.9 * this.maxSubscriptionAgeMs);
+      this.subscriptions[eventName] = await this.peer.sub(eventName, callback, { publisher, since: 'all' });
+      console.log('subscribed', eventName, publisher, await deriveTopicId(publisher, eventName, this.subscriptions[eventName]?.id));
     } else {
-      clearInterval(this.subscriptionRenewals[eventName]);
-      delete this.subscriptionRenewals[eventName];
       this.subscriptions[eventName]?.stop();
       delete this.subscriptions[eventName];
     }
@@ -207,16 +210,16 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
     if (payload === undefined) return; // FIXME: Find out how to extend timeouts of other people's publications to a given subject (WITHIn the eventName/topic).
     const key1 = eventName + subject;
     if (payload === null) {
-      console.log('unpublish', {eventName, publisher, message});
-      const msgId = this.ourPublications[key1];
+      //console.log('unpublish', {eventName, publisher, message});
+      const msgId = this.deletableMsgIds[key1];
       if (!msgId) throw new Error(`No previous msgId for ${eventName} + ${subject}.`);
       await this.peer.kill(eventName, msgId, {publisher });
       return;
     }
-    console.log('publish', {eventName, publisher, message});
     // TODO: Execute immediate handlers right away, and then not again when it gets handled later.
     // TODO: Find out how get just the most recent from the original sender on a given subject (WITHIN the eventName/topic).
-    this.ourPublications[key1] = await this.peer.pub(eventName, message, { publisher }); // answers a msgId
+    this.deletableMsgIds[key1] = await this.peer.pub(eventName, message, { publisher }); // answers a msgId
+    console.log('publish', {eventName, publisher, topicId: await deriveTopicId(publisher, eventName), message, id:this.deletableMsgIds[key1]});
   }
 };
 

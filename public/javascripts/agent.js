@@ -31,8 +31,9 @@ export class Agent {
   localPersistKey(type, tag = this.tag) { // for localStorage of our private data about this Agent.
     return `${type}-${tag}`;
   }
+  static networkVersion = 9;
   static networkPersistKey(tag) { // EventName (not key) for pubsub of public data bout this Agent.
-    return `public:${tag}`;
+    return `public:${this.networkVersion}:${tag}`;
   }
   networkPersistKey(tag = this.tag) {
     return Agent.networkPersistKey(tag);
@@ -83,7 +84,6 @@ export class Agent {
   persistPublic(value, type) { // Publish (and we will act on subscription).
     networkPromise.then(contact => contact.publish({
       eventName: this.networkPersistKey(),
-      publisher: null,
       subject: type,
       payload: value,
       immediate: true
