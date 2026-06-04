@@ -68,7 +68,7 @@ export async function share(properties) {  // Invoke platform share API on prope
 }
 
 export function makeEventName(cell, hash) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
-  return `s2:${cell}:${Hashtags.canonicalTag(hash)}`;
+  return `civildefense.io:${Agent.networkVersion}:${cell}:${Hashtags.canonicalTag(hash)}`;
 }
 export function getShareableURL(subject = null, tags = Hashtags.getSubscribe()) { // Answer a url that reflects application state.
   const params = new URLSearchParams(location.search);
@@ -83,7 +83,7 @@ export function getShareableURL(subject = null, tags = Hashtags.getSubscribe()) 
   return new URL(`?${params.toString()}`, location);
 }
 
-let subscriptions = []; // array of stringy keys s2:<cellID>:<hashtag>
+let subscriptions = []; // array of stringy keys <mumble>:<cellID>:<hashtag>
 // We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
 let lastLevel9Cell; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
 export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Update current subscriptions to the new map bounds.
@@ -102,7 +102,6 @@ export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Updat
     if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
   }
 
-  console.log('Subscribing', {newKeys, length: newKeys.length, oldKeys});
   const subscribe = (key, handler, publisher = null, autoRenewal = false) =>
 	networkPromise.then(async contact => contact.subscribe({eventName: key, publisher, handler, autoRenewal}));
 
@@ -112,6 +111,7 @@ export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Updat
 
   // For each existing subscription, if it does not appear in the new set then unsubscribe.
   for (const key of oldKeys) newKeys.includes(key) || subscribe(key, null);
+  console.log('Subscribed', {newKeys, length: newKeys.length, oldKeys});
 
   subscriptions = newKeys;
 }
@@ -155,7 +155,7 @@ async function publish({lat, lng, // Publish the given data to all applicable ev
     const _level = s2.cellid.level(cell); // add _level for debugging
     const eventName = makeEventName(cell, hashtag);
     const key = await Node.key(eventName);
-    contact.publish({eventName, key, publisher, subject, payload, _level, issuedTime, hashtag, act, immediate, ...rest});
+    contact.publish({eventName, key, publisher, subject, payload, issuedTime, hashtag, act, immediate, ...rest});
   }
   console.log('Published', {cells, n: cells.length, publisher, hashtag, subject, payload, oldCells, oldHash, oldSubject});
   return subject;
@@ -233,7 +233,7 @@ export class Marker { // A wrapper around L.marker
 	.on('popupopen', event => wrapper.ensureContent(event.popup));
       // Subscribe to replies to this subject, now that we're set up to receive them.
       const publisher = getRegionPublisher(lat, lng);
-      console.log('*** handle replies', publisher, subject);
+      //console.log('*** handle replies', publisher, subject);
       networkPromise.then(async contact => contact.subscribe({eventName: subject, publisher, autoRenewal: true, handler: data => wrapper.handleReply(data)}));
       if (subject === openOnReceive) {
 	openOnReceive = false;
@@ -263,6 +263,7 @@ export class Marker { // A wrapper around L.marker
       this.marker.getPopup().update();
       this.initializeHandlers(popup);
     });
+    console.warn(`latitude: ${this.lat}, longitude: ${this.lng}`);
   }
   clearAvatars(popup = this.marker?.getPopup()) {
     popup?.getElement()?.querySelectorAll('.correspondent[data-tag]')
@@ -426,7 +427,6 @@ export class Marker { // A wrapper around L.marker
     networkPromise.then(async contact => {
       const {lat, lng, subject, hashtag} = this;
       const publisher = getRegionPublisher(lat, lng);
-      console.log('*** sending reply', publisher, eventName);
       contact.publish({eventName, publisher, payload, subject: uuidv4(), act: Agent.tag});
       // Extend the expiration of the original event, and of the public handle/avatar of everyone in the conversation.
       // this is done by republishing with no payload (not null!).
