@@ -127,27 +127,13 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
     // Give the kernel a tick to admit each other to their synaptomes.
     await new Promise(r => setTimeout(r, 50));
     */
-    ///* WEBRTC version
-    // const READY_SYNAPSE_COUNT = 4;
-    // const READY_TIMEOUT_MS    = 10_000;
-    // async function waitForMeshReady() {
-    //   const t0 = Date.now();
-    //   while (Date.now() - t0 < READY_TIMEOUT_MS) {
-    // 	if (alice._node.synaptome.size >= READY_SYNAPSE_COUNT) return alice._node.synaptome.size;
-    // 	await new Promise(r => setTimeout(r, 200));
-    //   }
-    //   return alice._node.synaptome.size;
-    // }
-    // await waitForMeshReady();
-    await alice.join();
-    //*/
     console.log('created', contact.peer, !!contact.peer.pub, !!contact.peer.sub);
-
     return contact;
   }
   async disconnect() { // Close network connection, if any.
     await this.disconnectTransports();
     await this.peer.stop();
+    this.detached();
   }
   disconnectTransports() {
     return this.peer.leave();
@@ -155,19 +141,27 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
   async replicateStorage() { // No-op.
   }
   connection = null; // Promise established at start of connect(), that resolves to socket/channel when open.
-  attachment = null; // In the DHT, this promise resolves to self when joined, but here it happens at the same time as connection.
   detachment = null; // Promise established at start of connect(), that resolves when closed.
   async connect(baseURL) { // Establish or re-establish a connection.
-    return this;
+    await this.peer.join();
+    const READY_SYNAPSE_COUNT = 4;
+    const READY_TIMEOUT_MS    = 10_000;
+    const t0 = Date.now();
+    const node = this.peer._node;
+    while (Date.now() - t0 < READY_TIMEOUT_MS) {
+      if (node.synaptome.size >= READY_SYNAPSE_COUNT) break;
+      await new Promise(r => setTimeout(r, 200));
+    }
+    this.attached(this.peer);
+    console.log(`${node.synaptome.size} connections.`);
   }
 
   deletableSubjects = {}; // msgId => subject
   deletableMsgIds = {}; // eventName+subject => msgId
   extendableData = {}; // eventName+subject => original {payload, act, hashtag}
   subscriptions = {}; // eventName => subscription
-  async subscribe({eventName, publisher = null, autoRenewal, handler}) { // Assign handler for eventName, or remove any handler if falsy.
-    // publisher is not used when unsubscribing.
-    //console.log('subscribe', {eventName, publisher, autoRenewal, maxSubscriptionAgeMs: this.maxSubscriptionAgeMs});
+  async subscribe({eventName, publisher = null, handler}) { // Assign handler for eventName, or remove any handler if falsy.
+    await this.attachment;
     if (handler) {
       const callback = async envelope => {
 	const {message, deleted, msgId, signerPubkey, topic, ts} = envelope;
@@ -181,24 +175,24 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
 	  delete this.deletableSubjects[msgId];
 	  delete this.extendableData[key];
 	  //console.log('deleted:', {eventName, subject, data});
-	  handler({...data, subject, issuedTime: ts, payload: null});
+	  handler({...data, subject, payload: null});
 	  return;
 	}
-	console.log('fired:', {eventName, topic, publisher, topicId: await deriveTopicId(publisher, topic), deleted, message, ts});
+	//console.log('fired:', {eventName, topic, publisher, topicId: await deriveTopicId(publisher, topic), deleted, message, ts});
 	const key = eventName + message.subject;
 	if (message.payload === undefined) {
 	  //Object.assign(message, this.extendableData[key]);
 	  return; // fixme. The above is an attempt to handle extensions, but is is confusing the debugging picture.
 	  // (It seems to work fine in single user sim network.)
 	}
-	const {payload, act, hashtag, subject, immediate} = message;
+	const {subject, ...rest} = message;
 	this.deletableSubjects[msgId] = subject;
 	//console.log(`recorded msgId ${msgId} for key ${key}`);
 	this.extendableData[key] = message;
-	handler({ payload, subject, issuedTime: ts, act, hashtag, immediateLocalAction: false });
+	handler({ subject, ...rest});
       };
       this.subscriptions[eventName] = await this.peer.sub(eventName, callback, { publisher, since: 'all' });
-      console.log('subscribed', eventName, publisher, await deriveTopicId(publisher, eventName, this.subscriptions[eventName]?.id));
+      //console.log('subscribed', eventName, publisher, await deriveTopicId(publisher, eventName, this.subscriptions[eventName]?.id));
     } else {
       this.subscriptions[eventName]?.stop();
       delete this.subscriptions[eventName];
@@ -206,7 +200,8 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
   }
   async publish({eventName, publisher = null, key, subject, immediate = false, issuedTime = Date.now(), payload, ...rest}) { // Publish data to subscribers of eventName.
     // key is ignored.
-    const message = {subject, immediate, payload, ...rest};
+    await this.attachment;
+    const message = {...rest, subject, issuedTime, payload};
     if (payload === undefined) return; // FIXME: Find out how to extend timeouts of other people's publications to a given subject (WITHIn the eventName/topic).
     const key1 = eventName + subject;
     if (payload === null) {
@@ -219,7 +214,7 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
     // TODO: Execute immediate handlers right away, and then not again when it gets handled later.
     // TODO: Find out how get just the most recent from the original sender on a given subject (WITHIN the eventName/topic).
     this.deletableMsgIds[key1] = await this.peer.pub(eventName, message, { publisher }); // answers a msgId
-    console.log('publish', {eventName, publisher, topicId: await deriveTopicId(publisher, eventName), message, id:this.deletableMsgIds[key1]});
+    //console.log('publish', {eventName, publisher, topicId: await deriveTopicId(publisher, eventName), message, id:this.deletableMsgIds[key1]});
   }
 };
 
