@@ -15,6 +15,7 @@ export let map; // Leaflet map object.
 const ttl = 24 * 60 * 60e3; // 24 hours
 
 const infoBanner = document.getElementById('info');
+let messageTimeout;
 export function showMessage(message, type = 'loading', errorObject) { // Show loading/instructions/error message.
   if (errorObject || type === 'error' ) console.error(message, errorObject || '');
   else if (message) console.warn(message);
@@ -29,7 +30,8 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   if (infoBanner.className !== className) infoBanner.className = className;
 
   if (type === 'instructions') {
-    setTimeout(() => infoBanner.style.display = 'none', 5e3);
+    clearTimeout(messageTimeout);
+    messageTimeout = setTimeout(() => infoBanner.style.display = 'none', 5e3);
   }
 }
 
@@ -116,13 +118,14 @@ export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Updat
   subscriptions = newKeys;
 }
 
-let last = null; // Last published lat, lng, subject
+let last = []; // Last published lat, lng, subject
+const maxPublish = 5;
 async function publish({lat, lng, // Publish the given data to all applicable eventNames, promising subject.
 			originalPosting = undefined,
 			hashtag = Hashtags.getPublish(),
 			subject  = uuidv4(), // For recognizing locally executed events and for cancelling. Not a user tag!
 			payload = {lat, lng, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
-			cancel = last, // First unpublish the specified data, if any.
+			cancel = undefined, // First unpublish the specified data, if any. Complicated default.
 			issuedTime = Date.now(),
 			immediate = true,  // Whether to act locally before sending.
 			...rest
@@ -134,6 +137,18 @@ async function publish({lat, lng, // Publish the given data to all applicable ev
   const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
   const act = Agent.tag;
   let oldCells = null, oldHash, oldSubject = null; // Recorded for logging, below.
+  if (payload) {
+    last.push({lat, lng, hashtag, subject, issuedTime}); // Capture the added data.
+    const periodStart = Date.now() - (maxPublish * 60e3); // maxPublish minutes ago.
+    last = last.filter(past => past.issuedTime >= periodStart);
+    if (cancel === undefined && last.length > maxPublish) { // Unless specified otherwise, cancel oldest over maxPublish.
+      showMessage(Int`Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.`, 'instructions');
+      cancel = last.shift();
+    }
+  } else { // Simple explicit alert removal. Remove from 'last' (if present).
+    const index = last.findIndex(past => past.subject === subject);
+    if (index >= 0) last.splice(index, 1);
+  }
   if (cancel) {
     const {lat, lng, hashtag, subject} = cancel;
     const time = issuedTime - 1;
@@ -150,7 +165,6 @@ async function publish({lat, lng, // Publish the given data to all applicable ev
 
   const cells = getContainingCells(lat, lng);
   const publisher = getRegionPublisher(lat, lng);
-  last = payload && {lat, lng, hashtag, subject}; // Capture the new subject and eventName data for next time.
   for (const cell of cells) {
     const _level = s2.cellid.level(cell); // add _level for debugging
     const eventName = makeEventName(cell, hashtag);
@@ -367,9 +381,9 @@ export class Marker { // A wrapper around L.marker
   updatePost(tag) { // Republish under a different hashtag, or cancel altogether if no tag (which is not allowed as a hashtag).
     resetInactivityTimer();
     const {lat, lng, hashtag, subject, issuedTime, originalPosting = issuedTime} = this;
-    if (!tag) return publish({lat, lng, subject, hashtag, payload: null, cancel: null});
+    if (!tag) return publish({lat, lng, subject, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
     if (tag === hashtag) return this.needsRedisplay = true;
-    const cancel = {lat, lng, subject, hashtag};
+    const cancel = {lat, lng, subject, hashtag}; // Cancel old hashtag as we publish new tag, below.
     Hashtags.setPublish(tag);
     Hashtags.onchange({redisplaySubscribers: false, resetSubscriptions: false});
     return publish({lat, lng, subject, hashtag: tag, originalPosting, cancel}); // immediate for canceled and new, before we remove old hash
