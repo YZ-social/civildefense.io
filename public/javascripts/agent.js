@@ -31,7 +31,7 @@ export class Agent {
   localPersistKey(type, tag = this.tag) { // for localStorage of our private data about this Agent.
     return `${type}-${tag}`;
   }
-  static networkVersion = 13;
+  static networkVersion = 17;
   static networkPersistKey(tag) { // EventName (not key) for pubsub of public data bout this Agent.
     return `public:${this.networkVersion}:${tag}`;
   }
