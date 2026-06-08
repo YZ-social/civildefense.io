@@ -77,5 +77,6 @@ const translations = {
   ['handle']: {es: "el título"},
   ['your handle']: {es: "tu título"},
 
+  ['Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.']: {es: "Demasiadas publicaciones. (Se permiten 5 cada 5 minutos). Eliminando las más antiguas de este período."},
   ['#wipe']: {en: "Wipe all CivilDefense.io data.", es: "Eliminar todos los datos de CivilDefense.io."}
 };
