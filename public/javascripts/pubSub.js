@@ -40,7 +40,7 @@ async function makePeer({ network, region }) {
   const transport = simTransport({ network, identity, heartbeatMs: 0 });
   */
   ///* WEBRTC version
-  const transport = webTransport({ bridgeUrl: 'wss://bridge.axona.net', identity});
+  const transport = webTransport({ bridgeUrl: 'wss://testnet.axona.net', identity});
   //*/
 
   await transport.start(identity.id);
@@ -168,10 +168,10 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
 	// TODO: do not respond to immediate inFlight
 	if (deleted) {
 	  const subject = this.deletableSubjects[msgId];
-	  if (!subject) throw new Error(`No subject found for ${JSON.stringify(envelope)}.`);
+	  if (!subject) console.log/*throw new Error*/(`No subject found for ${JSON.stringify(envelope)}.`);
 	  const key = eventName + subject;
 	  const data = this.extendableData[key];
-	  if (!data) throw new Error(`No data found for ${subject} ${JSON.stringify(envelope)}.`);
+	  if (!data) console.log/*throw new Error*/(`No data found for ${subject} ${JSON.stringify(envelope)}.`);
 	  delete this.deletableSubjects[msgId];
 	  delete this.extendableData[key];
 	  //console.log('deleted:', {eventName, subject, data});
@@ -207,7 +207,7 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
     if (payload === null) {
       //console.log('unpublish', {eventName, publisher, message});
       const msgId = this.deletableMsgIds[key1];
-      if (!msgId) throw new Error(`No previous msgId for ${eventName} + ${subject}.`);
+      if (!msgId) return console.log/*throw new Error*/(`No previous msgId for ${eventName} + ${subject}.`);
       await this.peer.kill(eventName, msgId, {publisher });
       return;
     }
