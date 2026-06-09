@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import {
   AxonaPeer, AxonaDomain, NeuronNode, AxonaManager,
   //Synapse, SimNetwork, simTransport,
-  deriveTopicId,
+  deriveTopicId, computeMsgId,
   deriveIdentity, loadIdentity, dumpIdentity,
   geoCellId, geoCellCenter, clz264,
 } from '@axona/protocol';
@@ -40,7 +40,7 @@ async function makePeer({ network, region }) {
   const transport = simTransport({ network, identity, heartbeatMs: 0 });
   */
   ///* WEBRTC version
-  const transport = webTransport({ bridgeUrl: 'wss://testnet.axona.net', identity});
+  const transport = webTransport({ bridgeUrl: 'wss://bridge.axona.net', identity});
   //*/
 
   await transport.start(identity.id);
@@ -165,6 +165,7 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
     if (handler) {
       const callback = async envelope => {
 	const {message, deleted, msgId, signerPubkey, topic, ts} = envelope;
+	console.log('got event from', signerPubkey);
 	// TODO: do not respond to immediate inFlight
 	if (deleted) {
 	  const subject = this.deletableSubjects[msgId];
@@ -198,23 +199,23 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
       delete this.subscriptions[eventName];
     }
   }
-  async publish({eventName, publisher = null, key, subject, immediate = false, issuedTime = Date.now(), payload, ...rest}) { // Publish data to subscribers of eventName.
-    // key is ignored.
+  async publish({eventName, publisher = null, key, subject, immediate = false, issuedTime = Date.now(), payload,
+		 publisherPubKey,
+		 originalPayload, ...rest}) { // Publish data to subscribers of eventName.
+    // key and immediate are ignored.
     await this.attachment;
-    const message = {...rest, subject, issuedTime, payload};
-    if (payload === undefined) return; // FIXME: Find out how to extend timeouts of other people's publications to a given subject (WITHIn the eventName/topic).
-    const key1 = eventName + subject;
-    if (payload === null) {
-      //console.log('unpublish', {eventName, publisher, message});
-      const msgId = this.deletableMsgIds[key1];
-      if (!msgId) return console.log/*throw new Error*/(`No previous msgId for ${eventName} + ${subject}.`);
-      await this.peer.kill(eventName, msgId, {publisher });
-      return;
+    const message = {...rest, subject, issuedTime, payload: payload || originalPayload};
+    const options = {publisher};
+    if (payload) {
+      const predicted = await computeMsgId({message, publisher: this.identity.pubkeyHex});
+      const msgId = await this.peer.pub(eventName, message, options);
+      console.log('*** pub', {message, publisher, predicted, options, msgId, identity: this.identity});
+      return msgId;
     }
-    // TODO: Execute immediate handlers right away, and then not again when it gets handled later.
-    // TODO: Find out how get just the most recent from the original sender on a given subject (WITHIN the eventName/topic).
-    this.deletableMsgIds[key1] = await this.peer.pub(eventName, message, { publisher }); // answers a msgId
-    //console.log('publish', {eventName, publisher, topicId: await deriveTopicId(publisher, eventName), message, id:this.deletableMsgIds[key1]});
+    const msgId = await computeMsgId({ message, publisher: this.identity.pubkeyHex });
+    console.log('***', payload === null ? 'KILL' : 'TOUCH', {message, issuedTime, msgId, originalPayload, identity: this.identity});
+    if (payload === null) return await this.peer.kill(eventName, msgId, options);
+    return await this.peer.touch(eventName, msgId, options);
   }
 };
 
