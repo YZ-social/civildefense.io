@@ -159,16 +159,27 @@ async function publish({lat, lng, // Publish the given data to all applicable ev
       const eventName = makeEventName(cell, hashtag);
       const key = await Node.key(eventName);
       // Note: we cannot unpublish replies by others, but they expire after a while anyway.
-      contact.publish({eventName, key, publisher, subject, payload: null, issuedTime: time, hashtag, act, immediate, ...rest});
+      const originalPayload = {lat, lng, originalPosting};
+      console.log('***', {originalPosting, originalPayload});
+      contact.publish({eventName, key, publisher, subject,
+		       payload: null,
+		       originalPayload,
+		       issuedTime: originalPosting,
+		       hashtag, act, immediate, ...rest});
     }
   }
 
   const cells = getContainingCells(lat, lng);
   const publisher = getRegionPublisher(lat, lng);
   for (const cell of cells) {
-    const _level = s2.cellid.level(cell); // add _level for debugging
+    //const _level = s2.cellid.level(cell); // add _level for debugging
     const eventName = makeEventName(cell, hashtag);
     const key = await Node.key(eventName);
+    if (!payload) {
+      issuedTime = originalPosting;
+      rest.originalPayload = {lat, lng};
+      console.log('***', {originalPosting, issuedTime, rest});
+    }
     contact.publish({eventName, key, publisher, subject, payload, issuedTime, hashtag, act, immediate, ...rest});
   }
   console.log('Published', {cells, n: cells.length, publisher, hashtag, subject, payload, oldCells, oldHash, oldSubject});
@@ -381,7 +392,7 @@ export class Marker { // A wrapper around L.marker
   updatePost(tag) { // Republish under a different hashtag, or cancel altogether if no tag (which is not allowed as a hashtag).
     resetInactivityTimer();
     const {lat, lng, hashtag, subject, issuedTime, originalPosting = issuedTime} = this;
-    if (!tag) return publish({lat, lng, subject, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
+    if (!tag) return publish({lat, lng, subject, originalPosting, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
     if (tag === hashtag) return this.needsRedisplay = true;
     const cancel = {lat, lng, subject, hashtag}; // Cancel old hashtag as we publish new tag, below.
     Hashtags.setPublish(tag);
