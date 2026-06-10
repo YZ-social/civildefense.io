@@ -1,8 +1,7 @@
-import { v4 as uuidv4 } from 'uuid';
 import {
   AxonaPeer, AxonaDomain, NeuronNode, AxonaManager,
   //Synapse, SimNetwork, simTransport,
-  deriveTopicId, computeMsgId,
+  deriveTopicId,
   deriveIdentity, loadIdentity, dumpIdentity,
   geoCellId, geoCellCenter, clz264,
 } from '@axona/protocol';
@@ -92,11 +91,11 @@ async function makePeer({ network, region }) {
 }
 
 NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT WebContact's connect/disconnect/subscribe/publish
-  static async create({name = uuidv4()} = {}) { // FIXME: use identity.pubHexKey for name. (Not identity.id, which includes region.)
+  static async create({} = {}) { // FIXME: use identity.pubHexKey for name. (Not identity.id, which includes region.)
     const contact = new this();
     const {promise:attachment, resolve:attached} = Promise.withResolvers();
     const {promise:detachment, resolve:detached} = Promise.withResolvers();
-    Object.assign(contact, {attachment, detachment, attached, detached, name});
+    Object.assign(contact, {attachment, detachment, attached, detached});
 
     const network = null;// fixme remove new SimNetwork(); // Can be null for webrtc
     const { peer: alice, identity: aliceId } = await makePeer({ network, region: REGION });    
@@ -156,41 +155,19 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
     console.log(`${node.synaptome.size} connections.`);
   }
 
-  deletableSubjects = {}; // msgId => subject
-  deletableMsgIds = {}; // eventName+subject => msgId
-  extendableData = {}; // eventName+subject => original {payload, act, hashtag}
-  subscriptions = {}; // eventName => subscription
+  subscriptions = {}; // eventName => subscription. TODO: use unsub() instead of stop().
   async subscribe({eventName, publisher = null, handler}) { // Assign handler for eventName, or remove any handler if falsy.
     await this.attachment;
     if (handler) {
       const callback = async envelope => {
 	const {message, deleted, msgId, signerPubkey, topic, ts} = envelope;
-	console.log('got event from', signerPubkey);
-	// TODO: do not respond to immediate inFlight
 	if (deleted) {
-	  const subject = this.deletableSubjects[msgId];
-	  if (!subject) console.log/*throw new Error*/(`No subject found for ${JSON.stringify(envelope)}.`);
-	  const key = eventName + subject;
-	  const data = this.extendableData[key];
-	  if (!data) console.log/*throw new Error*/(`No data found for ${subject} ${JSON.stringify(envelope)}.`);
-	  delete this.deletableSubjects[msgId];
-	  delete this.extendableData[key];
-	  //console.log('deleted:', {eventName, subject, data});
-	  handler({...data, subject, payload: null});
+	  //console.log('deleted:', {eventName, subject: msgId});
+	  handler({subject: msgId, payload: null});
 	  return;
 	}
 	//console.log('fired:', {eventName, topic, publisher, topicId: await deriveTopicId(publisher, topic), deleted, message, ts});
-	const key = eventName + message.subject;
-	if (message.payload === undefined) {
-	  //Object.assign(message, this.extendableData[key]);
-	  return; // fixme. The above is an attempt to handle extensions, but is is confusing the debugging picture.
-	  // (It seems to work fine in single user sim network.)
-	}
-	const {subject, ...rest} = message;
-	this.deletableSubjects[msgId] = subject;
-	//console.log(`recorded msgId ${msgId} for key ${key}`);
-	this.extendableData[key] = message;
-	handler({ subject, ...rest});
+	handler({...message, subject: msgId});
       };
       this.subscriptions[eventName] = await this.peer.sub(eventName, callback, { publisher, since: 'all' });
       //console.log('subscribed', eventName, publisher, await deriveTopicId(publisher, eventName, this.subscriptions[eventName]?.id));
@@ -199,23 +176,14 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
       delete this.subscriptions[eventName];
     }
   }
-  async publish({eventName, publisher = null, key, subject, immediate = false, issuedTime = Date.now(), payload,
-		 publisherPubKey,
-		 originalPayload, ...rest}) { // Publish data to subscribers of eventName.
-    // key and immediate are ignored.
-    await this.attachment;
-    const message = {...rest, subject, issuedTime, payload: payload || originalPayload};
+  async publish({eventName, publisher = null, issuedTime = Date.now(), subject, payload, ...rest}) { // Publish data to subscribers of eventName.
+    await this.attachment; // Get connected.
     const options = {publisher};
-    if (payload) {
-      const predicted = await computeMsgId({message, publisher: this.identity.pubkeyHex});
-      const msgId = await this.peer.pub(eventName, message, options);
-      console.log('*** pub', {message, publisher, predicted, options, msgId, identity: this.identity});
-      return msgId;
-    }
-    const msgId = await computeMsgId({ message, publisher: this.identity.pubkeyHex });
-    console.log('***', payload === null ? 'KILL' : 'TOUCH', {message, issuedTime, msgId, originalPayload, identity: this.identity});
-    if (payload === null) return await this.peer.kill(eventName, msgId, options);
-    return await this.peer.touch(eventName, msgId, options);
+    //console.log({eventName, publisher, payload, subject});
+    if (payload) return await this.peer.pub(eventName, {issuedTime, payload, ...rest}, options);
+    if (!subject) return null;
+    if (payload === null) return await this.peer.kill(eventName, subject, options);
+    return await this.peer.touch(eventName, subject, options);
   }
 };
 

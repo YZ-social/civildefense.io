@@ -1,6 +1,5 @@
 const { domtoimage, localStorage, URL, URLSearchParams, getComputedStyle } = globalThis;
 import * as L from 'leaflet';
-import { v4 as uuidv4 } from 'uuid';
 import { s2 } from 's2js';
 import { Node } from '@yz-social/kdht';
 import { Int } from './translations.js';
@@ -119,68 +118,66 @@ export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Updat
 }
 
 let last = []; // Last published lat, lng, subject
-const maxPublish = 5;
-async function publish({lat, lng, // Publish the given data to all applicable eventNames, promising subject.
-			originalPosting = undefined,
-			hashtag = Hashtags.getPublish(),
-			subject  = uuidv4(), // For recognizing locally executed events and for cancelling. Not a user tag!
-			payload = {lat, lng, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
-			cancel = undefined, // First unpublish the specified data, if any. Complicated default.
-			issuedTime = Date.now(),
-			immediate = true,  // Whether to act locally before sending.
-			...rest
-		       }) {
+const maxPublish = 3; // fixme 5
+// Publish an alert to all applicable eventNames, canceling as required. Promises subject (msgId).
+async function publishAlert({lat, lng,
+			     originalPosting = undefined,
+			     hashtag = Hashtags.getPublish(),
+			     payload = {lat, lng, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
+			     cancel = undefined, // First unpublish the specified data, if any. Complicated default.
+			     issuedTime = Date.now(), subject,
+			     ...rest
+			    }) {
   // We call all the publishing at once and return subject, without waiting for each to occur.
   // However, the 'unpublishing' (if any) is invoked first.
   // To do this, we must hash the eventName ourselves.
+  //console.log('publishAlert', {lat, lng, hashtag, payload, cancel, subject, issuedTime, rest});
 
   const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
   const act = Agent.tag;
   let oldCells = null, oldHash, oldSubject = null; // Recorded for logging, below.
+  let lastFillIn;
   if (payload) {
-    last.push({lat, lng, hashtag, subject, issuedTime}); // Capture the added data.
+    lastFillIn = {lat, lng, hashtag, issuedTime};
+    last.push(lastFillIn); // Capture the added data.
     const periodStart = Date.now() - (maxPublish * 60e3); // maxPublish minutes ago.
     last = last.filter(past => past.issuedTime >= periodStart);
     if (cancel === undefined && last.length > maxPublish) { // Unless specified otherwise, cancel oldest over maxPublish.
       showMessage(Int`Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.`, 'instructions');
       cancel = last.shift();
     }
-  } else { // Simple explicit alert removal. Remove from 'last' (if present).
-    const index = last.findIndex(past => past.subject === subject);
-    if (index >= 0) last.splice(index, 1);
   }
   if (cancel) {
     const {lat, lng, hashtag, subject} = cancel;
-    const time = issuedTime - 1;
     oldCells = getContainingCells(lat, lng);
     oldHash = hashtag; oldSubject = subject;
     const publisher = getRegionPublisher(lat, lng);
     for (const cell of oldCells) {
       const eventName = makeEventName(cell, hashtag);
-      const key = await Node.key(eventName);
       // Note: we cannot unpublish replies by others, but they expire after a while anyway.
-      const originalPayload = {lat, lng, originalPosting};
-      console.log('***', {originalPosting, originalPayload});
-      contact.publish({eventName, key, publisher, subject,
-		       payload: null,
-		       originalPayload,
-		       issuedTime: originalPosting,
-		       hashtag, act, immediate, ...rest});
+      contact.publish({eventName, publisher, subject, payload: null});
     }
   }
 
   const cells = getContainingCells(lat, lng);
   const publisher = getRegionPublisher(lat, lng);
   for (const cell of cells) {
-    //const _level = s2.cellid.level(cell); // add _level for debugging
     const eventName = makeEventName(cell, hashtag);
-    const key = await Node.key(eventName);
-    if (!payload) {
-      issuedTime = originalPosting;
-      rest.originalPayload = {lat, lng};
-      console.log('***', {originalPosting, issuedTime, rest});
+    if (payload) {
+      const msgId = await contact.publish({eventName, publisher, payload, issuedTime, hashtag, act, ...rest});
+      if (subject && subject !== msgId) throw new Error(`msgId is drifting: ${subject} => ${msgId}`);
+      subject = msgId;
+      if (lastFillIn) {
+	lastFillIn.subject = subject;
+	lastFillIn = null;
+      }
+    } else {
+      await contact.publish({eventName, publisher, subject, payload: null});
     }
-    contact.publish({eventName, key, publisher, subject, payload, issuedTime, hashtag, act, immediate, ...rest});
+  }
+  if (!payload) {
+    const index = last.findIndex(past => past.subject === subject);
+    if (index >= 0) last.splice(index, 1);
   }
   console.log('Published', {cells, n: cells.length, publisher, hashtag, subject, payload, oldCells, oldHash, oldSubject});
   return subject;
@@ -236,9 +233,9 @@ export class Marker { // A wrapper around L.marker
     }
   }
   static ensure(data) { // Add marker at position with appropriate fade if not already present.
-    let { payload, subject, issuedTime, act, hashtag, immediateLocalAction = false } = data;
+    let { payload, subject, issuedTime, act, hashtag} = data;
     let wrapper = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
-    console.log('Handling event', {wrapper, hashtag, subject, payload, act, usertag: Agent.tag, immediateLocalAction, data});
+    console.log('Handling event', {wrapper, hashtag, subject, payload, act, usertag: Agent.tag, data});
 
     if (!payload) return wrapper?.destroy();
     const now = Date.now(),
@@ -249,6 +246,7 @@ export class Marker { // A wrapper around L.marker
     hashtag = Hashtags.add(hashtag); // We already have it and are subscribing, but this updates our extended form if needed.
     wrapper ||= this.markers[subject] = new this();
     const {lat, lng, originalPosting} = payload;
+    // TODO: Now that msgId is the same at each level, there's no reason for a separate GUID subject.
     Object.assign(wrapper, {lat, lng, subject, originalPosting, issuedTime, hashtag, act});
     let {marker} = wrapper;
     if (!marker) {
@@ -258,7 +256,6 @@ export class Marker { // A wrapper around L.marker
 	.on('popupopen', event => wrapper.ensureContent(event.popup));
       // Subscribe to replies to this subject, now that we're set up to receive them.
       const publisher = getRegionPublisher(lat, lng);
-      //console.log('*** handle replies', publisher, subject);
       networkPromise.then(async contact => contact.subscribe({eventName: subject, publisher, autoRenewal: true, handler: data => wrapper.handleReply(data)}));
       if (subject === openOnReceive) {
 	openOnReceive = false;
@@ -392,12 +389,12 @@ export class Marker { // A wrapper around L.marker
   updatePost(tag) { // Republish under a different hashtag, or cancel altogether if no tag (which is not allowed as a hashtag).
     resetInactivityTimer();
     const {lat, lng, hashtag, subject, issuedTime, originalPosting = issuedTime} = this;
-    if (!tag) return publish({lat, lng, subject, originalPosting, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
+    if (!tag) return publishAlert({lat, lng, subject, originalPosting, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
     if (tag === hashtag) return this.needsRedisplay = true;
     const cancel = {lat, lng, subject, hashtag}; // Cancel old hashtag as we publish new tag, below.
     Hashtags.setPublish(tag);
     Hashtags.onchange({redisplaySubscribers: false, resetSubscriptions: false});
-    return publish({lat, lng, subject, hashtag: tag, originalPosting, cancel}); // immediate for canceled and new, before we remove old hash
+    return publishAlert({lat, lng, hashtag: tag, originalPosting, cancel}); // Publish new alert w/cancellation.
   }
 
   // Each reply is separately published by its author, and only they can modify/unpublish it.
@@ -438,7 +435,6 @@ export class Marker { // A wrapper around L.marker
   }
   async postReply(event) { // Post a reply to this marker's subject, in response to a text-field change event.
     resetInactivityTimer();
-    const eventName = this.subject;
     const button = event.target;
     const inputElement = button.parentElement;
     let payload = inputElement.value.trim();
@@ -452,25 +448,29 @@ export class Marker { // A wrapper around L.marker
     networkPromise.then(async contact => {
       const {lat, lng, subject, hashtag} = this;
       const publisher = getRegionPublisher(lat, lng);
-      contact.publish({eventName, publisher, payload, subject: uuidv4(), act: Agent.tag});
+      const fixmeId = await contact.publish({eventName: subject, publisher, payload, act: Agent.tag}); // Publish the new reply.
+
       // Extend the expiration of the original event, and of the public handle/avatar of everyone in the conversation.
       // this is done by republishing with no payload (not null!).
-      const cells = getContainingCells(lat, lng);
-      const issuedTime = Date.now();
+      const cells = getContainingCells(lat, lng);  // Touch alert publication stack.
       for (const cell of cells) {
 	const eventName = makeEventName(cell, hashtag);
-	await contact.publish({eventName, publisher, subject, issuedTime, hashtag});
+	await contact.publish({eventName, subject, publisher});
       }
       for (const reply of this.replies) {
-	const eventName = Agent.networkPersistKey(reply.act);
-	await contact.publish({eventName, subject: 'handle', issuedTime});
-	await contact.publish({eventName, subject: 'avatar', issuedTime});
+	await contact.publish({eventName: subject, subject: reply.subject, publisher}); // Touch existing replies.
+	const eventName = Agent.networkPersistKey(reply.act); // Touch reply actor's data.  FIXME
+	await contact.publish({eventName, subject: await Agent.recreateMessageTag(subject, 'handle')});
+	await contact.publish({eventName, subject: await Agent.recreateMessageTag(subject, 'avatar')});
       }
+
     });
   }
   deleteReply(replyElement) {
     resetInactivityTimer();
-    networkPromise.then(contact => contact.publish({eventName: this.subject, subject: replyElement.dataset.subject, payload: null, act: Agent.tag}));
+    const {lat, lng} = this;
+    const publisher = getRegionPublisher(lat, lng); // TODO: we can canche the publisher in the Marker
+    networkPromise.then(contact => contact.publish({eventName: this.subject, subject: replyElement.dataset.subject, payload: null, publisher}));
   }
   formatReplies() { // Answer HTML for the replies and input box.
     const { replies, act, originalPosting } = this;
@@ -688,7 +688,7 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
     resetInactivityTimer();
     if (document.getElementById('map').querySelector('.leaflet-popup')) return; // Ignore clicks with popup open.
     const { lat, lng } = e.latlng;
-    Marker.openPopup(await publish({lat, lng}));
+    Marker.openPopup(await publishAlert({lat, lng}));
   });
   Agent.initialize();
 

@@ -17,7 +17,7 @@
   },
   "type": "module",
   "dependencies": {
-    "@axona/protocol": "github:axona-net/axona-protocol#v2.29.0",
+    "@axona/protocol": "github:axona-net/axona-protocol#v2.32.0",
     "@yz-social/kdht": "^0.1.53",
     "@yz-social/webrtc": "^0.1.15",
     "cors": "^2.8.6",

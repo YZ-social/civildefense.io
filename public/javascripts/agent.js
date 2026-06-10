@@ -22,7 +22,6 @@ export class Agent {
     networkPromise.then(contact => contact.subscribe({
       eventName: this.networkPersistKey(tag),
       handler: data => this.setPublicData(data),
-      autoRenewal: true
     }));
   }
   get tag() { // Retrieved from system handle or avatar.
@@ -31,7 +30,7 @@ export class Agent {
   localPersistKey(type, tag = this.tag) { // for localStorage of our private data about this Agent.
     return `${type}-${tag}`;
   }
-  static networkVersion = 17;
+  static networkVersion = 20;
   static networkPersistKey(tag) { // EventName (not key) for pubsub of public data bout this Agent.
     return `public:${this.networkVersion}:${tag}`;
   }
@@ -42,9 +41,19 @@ export class Agent {
     const value = localStorage.getItem(this.localPersistKey(type, tag));
     this.updateValue(value, scope, type);
   }
+  static recreateMessageTag(tag, type) { // For the agent specified by tag, promise the messageTag for the specified agent tag, type.
+    return this.agents[tag]?.recreateMessageTag(type);
+  }
+  recreateMessageTag(type) {// Promise the Axona msgId that provided the specified type of public data, if any.
+    return this.publicMsgId[type];
+  }
   setPublicData(data) { // Subscription to public data has fired. Update value, but do not not re-publish.
-    const {payload, subject} = data;
-    this.updateValue(payload, 'public', subject, false);
+    let {payload, subject, type} = data;
+    // If this was a deletion, we have no type in the data. Find the one that matches subject.
+    type ||= Object.keys(this.publicMsgId).find(key => this.publicMsgId[key] === subject);
+    if (!type) return; // Delete of a value that we don't have.
+    this.updateValue(payload, 'public', type, false);
+    this.publicMsgId[type] = subject;
   }
   
   static agents = {}; // tag => Agent
@@ -57,6 +66,7 @@ export class Agent {
     handle: {system: null, public: null, private: null, mixed: null},    
     avatar: {system: null, public: null, private: null, mixed: null}
   };
+  publicMsgId = {};
   getValue(scope, type) {
     return this.values[type][scope];
   }
@@ -84,9 +94,9 @@ export class Agent {
   persistPublic(value, type) { // Publish (and we will act on subscription).
     networkPromise.then(contact => contact.publish({
       eventName: this.networkPersistKey(),
-      subject: type,
-      payload: value,
-      immediate: true
+      type,
+      subject: value ? undefined : this.recreateMessageTag(type),
+      payload: value
     }));
   }
 
