@@ -1,7 +1,6 @@
 const { domtoimage, localStorage, URL, URLSearchParams, getComputedStyle } = globalThis;
 import * as L from 'leaflet';
 import { s2 } from 's2js';
-import { Node } from '@yz-social/kdht';
 import { Int } from './translations.js';
 import { consume, openDisplay, file2dataURL, dataURL2file, downsampledFile2dataURL } from './display.js';
 import { Agent } from './agent.js';

@@ -11,6 +11,8 @@ import logger from 'morgan';
 import { fileURLToPath } from 'url';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+//import { P2PWebNetwork } from '../public/javascripts/p2pWebNetwork.js';
+
 
 const logicalCores = availableParallelism();
 
@@ -87,24 +89,29 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
 
   //console.log(`${cpus()[0].model}, ${logicalCores} logical cores. Starting ${argv.nPortals}.`);
   app.use(express.json());
-  //const {router, initWorkers} = await import('@yz-social/kdht/router');
 
   app.use('/images', express.static(path.join(__dirname, 'public/images'), {
     maxAge: '1d',
     etag: true,
     immutable: true
   }));
-  app.use(express.static(path.join(__dirname, 'public')));
-  //app.use('/', Yz.router);
-  //app.use('/kdht', router);
+  app.use(express.static(path.join(__dirname, '../public')));
 
   app.listen(port);
   console.log('Listening on', port);
-  //for (let i = 0; i < argv.nPortals; i++) cluster.fork();
-  //initWorkers();
-
+  for (let i = 0; i < argv.nPortals; i++) cluster.fork();
 } else {
-  // const portalNode = await import('@yz-social/kdht/portal');
-  // const {baseURL, externalBaseURL, fixedSpacing, variableSpacing, verbose} = argv;
-  // portalNode.setup({baseURL, externalBaseURL, fixedSpacing, variableSpacing, verbose});
+
+  process.title = 'axona-starting';
+  const { P2PWebNetwork } = await import('../public/javascripts/p2pWebNetwork.js');
+
+  await P2PWebNetwork.delay(cluster.worker?.id * 1e3);
+  const network = await P2PWebNetwork.create({lat: 37.468467587148844, lng: -122.25860595703126, bridgeUrl: 'wss://bridge.axona.net'});
+  process.title = 'axona-' + network.identity.id;
+  process.on('SIGINT', async () => { // Leave the network politely.
+    console.log(process.title, 'Shutdown for Ctrl+C');
+    await network.disconnect();
+    process.exit(0);
+});
+
 }

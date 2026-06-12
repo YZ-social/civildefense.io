@@ -8,28 +8,21 @@
     "alert"
   ],
   "scripts": {
-    "start": "npm stop; npm run local",
-    "stop": "pkill yz.social",
-    "local": "node ./app.js",
-    "shared": "node ./app.js --externalBaseURL https://ki1r0y.com/kdht",
-    "withoutExternal": "npm run local",
-    "withoutPortals": "node ./app.js --nPortals 0"
+    "start": "npm stop; node ./server/app.js --nPortals 2",
+    "stop": "pkill yz.social"
   },
   "type": "module",
   "dependencies": {
-    "@axona/protocol": "github:axona-net/axona-protocol#v2.32.0",
-    "@yz-social/kdht": "^0.1.53",
-    "@yz-social/webrtc": "^0.1.15",
+    "@axona/protocol": "github:axona-net/axona-protocol#semver:^2.32.0",
     "cors": "^2.8.6",
     "express": "^4.22.1",
-    "express-ws": "^5.0.2",
     "leaflet": "^1.9.4",
     "minidenticons": "^4.2.1",
     "morgan": "^1.10.1",
+    "node-datachannel": "^0.32.3",
     "node-turn": "^0.0.6",
     "pica": "^9.0.1",
     "uuid": "^14.0.0",
-    "ws": "^8.18.3",
     "yargs": "^18.0.0"
   },
   "overrides": {
