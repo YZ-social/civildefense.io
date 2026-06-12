@@ -9,19 +9,22 @@ import { webTransport } from '@axona/web';
 const { BigInt, localStorage } = globalThis;
 
 // TODO: simplify all this outside-of-class stuff.
-let NetworkClass;
-const REGION = geoCellCenter(geoCellId(37.468467587148844, -122.25860595703126));
-console.log('region:', REGION);
-export function setSessionRegion(lat, lng) {
-  const region = geoCellCenter(geoCellId(lat, lng));
-  console.log('session region', lat, lng, region);
-  //resolveSessionRegion(region);
-}
-export function getRegionPublisher(lat, lng) { // Answer the "area code" prefix (8-bit s2 cell id as a hex  bit-flag).
-  return geoCellId(lat, lng).toString(16).padStart(2, '0') + '0'.repeat(64);
-}
+let P2PWebNetwork;
+const {promise:REGION, resolve:resolveSessionRegion} = Promise.withResolvers();
+
+//const REGION = geoCellCenter(geoCellId(37.468467587148844, -122.25860595703126));
+//console.log('region:', REGION);
+// export function setSessionRegion(lat, lng) {
+//   const region = geoCellCenter(geoCellId(lat, lng));
+//   console.log('session region', lat, lng, region);
+//   //resolveSessionRegion(region);
+// }
+// export function getRegionPublisher(lat, lng) { // Answer the "area code" prefix (8-bit s2 cell id as a hex  bit-flag).
+//   return geoCellId(lat, lng).toString(16).padStart(2, '0') + '0'.repeat(64);
+// }
 
 async function makePeer({ network, region }) {
+  region = geoCellCenter(geoCellId(region.lat, region.lng));
   // 2a. Derive a 264-bit Ed25519 identity in this region's S2 cell.
   let identity;
   // The network will not let us kill publications from previous sessions unless we persist and reuse the identity.
@@ -90,7 +93,11 @@ async function makePeer({ network, region }) {
   return { peer, identity };
 }
 
-NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT WebContact's connect/disconnect/subscribe/publish
+P2PWebNetwork = class AxonaPubSubClient { // A websocket-baed emulation of KDHT WebContact's connect/disconnect/subscribe/publish
+  static setSessionRegion = resolveSessionRegion;
+  static regionPublisher(lat, lng) {
+    return geoCellId(lat, lng).toString(16).padStart(2, '0') + '0'.repeat(64);
+  }
   static async create({} = {}) { // FIXME: use identity.pubHexKey for name. (Not identity.id, which includes region.)
     const contact = new this();
     const {promise:attachment, resolve:attached} = Promise.withResolvers();
@@ -98,7 +105,7 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
     Object.assign(contact, {attachment, detachment, attached, detached});
 
     const network = null;// fixme remove new SimNetwork(); // Can be null for webrtc
-    const { peer: alice, identity: aliceId } = await makePeer({ network, region: REGION });    
+    const { peer: alice, identity: aliceId } = await makePeer({ network, region: await REGION });    
     const { maxSubscriptionAgeMs } = {maxSubscriptionAgeMs: 30e3}; //fixme ialice._axonaManager;
     const fixme = {peer:alice, identity:aliceId, maxSubscriptionAgeMs};
     Object.assign(contact, fixme);
@@ -187,5 +194,5 @@ NetworkClass = class AxonaPubSubClient { // A websocket-baed emulation of KDHT W
   }
 };
 
-export { NetworkClass };
-globalThis.NetworkClass = NetworkClass;
+export { P2PWebNetwork };
+globalThis.P2PWebNetwork = P2PWebNetwork;
