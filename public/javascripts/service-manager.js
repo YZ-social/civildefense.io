@@ -56,7 +56,7 @@ async function cacheSource(version) { // Cache source in the given version.
     "javascripts/s2.js",
     "javascripts/translations.js",
     "javascripts/service-manager.js",
-    "javascripts/pubSub.js",
+    "javascripts/pubSub.js", // fixme
 
     "stylesheets/style.css",
 
@@ -67,26 +67,6 @@ async function cacheSource(version) { // Cache source in the given version.
     "images/civil-defense-192.png",
     "images/civil-defense-240.png",
     "images/civil-defense-512.png",
-
-    // "kdht/index.js",
-    // "kdht/contacts/contact.js",
-    // "kdht/contacts/simulations.js",
-    // "kdht/contacts/webrtc.js",
-    // "kdht/nodes/helper.js",
-    // "kdht/nodes/kbucket.js",
-    // "kdht/nodes/storageBag.js",
-    // "kdht/nodes/nodeUtilities.js",
-    // "kdht/nodes/nodeKeys.js",
-    // "kdht/nodes/nodeRefresh.js",
-    // "kdht/nodes/nodeStorage.js",
-    // "kdht/nodes/nodeConnections.js",
-    // "kdht/nodes/nodeContacts.js",
-    // "kdht/nodes/nodeMessages.js",
-    // "kdht/nodes/nodeProbe.js",
-    // "kdht/nodes/nodePubSub.js",
-    // "kdht/nodes/node.js",
-
-    // "webrtc/index.js",
 
     "leaflet/leaflet.css",
     "leaflet/leaflet-src.esm.js",

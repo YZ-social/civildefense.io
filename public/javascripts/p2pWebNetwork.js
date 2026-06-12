@@ -1,4 +1,5 @@
-import { AxonaPeer, AxonaDomain, NeuronNode, deriveIdentity, geoCellId, geoCellCenter, } from '@axona/protocol';
+import { AxonaPeer, AxonaDomain, NeuronNode, deriveIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from '@axona/protocol';
+import { loadIdentity, dumpIdentity } from '@axona/protocol'; // fixme remove
 // FIXME: What is the right way to use Axona web transport. It doesn't seem to provide either a functioning export nor declare its dependencies.
 import { webTransport } from './../axona-protocol/src/transport/web/index.js';
 globalThis.RTCPeerConnection ||= await import('node-datachannel/polyfill').then(ndc => ndc.RTCPeerConnection);
@@ -10,44 +11,66 @@ const { BigInt } = globalThis;
    await network.disconnect();
  */
 
+const {promise:sessionRegion, resolve:resolveSessionRegion} = Promise.withResolvers();
+
 export class P2PWebNetwork {
+  static wireVersion = WIRE_VERSION;
+  static kernelVersion = KERNEL_VERSION;
+  static setSessionRegion = resolveSessionRegion;
   static async create({infoLogger = console.log, debugLogger,
-		       lat, lng, identity, bridgeUrl = 'wss://bridge.axona.net',
-		       synapseCount = 4, timeoutMs = 10e3}) {
+		       region, identity, bridgeUrl = 'wss://bridge.axona.net',
+		       synapseCount = 4, timeoutMs = 10e3} = {}) {
     // Promise a ready-to-use network peer.
-    const region = this.canonicalizeRegion(lat, lng);
-    identity ||=  deriveIdentity(region); // By default, do not expose precise location.
+    // Complex region/identity behavior: Must pass either identity or region (either can be a promise), or will wait for setSessionRegion() to be called.
+    if (!identity) region ||= this.canonicalizeRegion(await (region || sessionRegion));
+
+    // FIXME: what we really want is just the following, with any persistence being handled by the app.
+    //identity ||= deriveIdentity(region);
+    // For now:
+    if (!identity) {
+      const identityPersistenceKey = 'nodeIdentity';
+      const identityString = localStorage.getItem(identityPersistenceKey);
+      if (identityString) {
+	identity = await loadIdentity(JSON.parse(identityString));
+      } else {
+	identity = await deriveIdentity(region);
+	localStorage.setItem(identityPersistenceKey, JSON.stringify(await dumpIdentity(identity)));
+      }
+    }
+
+
     identity = await identity;
+    region ||= identity.region;
 
     const transport = webTransport({bridgeUrl, identity});
-    await transport.start(identity.id);
-
     const node = new NeuronNode({lat: region.lat, lng: region.lng, id: BigInt('0x' + identity.id)});
-    node.transport = transport;
-
+    node.transport = transport; // FIXME: pass in to constructor?
     const domain   = new AxonaDomain({ k: 20 }); // FIXME: can't this be defaulted in AxonaPeer?
-
     const peer = new  AxonaPeer({domain, node, identity, transport});
+
     const network = new this();
-    Object.assign(network, {infoLogger, debugLogger, identity, peer});
+    Object.assign(network, {infoLogger, debugLogger, identity, transport, node, peer});
     network.resetStatePromises();
-    network.info('created');
+    network.info('created', this.wireVersion, this.kernelVersion);
     await network.connect({synapseCount, timeoutMs});
     return network;
   }
   
   async connect({synapseCount = 4, timeoutMs = 10e3} = {}) {
     // Returned promise resolves when ready for use. Can be cycled through disconnect()/connect().
+    await this.transport.start(this.identity.id);
     await this.join();
     this.debug('joined', this.health().synaptomeSize);
-    // FIXME: his is required to get good results. Shouldn't it be built in to join()?
+    // FIXME: This is required to get good results. Shouldn't it be built in to join()?
     const t0 = Date.now();
     while (Date.now() - t0 < timeoutMs) {
-      const size = this.peer._node.synaptome.size;
+      const size = this.synaptomeSize;
       if (size >= synapseCount) break;
       await this.constructor.delay(200);
     }
     this.info('connected', this.health().synaptomeSize);
+    this.attached(this);
+    return this;
   }
   async disconnect() { // Politely close network connection.
     const health = this.health();
@@ -55,6 +78,9 @@ export class P2PWebNetwork {
     this.info(`disconnected with ${health.peers.length} connections and ${health.axonRoles.length} axons: [${health.axonRoles.map(role => role.topic)}]`);
     await this.stop();
     this.resetStatePromises();
+  }
+  async disconnectTransports() { // Let the network know that we might go away without further notice.
+    // FIXME. It would be great if we could remove ourselves from any non-leaf positions in the Axon, but stay subscribed.
   }
 
   subscriptions = {}; // eventName => subscription. TODO: use unsub() instead of stop().
@@ -88,13 +114,13 @@ export class P2PWebNetwork {
     return await this.peer.touch(eventName, subject, options);
   }
 
-  static regionPublisher(lat, lng) {
+  static regionPublisher(lat, lng) { // Answer the region containing lat/lng as a string suitable as some forms of the "publisher" parameter.
     return geoCellId(lat, lng).toString(16).padStart(2, '0') + '0'.repeat(64);
   }
   static delay(ms, label = '', result) { // Promise result after ms milliseconds.
     return new Promise(resolve => setTimeout(resolve, ms, result));
   }
-  resetStatePromises() { // If fire any existing detach(), and then assign promises and resolvers for attachment and detachment.
+  resetStatePromises() { // Fire any existing detach(), and assign new promises and resolvers for attachment and detachment.
     const existingDetachedResolver = this.detached;
     const {promise:attachment, resolve:attached} = Promise.withResolvers();
     const {promise:detachment, resolve:detached} = Promise.withResolvers();
@@ -103,7 +129,11 @@ export class P2PWebNetwork {
   }
   static canonicalizeRegion(lat, lng) {
     // Answer a {lat, lng} that is the center of a top-level Axona region containing the given {lat, lng}.
+    // E.g., a precise location gets anonymized to containing top-level cell center.
     return geoCellCenter(geoCellId(lat, lng));
+  }
+  get synaptomeSize() { // Safely answer the number of connections.
+    return this.node.synaptome?.size ?? 0;
   }
   // TODO: Integrate with AxonaPeer's complex logging.
   debug(...rest) { // Add debug logspam.
