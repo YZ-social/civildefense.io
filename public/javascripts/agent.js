@@ -30,7 +30,7 @@ export class Agent {
   localPersistKey(type, tag = this.tag) { // for localStorage of our private data about this Agent.
     return `${type}-${tag}`;
   }
-  static networkVersion = 20;
+  static networkVersion = 37;
   static networkPersistKey(tag) { // EventName (not key) for pubsub of public data bout this Agent.
     return `public:${this.networkVersion}:${tag}`;
   }
@@ -91,13 +91,12 @@ export class Agent {
     if (value === null) localStorage.removeItem(key);
     else localStorage.setItem(key, value);
   }
-  persistPublic(value, type) { // Publish (and we will act on subscription).
-    networkPromise.then(contact => contact.publish({
-      eventName: this.networkPersistKey(),
-      type,
-      subject: value ? undefined : this.recreateMessageTag(type),
-      payload: value
-    }));
+  async persistPublic(value, type) { // Publish (and we will act on subscription).
+    const eventName = this.networkPersistKey();
+    const contact = await networkPromise;
+    if (value) return contact.publish({eventName, type, payload: value});
+    const subject = this.recreateMessageTag(type);
+    return contact.publish({eventName, subject, payload: null});
   }
 
   // We represent handles and avatars by inserting stuff into given elements.
