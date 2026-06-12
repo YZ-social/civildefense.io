@@ -65,21 +65,21 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   const app = express();
   app.use(logger(':date[iso] :status :method :url :res[content-length] - :response-time ms'));
 
-  if (argv.announce) { // The default is to not announce.
-    let announce = null;
-    // Different portals can be set up in different ways, with no easy place to look to know our domain name.
-    // So here we wait until someone connects to the server, and make note of the request host.
-    app.use((req, res, next) => {
-      if (!announce && req.hostname !== 'localhost') {
-	const host = req.headers["x-forwarded-host"] || req.headers.host; // Including port, if specified
-	announce = `node ${path.resolve(__dirname, 'announce.js')} --portalURL https://${host}/kdht`;
-	console.log(announce);
-	exec(announce);
-	setInterval(() => exec(announce), 12 * 60 * 60e3); // Every 12 hours that we are running.
-      }
-      next();
-    });
-  }
+  // if (argv.announce) { // The default is to not announce.
+  //   let announce = null;
+  //   // Different portals can be set up in different ways, with no easy place to look to know our domain name.
+  //   // So here we wait until someone connects to the server, and make note of the request host.
+  //   app.use((req, res, next) => {
+  //     if (!announce && req.hostname !== 'localhost') {
+  // 	const host = req.headers["x-forwarded-host"] || req.headers.host; // Including port, if specified
+  // 	announce = `node ${path.resolve(__dirname, 'announce.js')} --portalURL https://${host}/kdht`;
+  // 	console.log(announce);
+  // 	exec(announce);
+  // 	setInterval(() => exec(announce), 12 * 60 * 60e3); // Every 12 hours that we are running.
+  //     }
+  //     next();
+  //   });
+  // }
 
   // We must allow expressWs to bach the internals of app before
   // pulling in routes/index.js. Thus a dynamic import is used so that
@@ -101,17 +101,19 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   console.log('Listening on', port);
   for (let i = 0; i < argv.nPortals; i++) cluster.fork();
 } else {
-
   process.title = 'axona-starting';
   const { P2PWebNetwork } = await import('../public/javascripts/p2pWebNetwork.js');
 
   await P2PWebNetwork.delay(cluster.worker?.id * 1e3);
-  const network = await P2PWebNetwork.create({lat: 37.468467587148844, lng: -122.25860595703126, bridgeUrl: 'wss://bridge.axona.net'});
+  const network = await P2PWebNetwork.create({region: {lat: 37.468467587148844, lng: -122.25860595703126}, bridgeUrl: 'wss://bridge.axona.net'});
   process.title = 'axona-' + network.identity.id;
+  let update = setInterval(() => network.info(network.health().axonRoles.map(role => role.topic)), 5e3);
   process.on('SIGINT', async () => { // Leave the network politely.
     console.log(process.title, 'Shutdown for Ctrl+C');
+    clearInterval(update)
     await network.disconnect();
     process.exit(0);
 });
+  await network.host();
 
 }

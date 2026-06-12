@@ -2,6 +2,7 @@ const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, URL, Noti
 import { Int } from './translations.js';
 import { openDisplay } from './display.js';
 import { Agent} from './agent.js';
+import { deriveIdentity, loadIdentity, dumpIdentity } from '@axona/protocol';
 import { P2PWebNetwork } from './p2PWebNetwork.js';
 import { getPointInCell } from './s2.js';
 import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
@@ -111,7 +112,7 @@ document.getElementById('aboutButton').onclick = event => { // open about
   openAbout(event);
 };
 document.getElementById('wipe').onclick = async event => {
-  await networkPromise?.then(contact => contact.disconnectTransports());
+  await networkPromise?.then(contact => contact.disconnect());
   localStorage.clear();
   await caches.keys().then(keys => Promise.all(keys.map(key => caches.delete(key))));
   await navigator.serviceWorker.getRegistrations().then(registrations => Promise.all(registrations.map(r => r.unregister())));
@@ -284,7 +285,19 @@ async function initialize(event) { // Ensure there is a network promise and map,
     showMessage('');
     if (!networkPromise) {
       console.log('Creating node.');
-      networkPromise = P2PWebNetwork.create();
+      // FIXME: Currently, Axona uses one identify for node/subscribe and for publish.
+      // We need to retain the same publish identity across sessions for kill, so for now, we retain that identity indefinitely.
+      const identityPersistenceKey = 'nodeIdentity';
+      const identityString = localStorage.getItem(identityPersistenceKey);
+      let identity;
+      if (identityString) {
+	identity = await loadIdentity(JSON.parse(identityString));
+      } else {
+	identity = await deriveIdentity(await P2PWebNetwork.sessionRegion);
+	localStorage.setItem(identityPersistenceKey, JSON.stringify(await dumpIdentity(identity)));
+      }
+
+      networkPromise = P2PWebNetwork.create({identity});
       networkPromise.then(contact => {
 	globalThis.contact = contact; // For debugging.
 	// On leaving, we would like to copy stored data and politely say 'bye' (so others can clean up their connections). Alas:
@@ -298,8 +311,8 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	//   But we will stay online as long as we're allowed, at which point we may be asked to store more that will not get replicated if killed.
 	// - On pagehide and unload, we synchronously say 'bye' with disconnectTransports.
 	//   These two are assigned now with a resolved networkPromise => contact so that we don't have to await.
-	window.onpagehide = () => contact.disconnectTransports();
-	window.onunload = () => contact.disconnectTransports(); // Safe if called multiple times.
+	window.onpagehide = () => contact.fastDisconnect();
+	window.onunload = () => contact.fastDisconnect(); // Safe if called multiple times.
 
 	contact.detachment.then(onPurpose => {
 	  networkPromise = null;

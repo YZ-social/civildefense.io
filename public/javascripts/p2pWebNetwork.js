@@ -1,5 +1,4 @@
 import { AxonaPeer, AxonaDomain, NeuronNode, deriveIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from '@axona/protocol';
-import { loadIdentity, dumpIdentity } from '@axona/protocol'; // fixme remove
 // FIXME: What is the right way to use Axona web transport. It doesn't seem to provide either a functioning export nor declare its dependencies.
 import { webTransport } from './../axona-protocol/src/transport/web/index.js';
 globalThis.RTCPeerConnection ||= await import('node-datachannel/polyfill').then(ndc => ndc.RTCPeerConnection);
@@ -11,34 +10,20 @@ const { BigInt } = globalThis;
    await network.disconnect();
  */
 
-const {promise:sessionRegion, resolve:resolveSessionRegion} = Promise.withResolvers();
+const {promise:sessionRegionPromise, resolve:resolveSessionRegion} = Promise.withResolvers();
 
 export class P2PWebNetwork {
   static wireVersion = WIRE_VERSION;
   static kernelVersion = KERNEL_VERSION;
   static setSessionRegion = resolveSessionRegion;
+  static sessionRegion = sessionRegionPromise;
   static async create({infoLogger = console.log, debugLogger,
 		       region, identity, bridgeUrl = 'wss://bridge.axona.net',
 		       synapseCount = 4, timeoutMs = 10e3} = {}) {
     // Promise a ready-to-use network peer.
     // Complex region/identity behavior: Must pass either identity or region (either can be a promise), or will wait for setSessionRegion() to be called.
-    if (!identity) region ||= this.canonicalizeRegion(await (region || sessionRegion));
-
-    // FIXME: what we really want is just the following, with any persistence being handled by the app.
-    //identity ||= deriveIdentity(region);
-    // For now:
-    if (!identity) {
-      const identityPersistenceKey = 'nodeIdentity';
-      const identityString = localStorage.getItem(identityPersistenceKey);
-      if (identityString) {
-	identity = await loadIdentity(JSON.parse(identityString));
-      } else {
-	identity = await deriveIdentity(region);
-	localStorage.setItem(identityPersistenceKey, JSON.stringify(await dumpIdentity(identity)));
-      }
-    }
-
-
+    if (!identity) region ||= this.canonicalizeRegion(await (region || this.sessionRegion));
+    identity ||= deriveIdentity(region);
     identity = await identity;
     region ||= identity.region;
 
@@ -79,8 +64,11 @@ export class P2PWebNetwork {
     await this.stop();
     this.resetStatePromises();
   }
-  async disconnectTransports() { // Let the network know that we might go away without further notice.
+  async replicateStorage() { // Let the network know that we might go away without further notice.
     // FIXME. It would be great if we could remove ourselves from any non-leaf positions in the Axon, but stay subscribed.
+  }
+  fastDisconnect() { // Synchronous attempt to be polite to those connected.
+    this.leave();
   }
 
   subscriptions = {}; // eventName => subscription. TODO: use unsub() instead of stop().
@@ -137,17 +125,17 @@ export class P2PWebNetwork {
   }
   // TODO: Integrate with AxonaPeer's complex logging.
   debug(...rest) { // Add debug logspam.
-    this.debugLogger?.(this.identity.id, ...rest);
+    //this.debugLogger?.(this.identity.id, ...rest);
+    console.log(this.identity.id, ...rest);
   }
   info(...rest) { // Add debug logspam.
-    (this.infoLogger || this.debugLogger)?.(this.identity.id, ...rest);
+    //(this.infoLogger || this.debugLogger)?.(this.identity.id, ...rest);
+    console.log(this.identity.id, ...rest);
   }
 }
 export default P2PWebNetwork;
 
 // For now, we want to override publish and subscribe, but that conflicts with internal messages on AxonaPeer.
 // Thus P2PWebNetwork has an AxonaPeer, instead of inheriting from it. And thus we need forwarding messages.
-['join', 'leave', 'stop', 'health']
+['join', 'leave', 'stop', 'health', 'host', 'unhost']
   .forEach(methodName => P2PWebNetwork.prototype[methodName] = function (...rest) {return this.peer[methodName](...rest);});
-
-
