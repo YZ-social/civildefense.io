@@ -4,7 +4,7 @@ import { s2 } from 's2js';
 import { Int } from './translations.js';
 import { consume, openDisplay, file2dataURL, dataURL2file, downsampledFile2dataURL } from './display.js';
 import { Agent } from './agent.js';
-import { getRegionPublisher, setSessionRegion } from './pubSub.js';
+import { P2PWebNetwork } from './p2PWebNetwork.js';
 import { networkPromise, resetInactivityTimer, delay, notificationsAllowed, openAbout } from './main.js';
 import { Hashtags } from './hashtags.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
@@ -95,7 +95,7 @@ export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Updat
     const bounds = map.getBounds();
     const northEast = bounds.getNorthEast();
     const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
-    publisher = getRegionPublisher(center.lat, center.lng);
+    publisher = P2PWebNetwork.regionPublisher(center.lat, center.lng);
     newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => makeEventName(cell, hash)));
     // Record a zoomed-out cell id in case next session does not have geolocation services.
     let level9Cell = getContainingCells(center.lat, center.lng)[9];
@@ -150,7 +150,7 @@ async function publishAlert({lat, lng,
     const {lat, lng, hashtag, subject} = cancel;
     oldCells = getContainingCells(lat, lng);
     oldHash = hashtag; oldSubject = subject;
-    const publisher = getRegionPublisher(lat, lng);
+    const publisher = P2PWebNetwork.regionPublisher(lat, lng);
     for (const cell of oldCells) {
       const eventName = makeEventName(cell, hashtag);
       // Note: we cannot unpublish replies by others, but they expire after a while anyway.
@@ -159,7 +159,7 @@ async function publishAlert({lat, lng,
   }
 
   const cells = getContainingCells(lat, lng);
-  const publisher = getRegionPublisher(lat, lng);
+  const publisher = P2PWebNetwork.regionPublisher(lat, lng);
   for (const cell of cells) {
     const eventName = makeEventName(cell, hashtag);
     if (payload) {
@@ -254,7 +254,7 @@ export class Marker { // A wrapper around L.marker
       marker.bindPopup('', {className: 'alert'})
 	.on('popupopen', event => wrapper.ensureContent(event.popup));
       // Subscribe to replies to this subject, now that we're set up to receive them.
-      const publisher = getRegionPublisher(lat, lng);
+      const publisher = P2PWebNetwork.regionPublisher(lat, lng);
       networkPromise.then(async contact => contact.subscribe({eventName: subject, publisher, autoRenewal: true, handler: data => wrapper.handleReply(data)}));
       if (subject === openOnReceive) {
 	openOnReceive = false;
@@ -446,7 +446,7 @@ export class Marker { // A wrapper around L.marker
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     networkPromise.then(async contact => {
       const {lat, lng, subject, hashtag} = this;
-      const publisher = getRegionPublisher(lat, lng);
+      const publisher = P2PWebNetwork.regionPublisher(lat, lng);
       const fixmeId = await contact.publish({eventName: subject, publisher, payload, act: Agent.tag}); // Publish the new reply.
 
       // Extend the expiration of the original event, and of the public handle/avatar of everyone in the conversation.
@@ -468,7 +468,7 @@ export class Marker { // A wrapper around L.marker
   deleteReply(replyElement) {
     resetInactivityTimer();
     const {lat, lng} = this;
-    const publisher = getRegionPublisher(lat, lng); // TODO: we can canche the publisher in the Marker
+    const publisher = P2PWebNetwork.regionPublisher(lat, lng); // TODO: we can canche the publisher in the Marker
     networkPromise.then(contact => contact.publish({eventName: this.subject, subject: replyElement.dataset.subject, payload: null, publisher}));
   }
   formatReplies() { // Answer HTML for the replies and input box.
@@ -618,7 +618,7 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
   // Then show initial message and updateSubscriptions.
 
   showMessage(Int`Getting your location...`);
-  setSessionRegion(lat, lng);
+  P2PWebNetwork.setSessionRegion({lat, lng});
 
   // Map will be centered at the given current location marker, unless overriden by query parameters.
   let center = {lat, lng};

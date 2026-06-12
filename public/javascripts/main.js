@@ -2,10 +2,10 @@ const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, URL, Noti
 import { Int } from './translations.js';
 import { openDisplay } from './display.js';
 import { Agent} from './agent.js';
-import { NetworkClass } from './pubSub.js';
+import { P2PWebNetwork } from './p2PWebNetwork.js';
 import { getPointInCell } from './s2.js';
 import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
-//import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
+import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
 
 document.getElementById('appVersion').textContent = appVersion;
 
@@ -284,9 +284,8 @@ async function initialize(event) { // Ensure there is a network promise and map,
     showMessage('');
     if (!networkPromise) {
       console.log('Creating node.');
-      networkPromise = NetworkClass.create();
+      networkPromise = P2PWebNetwork.create();
       networkPromise.then(contact => {
-	console.log('Created node', contact.name);
 	globalThis.contact = contact; // For debugging.
 	// On leaving, we would like to copy stored data and politely say 'bye' (so others can clean up their connections). Alas:
 	// - The events we get will be, in order: beforeunload (except iOS Safari), pagehide, visibilitychange, unload
