@@ -117,7 +117,7 @@ export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Updat
 }
 
 let last = []; // Last published lat, lng, subject
-const maxPublish = 3; // fixme 5
+const maxPublish = 5;
 // Publish an alert to all applicable eventNames, canceling as required. Promises subject (msgId).
 async function publishAlert({lat, lng,
 			     originalPosting = undefined,

@@ -21,7 +21,7 @@ const argv = yargs(hideBin(process.argv))
       .option('nPortals', {
 	alias: 'p',
 	type: 'number',
-	default: Math.max(logicalCores / 2, 2),
+	default: logicalCores,
 	description: "The number of steady nodes that handle initial connections."
       })
       .option('baseURL', {
@@ -98,7 +98,7 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   app.use(express.static(path.join(__dirname, '../public')));
 
   app.listen(port);
-  console.log('Listening on', port);
+  console.log('Listening on', port, 'and starting', argv.nPortals, 'nodes.');
   for (let i = 0; i < argv.nPortals; i++) cluster.fork();
 } else {
   process.title = 'axona-starting';
@@ -107,7 +107,7 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   await P2PWebNetwork.delay(cluster.worker?.id * 1e3);
   const network = await P2PWebNetwork.create({region: {lat: 37.468467587148844, lng: -122.25860595703126}, bridgeUrl: 'wss://bridge.axona.net'});
   process.title = 'axona-' + network.identity.id;
-  let update = setInterval(() => network.info(network.health().axonRoles.map(role => role.topic)), 5e3);
+  let update = null//setInterval(() => network.info(network.health().axonRoles.map(role => role.topic)), 5e3);
   process.on('SIGINT', async () => { // Leave the network politely.
     console.log(process.title, 'Shutdown for Ctrl+C');
     clearInterval(update)
