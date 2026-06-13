@@ -8,7 +8,7 @@
     "alert"
   ],
   "scripts": {
-    "start": "npm stop; node ./server/app.js --nPortals 2",
+    "start": "npm stop; node ./server/app.js",
     "stop": "pkill yz.social"
   },
   "type": "module",
