@@ -6,12 +6,10 @@ import cluster from 'node:cluster';
 import path from 'node:path';
 import http from 'node:http';
 import express from 'express';
-//import expressWs from 'express-ws';
 import logger from 'morgan';
 import { fileURLToPath } from 'url';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-//import { P2PWebNetwork } from '../public/javascripts/p2pWebNetwork.js';
 
 
 const logicalCores = availableParallelism();
