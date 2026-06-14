@@ -284,6 +284,8 @@ async function initialize(event) { // Ensure there is a network promise and map,
     showMessage('');
     initializeGeolocation(needsConnection);
     if (!networkPromise) {
+      const {promise, resolve} = Promise.withResolvers();
+      networkPromise = promise;
       console.log('Creating node.');
       // FIXME: Currently, Axona uses one identify for node/subscribe and for publish.
       // We need to retain the same publish identity across sessions for kill, so for now, we retain that identity indefinitely.
@@ -297,7 +299,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	localStorage.setItem(identityPersistenceKey, JSON.stringify(await dumpIdentity(identity)));
       }
 
-      networkPromise = P2PWebNetwork.create({identity});
+      resolve(P2PWebNetwork.create({identity}));
       networkPromise.then(contact => {
 	globalThis.contact = contact; // For debugging.
 	// On leaving, we would like to copy stored data and politely say 'bye' (so others can clean up their connections). Alas:
