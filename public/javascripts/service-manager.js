@@ -106,7 +106,7 @@ async function cacheSource(version) { // Cache source in the given version.
     "axona-protocol/src/transport/sim/index.js",
     "axona-protocol/src/transport/sim/network.js",
     "axona-protocol/src/transport/sim/transport.js",
-    "axona-protocol/src/transport/persistence/interface.js",
+    "axona-protocol/src/persistence/interface.js",
     "axona-protocol/src/crypto/noble-ed25519.js",
 
     "leaflet/leaflet.css",
