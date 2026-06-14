@@ -4,7 +4,7 @@ import { s2 } from 's2js';
 import { Int } from './translations.js';
 import { consume, openDisplay, file2dataURL, dataURL2file, downsampledFile2dataURL } from './display.js';
 import { Agent } from './agent.js';
-import { P2PWebNetwork } from './p2PWebNetwork.js';
+import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { networkPromise, resetInactivityTimer, delay, notificationsAllowed, openAbout } from './main.js';
 import { Hashtags } from './hashtags.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
