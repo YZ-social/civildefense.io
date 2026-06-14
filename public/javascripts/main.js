@@ -3,7 +3,7 @@ import { Int } from './translations.js';
 import { openDisplay } from './display.js';
 import { Agent} from './agent.js';
 import { deriveIdentity, loadIdentity, dumpIdentity } from '@axona/protocol';
-import { P2PWebNetwork } from './p2PWebNetwork.js';
+import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { getPointInCell } from './s2.js';
 import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
 import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
