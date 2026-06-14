@@ -76,7 +76,7 @@ async function cacheSource(version) { // Cache source in the given version.
     "axona-protocol/src/contracts/BootstrapService.js",
     "axona-protocol/src/identity/index.js",
     "axona-protocol/src/identity/nodeid.js",
-    "axona-protocol/src/pow/pw.js",
+    "axona-protocol/src/pow/pow.js",
     "axona-protocol/src/dht/AxonaPeer.js",
     "axona-protocol/src/dht/AxonaDomain.js",
     "axona-protocol/src/dht/DHTNode.js",
