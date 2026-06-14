@@ -312,7 +312,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	// - On pagehide and unload, we synchronously say 'bye' with disconnectTransports.
 	//   These two are assigned now with a resolved networkPromise => contact so that we don't have to await.
 	window.onpagehide = () => contact.fastDisconnect();
-	window.onunload = () => contact.fastDisconnect(); // Safe if called multiple times.
+	// causes errors in some browsers: window.onunload = () => contact.fastDisconnect();
 
 	contact.detachment.then(onPurpose => { // On disconnect (whether initiated by us or not), message user and set up for reconnection.
 	  networkPromise = null;
