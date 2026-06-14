@@ -255,12 +255,11 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
       maximumAge: 0
     }
   );
-  console.log('hrs set watch position', positionWatch);
 }
 
 let checking = false; // For debouncing.
 // On startup, get last persisted portals list, else the portal we came in on.
-let portals = new Set(JSON.parse(localStorage.getItem('portals') || `["${new URL('/kdht', window.location).href}"]`));
+//fixme let portals = new Set(JSON.parse(localStorage.getItem('portals') || `["${new URL('/kdht', window.location).href}"]`));
 async function initialize(event) { // Ensure there is a network promise and map, and reset geolocation:
   // debounce
   // if !checkOnline(), return
@@ -283,6 +282,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
       return;
     }
     showMessage('');
+    initializeGeolocation(needsConnection);
     if (!networkPromise) {
       console.log('Creating node.');
       // FIXME: Currently, Axona uses one identify for node/subscribe and for publish.
@@ -314,7 +314,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	window.onpagehide = () => contact.fastDisconnect();
 	window.onunload = () => contact.fastDisconnect(); // Safe if called multiple times.
 
-	contact.detachment.then(onPurpose => {
+	contact.detachment.then(onPurpose => { // On disconnect (whether initiated by us or not), message user and set up for reconnection.
 	  networkPromise = null;
 	  const message = onPurpose ? Int`Connection closed. Will reconnect on use.` :
 		(navigator.onLine ? Int`The service connection has closed. Please reload.` : Int`No network connection.`);
@@ -323,19 +323,18 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	  // so as not to confuse other nodes that have given up on the unresponsive old GUID.
 	  showMessage(message, 'error');
 	});
-	contact.connect(...portals)
-	  .then(() => contact.subscribe({ // Add and persist any new portals we haven't heard about.
-	    eventName: 'sys:portals',
-	    handler: data => {
-	      const operation = data.payload ? 'add' : 'delete';
-	      const resultSet = portals[operation](data.subject);
-	      localStorage.setItem('portals', JSON.stringify([...resultSet]));
-	    }
-	  }));
+	//contact.connect(/*fixme ...portals*/)
+	  // .then(() => contact.subscribe({ // Add and persist any new portals we haven't heard about.
+	  //   eventName: 'sys:portals',
+	  //   handler: data => {
+	  //     const operation = data.payload ? 'add' : 'delete';
+	  //     const resultSet = portals[operation](data.subject);
+	  //     localStorage.setItem('portals', JSON.stringify([...resultSet]));
+	  //   }
+	  // }))
       });
     }
     if (event) await delay();
-    initializeGeolocation(needsConnection);
   } finally {
     checking = false;
   }

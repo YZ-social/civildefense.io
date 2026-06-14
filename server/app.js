@@ -93,7 +93,9 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
     etag: true,
     immutable: true
   }));
-  app.use(express.static(path.join(__dirname, '../public')));
+  app.use(express.static(path.join(__dirname, '../public'), {
+    extensions: ['js', 'html'] // Some dependencies refer to .js files as relative pathnames with the .js missing.
+  }));
 
   app.listen(port);
   console.log('Listening on', port, 'and starting', argv.nPortals, 'nodes.');

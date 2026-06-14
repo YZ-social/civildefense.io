@@ -1,4 +1,4 @@
-import { s2 } from 'https://esm.sh/s2js';
+import { s2 } from 's2js';
 const { cellid, LatLng, Point, Cell, Cap, RegionCoverer } = s2;
 
 // s2 defines non-overlapping cells that completely cover the globe, at several different levels of cell-size.
