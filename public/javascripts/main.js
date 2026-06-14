@@ -334,6 +334,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	  // }))
       });
     }
+    Agent.initialize();
     if (event) await delay();
   } finally {
     checking = false;
