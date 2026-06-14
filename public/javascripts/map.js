@@ -689,7 +689,6 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
     const { lat, lng } = e.latlng;
     Marker.openPopup(await publishAlert({lat, lng}));
   });
-  Agent.initialize();
 
   showMessage(Int`Tap anywhere to mark a concern. Markers fade after 24 hours.`, 'instructions');
 }
