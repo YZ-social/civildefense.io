@@ -3,13 +3,12 @@ import process from 'node:process';
 import { exec } from 'node:child_process';
 import {cpus, availableParallelism } from 'node:os';
 import cluster from 'node:cluster';
-import path from 'node:path';
 import http from 'node:http';
 import express from 'express';
 import logger from 'morgan';
-import { fileURLToPath } from 'url';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import { resolve } from './dirname.js';
 
 
 const logicalCores = availableParallelism();
@@ -56,8 +55,6 @@ const argv = yargs(hideBin(process.argv))
       .parse();
 
 if (cluster.isPrimary) { // Parent process with portal webserver through which clienta can bootstrap
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
   const port = parseInt((new URL(argv.baseURL)).port || '80');
   process.title = 'yz.social';
   const app = express();
@@ -70,7 +67,7 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   //   app.use((req, res, next) => {
   //     if (!announce && req.hostname !== 'localhost') {
   // 	const host = req.headers["x-forwarded-host"] || req.headers.host; // Including port, if specified
-  // 	announce = `node ${path.resolve(__dirname, 'announce.js')} --portalURL https://${host}/kdht`;
+  // 	announce = `node ${resolve('announce.js')} --portalURL https://${host}/kdht`;
   // 	console.log(announce);
   // 	exec(announce);
   // 	setInterval(() => exec(announce), 12 * 60 * 60e3); // Every 12 hours that we are running.
@@ -88,13 +85,13 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   //console.log(`${cpus()[0].model}, ${logicalCores} logical cores. Starting ${argv.nPortals}.`);
   app.use(express.json());
 
-  app.use('/images', express.static(path.join(__dirname, 'public/images'), {
+  app.use('/images', express.static(resolve('../public/images'), {
     maxAge: '1d',
     etag: true,
     immutable: true
   }));
-  app.use(express.static(path.join(__dirname, '../public'), {
-    extensions: ['js', 'html'] // Some dependencies refer to .js files as relative pathnames with the .js missing.
+  app.use(express.static(resolve('../public'), {
+    extensions: ['js'] // Some dependencies refer to .js files as relative pathnames, with the .js missing.
   }));
 
   app.listen(port);
@@ -103,9 +100,9 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
 } else {
   process.title = 'axona-starting';
   const { P2PWebNetwork } = await import('../public/javascripts/p2pWebNetwork.js');
-
-  await P2PWebNetwork.delay(cluster.worker?.id * 1e3);
-  const network = await P2PWebNetwork.create({region: {lat: 37.468467587148844, lng: -122.25860595703126}, bridgeUrl: 'wss://bridge.axona.net'});
+  await P2PWebNetwork.delay(cluster.worker?.id * 1e3); // One second between startups.
+  const { location:region } = await import('./getLocation.js');  // First invocation caches.
+  const network = await P2PWebNetwork.create({region, bridgeUrl: 'wss://bridge.axona.net'});
   process.title = 'axona-' + network.identity.id;
   let update = null//setInterval(() => network.info(network.health().axonRoles.map(role => role.topic)), 5e3);
   process.on('SIGINT', async () => { // Leave the network politely.
