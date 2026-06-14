@@ -36,7 +36,7 @@ export class P2PWebNetwork {
     const network = new this();
     Object.assign(network, {infoLogger, debugLogger, identity, transport, node, peer});
     network.resetStatePromises();
-    network.info('created', this.wireVersion, this.kernelVersion);
+    network.info('Created network node for wire/kernel versions', this.wireVersion, this.kernelVersion);
     await network.connect({synapseCount, timeoutMs});
     return network;
   }
@@ -45,7 +45,7 @@ export class P2PWebNetwork {
     // Returned promise resolves when ready for use. Can be cycled through disconnect()/connect().
     await this.transport.start(this.identity.id);
     await this.join();
-    this.debug('joined', this.health().synaptomeSize);
+    this.debug('Joined', this.health().synaptomeSize, 'connections.');
     // FIXME: This is required to get good results. Shouldn't it be built in to join()?
     const t0 = Date.now();
     while (Date.now() - t0 < timeoutMs) {
@@ -53,7 +53,7 @@ export class P2PWebNetwork {
       if (size >= synapseCount) break;
       await this.constructor.delay(200);
     }
-    this.info('connected', this.health().synaptomeSize);
+    this.info('Connected', this.health().synaptomeSize, 'connections.');
     this.attached(this);
     return this;
   }
@@ -125,12 +125,10 @@ export class P2PWebNetwork {
   }
   // TODO: Integrate with AxonaPeer's complex logging.
   debug(...rest) { // Add debug logspam.
-    //this.debugLogger?.(this.identity.id, ...rest);
-    console.log(this.identity.id, ...rest);
+    this.debugLogger?.(this.identity.id, ...rest);
   }
   info(...rest) { // Add debug logspam.
-    //(this.infoLogger || this.debugLogger)?.(this.identity.id, ...rest);
-    console.log(this.identity.id, ...rest);
+    (this.infoLogger || this.debugLogger)?.(this.identity.id, ...rest);
   }
 }
 export default P2PWebNetwork;
