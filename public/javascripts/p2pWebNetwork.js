@@ -95,7 +95,7 @@ export class P2PWebNetwork {
   async publish({eventName, publisher = null, issuedTime = Date.now(), subject, payload, ...rest}) { // Publish data to subscribers of eventName.
     await this.attachment; // Get connected.
     const options = {publisher};
-    //console.log({eventName, publisher, payload, subject});
+    //console.log({eventName, publisher, payload, subject, issuedTime, rest});
     if (payload) return await this.peer.pub(eventName, {issuedTime, payload, ...rest}, options);
     if (!subject) return null;
     if (payload === null) return await this.peer.kill(eventName, subject, options);

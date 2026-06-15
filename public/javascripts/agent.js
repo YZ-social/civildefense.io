@@ -1,6 +1,7 @@
 const { localStorage } = globalThis;
 import { v4 as uuidv4 } from 'uuid';
 import { minidenticonSvg } from 'minidenticons';
+import { agentTopic } from './versions.js';
 import { Int } from './translations.js';
 import { consume, openDisplay, downsampledFile2dataURL } from './display.js';
 import { networkPromise, resetInactivityTimer } from './main.js';
@@ -30,12 +31,8 @@ export class Agent {
   localPersistKey(type, tag = this.tag) { // for localStorage of our private data about this Agent.
     return `${type}-${tag}`;
   }
-  static networkVersion = 43;
-  static networkPersistKey(tag) { // EventName (not key) for pubsub of public data bout this Agent.
-    return `public:${this.networkVersion}:${tag}`;
-  }
   networkPersistKey(tag = this.tag) {
-    return Agent.networkPersistKey(tag);
+    return agentTopic(tag);
   }
   updateFromLocal(scope, type, tag = this.tag) { // get value locally, and then update (which may have side-effect)
     const value = localStorage.getItem(this.localPersistKey(type, tag));

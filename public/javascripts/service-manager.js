@@ -1,4 +1,5 @@
-const { Request, Response, URL, localStorage, BroadcastChannel, appVersion } = globalThis;
+const { Request, Response, URL, localStorage, BroadcastChannel } = globalThis;
+import { appVersion } from './versions.js';
 import { resetInactivityTimer } from './main.js';
 import { openDisplay } from './display.js';
 import { go } from './map.js';
@@ -48,7 +49,9 @@ async function cacheSource(version) { // Cache source in the given version.
     "/index.html", // Just in case anyone is specifying that.
     "favicon.ico",
     "manifest.json",
+    "package.json",
 
+    "javascripts/versions.js",
     "javascripts/main.js",
     "javascripts/display.js",
     "javascripts/map.js",
@@ -175,7 +178,7 @@ async function installUpdate(newVersion) {
 if (!(await caches.has(appVersion))) cacheSource(appVersion);
 
 await navigator.serviceWorker
-  .register("/service-worker.js", {updateViaCache: 'none'})
+  .register("/service-worker.js", {updateViaCache: 'none', type: 'module'})
   .then(registration => {
     let serviceVersion;
     // No need to reset button/status on click, because we will be reloading.

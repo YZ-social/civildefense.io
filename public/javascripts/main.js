@@ -1,4 +1,5 @@
-const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, URL, Notification, appVersion } = globalThis; // For linters.
+const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, URL, Notification } = globalThis; // For linters.
+import { appVersion } from './versions.js';
 import { Int } from './translations.js';
 import { openDisplay } from './display.js';
 import { Agent} from './agent.js';
