@@ -1,4 +1,5 @@
 const { localStorage } = globalThis; // For linters.
+import { stripLeadingEmoji, canonicalTag } from './versions.js';
 import { Int } from './translations.js';
 import { updateSubscriptions, Marker } from './map.js';
 import { resetInactivityTimer } from './main.js';
@@ -31,7 +32,7 @@ export const Hashtags = {
     // Here we accept a canonical or extended label, updating our records keyed by the canonical part,
     // but if we currently have just a canonical part we update our records to capture the extended.
     // (We do not change the emoji of an existing extended.)
-    const canonical = this.canonicalTag(label);
+    const canonical = canonicalTag(label);
     const ours = this.canonical2extended[canonical];
     const extended = ours || label;
     const isExtendingCanonical = !ours && label !== canonical; // We have only a canonical so far.
@@ -55,13 +56,7 @@ export const Hashtags = {
   },
   getPublish() { // Return the one hashtag to which the user intends to publish.
     return this.getAll().find(key => this.hashtags[key] === 'pub');
-  },
-  stripLeadingEmoji(string) { // Return string without any leading emoji (which might be of varying
-    // length) followed by an optional emoji break character and any whitespace.
-    // {Extended_Pictographic} is often recommended instead of {Emoji} as the latter includes numbers
-    // and symbols. However, the former misses, e.g., the flag emojis.
-    return string.replace(/^\p{Emoji}*\uFE0F?\s*/u, '') || string;
-  },
+  },  
   firstEmoji(tag) { // First emoji that appears in string, else falsy.
     // I would prefer that it take just the first emoji, but that doesn't grab double-wide ones
     // such as flags. So instead this will return any leading emoji ending with a space, terminator, or normal character.
@@ -78,9 +73,6 @@ export const Hashtags = {
   formatPubtag(tag) { // HTML (possibly text) to represent tag with defaulted icon.
     const emoji = this.firstEmoji(tag);
     return emoji ? tag : this.identicon(tag) + tag;
-  },
-  canonicalTag(tag) { // A string representing tag, without the (leading) emoji if any.
-    return this.stripLeadingEmoji(tag);
   },
   onchange({redisplaySubscribers = true, resetSubscriptions = true} = {}) { // Update and persist internal data, and update visuals.
     // If redisplaySubscribers, the presence/order may have changed.
@@ -104,7 +96,7 @@ export const Hashtags = {
     const tags = this.getAll();
 
     // Sort alphabetically, ignoring any leading emoji, as these have unexpected orderings.
-    tags.sort((a, b) => this.stripLeadingEmoji(a).localeCompare(this.stripLeadingEmoji(b)));
+    tags.sort((a, b) => stripLeadingEmoji(a).localeCompare(stripLeadingEmoji(b)));
     const reordered = {};
     tags.forEach(tag => reordered[tag] = this.hashtags[tag]);
     this.hashtags = reordered;
@@ -146,7 +138,7 @@ export const Hashtags = {
   },
   remove(chip, redisplaySubscribers = false) {
     delete this.hashtags[chip.label];
-    delete this.canonical2extended[this.canonicalTag(chip.label)];
+    delete this.canonical2extended[canonicalTag(chip.label)];
     this.onchange({redisplaySubscribers, resetSubscriptions: false});
   },
   toggleChip(chip) {

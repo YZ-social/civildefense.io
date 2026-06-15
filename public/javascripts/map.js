@@ -3,6 +3,7 @@ import * as L from 'leaflet';
 import { s2 } from 's2js';
 import { Int } from './translations.js';
 import { consume, openDisplay, file2dataURL, dataURL2file, downsampledFile2dataURL } from './display.js';
+import { alertTopic } from './versions.js';
 import { Agent } from './agent.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { networkPromise, resetInactivityTimer, delay, notificationsAllowed, openAbout } from './main.js';
@@ -96,7 +97,7 @@ export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Updat
     const northEast = bounds.getNorthEast();
     const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
     publisher = P2PWebNetwork.regionPublisher(center.lat, center.lng);
-    newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => makeEventName(cell, hash)));
+    newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => alertTopic(cell, hash)));
     // Record a zoomed-out cell id in case next session does not have geolocation services.
     let level9Cell = getContainingCells(center.lat, center.lng)[9];
     if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
@@ -152,7 +153,7 @@ async function publishAlert({lat, lng,
     oldHash = hashtag; oldSubject = subject;
     const publisher = P2PWebNetwork.regionPublisher(lat, lng);
     for (const cell of oldCells) {
-      const eventName = makeEventName(cell, hashtag);
+      const eventName = alertTopic(cell, hashtag);
       // Note: we cannot unpublish replies by others, but they expire after a while anyway.
       contact.publish({eventName, publisher, subject, payload: null});
     }
@@ -161,7 +162,7 @@ async function publishAlert({lat, lng,
   const cells = getContainingCells(lat, lng);
   const publisher = P2PWebNetwork.regionPublisher(lat, lng);
   for (const cell of cells) {
-    const eventName = makeEventName(cell, hashtag);
+    const eventName = alertTopic(cell, hashtag);
     if (payload) {
       const msgId = await contact.publish({eventName, publisher, payload, issuedTime, hashtag, act, ...rest});
       if (subject && subject !== msgId) throw new Error(`msgId is drifting: ${subject} => ${msgId}`);
@@ -447,13 +448,13 @@ export class Marker { // A wrapper around L.marker
     networkPromise.then(async contact => {
       const {lat, lng, subject, hashtag} = this;
       const publisher = P2PWebNetwork.regionPublisher(lat, lng);
-      const fixmeId = await contact.publish({eventName: subject, publisher, payload, act: Agent.tag}); // Publish the new reply.
+      await contact.publish({eventName: subject, publisher, payload, act: Agent.tag}); // Publish the new reply.
 
       // Extend the expiration of the original event, and of the public handle/avatar of everyone in the conversation.
       // this is done by republishing with no payload (not null!).
       const cells = getContainingCells(lat, lng);  // Touch alert publication stack.
       for (const cell of cells) {
-	const eventName = makeEventName(cell, hashtag);
+	const eventName = alertTopic(cell, hashtag);
 	await contact.publish({eventName, subject, publisher});
       }
       for (const reply of this.replies) {
