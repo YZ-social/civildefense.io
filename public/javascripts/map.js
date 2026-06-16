@@ -399,18 +399,32 @@ export class Marker { // A wrapper around L.marker
 
   // Each reply is separately published by its author, and only they can modify/unpublish it.
   replies = [];
-  handleReply(data) { // Add or update reply for this marker.
+  async handleReply(data) { // Add or update reply for this marker.
     // TODO: handle update/removal.
     const { replies, marker } = this;
     if (data.payload) {
       const existing = replies.find(reply => reply.subject === data.subject);
       if (existing) return; // Until we do editing.
+
+      // Fix up data: expand file, and also keep fileTopic so that it can be touched.
+      const {act, issuedTime, payload} = data;
+      const {file} = payload;
+      if (file) {
+	data.fileTopic = file;
+	console.log('*** file length', file.length);
+	const contact = await networkPromise;
+	console.log('*** got contact');
+	// Before pushing data on to replies.
+	const {string, messageIdentifiers} = await contact.assembleChunkedString(file, P2PWebNetwork.regionPublisher(this.lat, this.lng));
+	payload.file = string;
+	payload.messageIdentifiers = messageIdentifiers;
+	console.log('*** now file length', payload.file.length);	
+      }
       replies.push(data); // TODO: when we implement edited replies, we'll have to find the existing
       replies.sort((a, b) => a.issuedTime - b.issuedTime); // Could be slightly out of order.
       const element = marker.getElement();
       // Restart the pulse animation by setting animationName to something it isn't.
       element.style.animationName = element.style.animationName === 'pulse2' ? 'pulse' : 'pulse2';
-      const {act, issuedTime, payload} = data;
       if (replies[replies.length - 1] !== data) return; // Replies can come out of order.
       this.startFader(issuedTime + ttl - Date.now());
       this.showNotification({act, issuedTime, body: payload.message || payload.name || payload});
@@ -438,33 +452,36 @@ export class Marker { // A wrapper around L.marker
     const button = event.target;
     const inputElement = button.parentElement;
     let payload = inputElement.value.trim();
+    const {lat, lng, subject, hashtag} = this;
+    const publisher = P2PWebNetwork.regionPublisher(lat, lng);
     const files = inputElement.parentElement.querySelector('input[type="file"]').files;
+    const contact = await networkPromise;
     if (files.length) {
-      payload = {message: payload, file: await downsampledFile2dataURL(files[0]), name: files[0].name};
+      const dataURL = await downsampledFile2dataURL(files[0]);
+      const file = await contact.chunkifyString(dataURL, publisher);
+      console.log({dataURL, file});
+      payload = {message: payload, file, name: files[0].name};
     }
     if (!payload) return;
     inputElement.value = '';
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
-    networkPromise.then(async contact => {
-      const {lat, lng, subject, hashtag} = this;
-      const publisher = P2PWebNetwork.regionPublisher(lat, lng);
-      await contact.publish({eventName: subject, publisher, payload, act: Agent.tag}); // Publish the new reply.
+    await contact.publish({eventName: subject, publisher, payload, act: Agent.tag}); // Publish the new reply.
 
-      // Extend the expiration of the original event, and of the public handle/avatar of everyone in the conversation.
-      // this is done by republishing with no payload (not null!).
-      const cells = getContainingCells(lat, lng);  // Touch alert publication stack.
-      for (const cell of cells) {
-	const eventName = alertTopic(cell, hashtag);
-	await contact.publish({eventName, subject, publisher});
-      }
-      for (const reply of this.replies) {
-	await contact.publish({eventName: subject, subject: reply.subject, publisher}); // Touch existing replies.
-	const eventName = Agent.networkPersistKey(reply.act); // Touch reply actor's data.  FIXME
-	await contact.publish({eventName, subject: await Agent.recreateMessageTag(subject, 'handle')});
-	await contact.publish({eventName, subject: await Agent.recreateMessageTag(subject, 'avatar')});
-      }
-
-    });
+    // Extend the expiration of the original event, and of the public handle/avatar of everyone in the conversation.
+    // this is done by republishing with no payload (not null!).
+    const cells = getContainingCells(lat, lng);  // Touch alert publication stack.
+    for (const cell of cells) {
+      const eventName = alertTopic(cell, hashtag);
+      await contact.publish({eventName, subject, publisher});
+    }
+    for (const reply of this.replies) { // Touch existing replies.
+      await contact.publish({eventName: subject, subject: reply.subject, publisher}); // Top level reply message.
+      // for (const messageIdentifier of reply.messageIdentifiers || []) // File chunks, if any.
+      // 	await contact.publish({eventName: reply.fileTopic, messageIdentifier, publisher});  // fixme restore
+      const eventName = Agent.networkPersistKey(reply.act); // Actor's data.
+      await contact.publish({eventName, subject: await Agent.recreateMessageTag(subject, 'handle')});
+      await contact.publish({eventName, subject: await Agent.recreateMessageTag(subject, 'avatar')});
+    }
   }
   deleteReply(replyElement) {
     resetInactivityTimer();

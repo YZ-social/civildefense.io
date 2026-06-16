@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { AxonaPeer, AxonaDomain, NeuronNode, deriveIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from '@axona/protocol';
 // FIXME: What is the right way to use Axona web transport. It doesn't seem to provide either a functioning export nor declare its dependencies.
 import { webTransport } from './../axona-protocol/src/transport/web/index.js';
@@ -71,6 +72,74 @@ export class P2PWebNetwork {
     this.leave();
   }
 
+  // civildefense and alert-bot explicitly handle files in an application-specific way:
+  // they convert them to data urls, which contain an explicit mime type and are represented
+  // as text, so they can go as JSON. The apps also downsample images in a way that is
+  // appropriate for their specific use within the application.  When receiving, the surrounding
+  // JSON identifies the string to be converted by the application to other application-specific forms.
+  // Thus there's no need for transport to deal with that.
+  //
+  // However, Axona cannot handle a message that might contain a string that is, say, a megabyte.
+  // So it's up to us to provide a utility that the app can use to chunk and re-assemble string
+  // that the app knows might be large. That's what these two methods do.
+  // They should be used to replace all strings that might push a message payload above 256kB (or maybe 16kB, see below).
+  async chunkifyString(string, publisher = null) { // Publish string and answer an identifier that can be used to re-assemble.
+    if (!string.length) throw new Error(`Cannot chunkify empty string '${string}.`);
+    // FIXME: This implementation can be disrupted when another user publishes garbage to the same topic.
+    const topic = uuidv4(); // Publish the chunks to this topic.
+    // A specific RTCPeerConnection has an sctp.maxMessageSize negotiated between the peers.
+    // Alas, we will be publishing a bunch of substrings to topic and we have no control or insight into the
+    // specific webrtc connections it will pass through -- which might not even be our connection.
+    // So the only safe thing to do is to use the largest size that is guaranteed to work across implementations
+    // in all networks, which is only 16k. Ugh!
+    const SIZE_LIMIT = 230e3; // FIXME: should be less than 16e3 (Allowing room for envelopes.) But that won't work for even basic downrezed photos. So do a large size for now that we KNOW will not work on some browser/network combinations.
+    const THROTTLE = 1e3//fixme 150; // ms
+    const numChunks = Math.ceil(string.length / SIZE_LIMIT);
+    const options = {publisher};
+    // TODO: It would be nice to send these in parallel, but instead, we have to pause for throttling.
+    const sent = await this.peer.pub(topic, {i: 0, v: numChunks}, options);
+    this.info(`Fragmenting ${string.length.toLocaleString()} byte message ${topic} into ${numChunks} chunks of ${SIZE_LIMIT}, starting with ${sent}, publisher ${publisher}.`);
+    for (let i = 1, o = 0; i <= numChunks; ++i, o += SIZE_LIMIT) {
+      const frag = {i, v: string.substr(o, SIZE_LIMIT)};
+      await this.constructor.delay(THROTTLE);
+      const msgId = await this.peer.pub(topic, frag, options);
+      this.info('chunk', i, msgId, frag.v.length, frag.v.slice(0, 40), frag.v.slice(-40));
+    }
+    this.info('completed', numChunks);
+    return topic;
+  }
+  async assembleChunkedString(topic, publisher = null) { // Promise the {string, messageIdentifiers} that was chunkified to topic.
+    // The messageIdentifiers must be retained if the app intends to extend the lifetime of the chunks by "touching" them.
+    console.log('*** assembling', topic, publisher);
+    return new Promise(async resolve => {
+      let chunks = [], messageIdentifiers = [];
+      const subscription = await this.peer.sub(topic, (envelope) => {
+	const {message, msgId} = envelope;
+	const {i, v} = message;
+	this.info('*** received chunk', i, msgId, 'of total', chunks.length, v.length, i ? v.slice(0, 40) : v, i ? v.slice(-40) : '-');
+	if (i === 0) {
+	  chunks.length = parseInt(v);
+	} else {
+	  chunks[i - 1] = v;
+	  // We don't care about the order of messageIdentifiers. Push leaves no gaps, and length tells us how many chunks have been received.
+	  messageIdentifiers.push(msgId);
+	}
+	const done = chunks.length && (messageIdentifiers.length >= chunks.length);
+	console.log('*** total:', messageIdentifiers.length, 'of', chunks.length, 'done:', done);
+	if (done) {
+	  const string = chunks.join('');
+	  console.log('*** resolving', string.length, string.slice(0, 40), string.slice(-40), messageIdentifiers);
+	  this.peer.unsub(topic, {publisher});
+	  resolve({string, messageIdentifiers});
+	}
+      }, {publisher, since: 'all'});
+      console.log('*** subscribed', subscription);
+    });
+  }
+
+  // The methods publish/subscribe map from the original civildefense-over-kdht API to Axona, and could be rewritten in the apps.
+  // But since we needed this class anyway, it was easiest to retain them.
+  // Besides, I don't like to see abbreviations in API names.
   subscriptions = {}; // eventName => subscription. TODO: use unsub() instead of stop().
   async subscribe({eventName, publisher = null, handler}) { // Assign handler for eventName, or remove any handler if falsy.
     await this.attachment;
@@ -88,7 +157,8 @@ export class P2PWebNetwork {
       this.subscriptions[eventName] = await this.peer.sub(eventName, callback, { publisher, since: 'all' });
       //console.log('subscribed', eventName, publisher, await deriveTopicId(publisher, eventName, this.subscriptions[eventName]?.id));
     } else {
-      this.subscriptions[eventName]?.stop();
+      //this.subscriptions[eventName]?.stop(); // fixme remove this.susbscriptions
+      this.peer.unsub(eventName, {publisher});
       delete this.subscriptions[eventName];
     }
   }
@@ -102,6 +172,7 @@ export class P2PWebNetwork {
     return await this.peer.touch(eventName, subject, options);
   }
 
+  // Mostly internal stuff.
   static regionPublisher(lat, lng) { // Answer the region containing lat/lng as a string suitable as some forms of the "publisher" parameter.
     return geoCellId(lat, lng).toString(16).padStart(2, '0') + '0'.repeat(64);
   }
