@@ -31,6 +31,9 @@ export class Agent {
   localPersistKey(type, tag = this.tag) { // for localStorage of our private data about this Agent.
     return `${type}-${tag}`;
   }
+  static networkPersistKey(tag) {
+    return this.agents[tag]?.networkPersistKey(tag);
+  }
   networkPersistKey(tag = this.tag) {
     return agentTopic(tag);
   }
@@ -63,7 +66,7 @@ export class Agent {
     handle: {system: null, public: null, private: null, mixed: null},    
     avatar: {system: null, public: null, private: null, mixed: null}
   };
-  publicMsgId = {};
+  publicMsgId = {}; // maps type => msgId for saved public data of this Agent instance.
   getValue(scope, type) {
     return this.values[type][scope];
   }
