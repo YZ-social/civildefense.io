@@ -496,10 +496,13 @@ export class Marker { // A wrapper around L.marker
     const formatReply = ({subject, payload, ...rest}) => {
       const {message = payload, file, name} = payload;
       let text = message
-	  .replace(/https?:\/\/\S+\.(mp3|aac|ogg|oga|opus|m4a|m3u8|mpd)$/g, url => `<audio controls src="${url}"></audio>`) // show audio urls as players
+	  .replace(/https?:\/\/\S+\.(mp3|aac|ogg|oga|opus|m4a|m3u8|mpd)$/ig, url => `<audio controls src="${url}"></audio>`) // show audio urls as players
+	  .replace(/https?:\/\/\S+\.(mp4|mov|webm)$/ig, url => `<video controls src="${url}"></video>`) // show video urls as players
 	  .replace(/(?<!")https?:\/\/\S+/g, url => `<a href="${url}" target="yz.sidebar">${url}</a>`); // show urls as links
       let attachment = '';
       if (file?.startsWith('data:image')) attachment = `<a href="${file}" download><img class="attachment" src="${file}"></img></a>`;
+      else if (file?.startsWith('data:audio')) attachment = `<a href="${file}" download><audio controls class="attachment" src="${file}"></audio></a>`;
+      else if (file?.startsWith('data:video')) attachment = `<a href="${file}" download><video controls class="attachment" src="${file}"></video></a>`;
       else if (file) attachment = `
 <div class="attachment file">
   <a href="${file}" download>
