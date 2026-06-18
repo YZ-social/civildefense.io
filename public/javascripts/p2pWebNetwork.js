@@ -173,8 +173,11 @@ export class P2PWebNetwork {
   }
 
   // Mostly internal stuff.
+  static regionCode(lat, lng) { // Answer containing region code.
+    return geoCellId(lat, lng).toString(16).padStart(2, '0');
+  }
   static regionPublisher(lat, lng) { // Answer the region containing lat/lng as a string suitable as some forms of the "publisher" parameter.
-    return geoCellId(lat, lng).toString(16).padStart(2, '0') + '0'.repeat(64);
+    return this.regionCode(lat, lng) + '0'.repeat(64);
   }
   static delay(ms, label = '', result) { // Promise result after ms milliseconds.
     return new Promise(resolve => setTimeout(resolve, ms, result));

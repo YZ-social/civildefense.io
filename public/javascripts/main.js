@@ -10,6 +10,7 @@ import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscr
 import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
 
 document.getElementById('appVersion').textContent = appVersion;
+document.getElementById('kernelVersion').textContent = P2PWebNetwork.kernelVersion;
 
 const RETRY_SECONDS = 90;
 const INACTIVITY_SECONDS = 5 * 60; // five minutes
