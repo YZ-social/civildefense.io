@@ -30,7 +30,7 @@ const translations = {
 
   ['No additional information.']: {es: "No hay información adicional."},
   ['posted']: {es: "al corriente"},
-  ['updated']: {es: "actualizada"},
+  ['changed']: {es: "cambió"},
   ['reply here']: {es: "responder aquí"},
   ['remove']: {es: "eliminar"},
   ['cancel alert']: {es: "Cancelar alerta"},
