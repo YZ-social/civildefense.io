@@ -10,6 +10,8 @@ export class Agent {
   // Tracks what we know of people, and updates avatars and handles representing them.
   
   constructor({tag}) { // Subscribe to public data for tag.
+    // Throughout, 'type' is either 'avatar' (indicating an image) or 'handle' (a string).
+
     // The system value for handle and avatar is the same, but it is convenient to
     // represent this as two types, like everything else.
     this.updateValue(tag, 'system', 'handle');
@@ -80,9 +82,12 @@ export class Agent {
     this.values[type][scope] = value;
     for (const element of this.elements[type][scope]) this.updateElement(element, type, value);
     if (scope === 'mixed') return null;
+    // Compute the mixed value:
+    // It is the private value if specified.
+    // Otherwise is the first non-empty value private, public, and a version of system.
     const vprivate = this.values[type].private;
     const vpublic = this.values[type].public;
-    const vsystem = this.values[type].system;
+    const vsystem = type === 'avatar' ? this.values[type].system : 'anonymous';
     const vmixed = vprivate === '' ? vsystem : (vprivate || vpublic || vsystem);
     return this.updateValue(vmixed, 'mixed', type);
   }

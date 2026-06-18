@@ -289,7 +289,7 @@ export class Marker { // A wrapper around L.marker
   }
   clearAvatars(popup = this.marker?.getPopup()) {
     popup?.getElement()?.querySelectorAll('.correspondent[data-tag]')
-      .forEach(icon => Agent.ensure(icon.dataset.tag).removeElement(icon, 'mixed', 'avatar'));
+      .forEach(element => Agent.ensure(element.dataset.tag).removeElement(element, 'mixed', element.classList.contains('avatar') ? 'avatar' : 'handle'));
   }
   initializeHandlers(popup) { // subtle: Leaflet pupup will recreate from last setContent string. Need to re-establish handlers.
     const popupElement = popup.getElement();
@@ -314,10 +314,10 @@ export class Marker { // A wrapper around L.marker
     };
     this.initChangeHashtag(popupElement);
     for (const correspondent of popupElement.querySelectorAll('.correspondent')) {
-      const icon = correspondent;
-      const tag = icon.dataset.tag;
+      const tag = correspondent.dataset.tag;
       const agent = Agent.ensure(tag);
-      if (agent.addElement(icon, 'mixed', 'avatar')) {
+      const isAvatar = correspondent.classList.contains('avatar');
+      if (agent.addElement(correspondent, 'mixed', isAvatar ? 'avatar' : 'handle')) {
 	correspondent.onclick = event => {
 	  if (tag === Agent.tag) openAbout(event);
 	  else agent.describe(event);
@@ -378,8 +378,9 @@ export class Marker { // A wrapper around L.marker
     return `
 <div class="attribution" ${dataText}>
   ${sharer}
-  <md-outlined-icon-button class="correspondent" data-tag="${act}"></md-outlined-icon-button>
-  <div class="times">
+  <md-outlined-icon-button class="correspondent avatar" data-tag="${act}"></md-outlined-icon-button>
+  <div class="attribution-metadata">
+    <div class="correspondent handle" data-tag="${act}"></div>
     <div>${new Date(originalPosting || issuedTime).toLocaleString()}</div>
     ${originalPosting ? `<div>${Int`updated`} ${new Date(issuedTime).toLocaleString()}</div>` : ''}
   </div>

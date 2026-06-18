@@ -68,7 +68,7 @@ md-outlined-text-field {
 }
 .alert .leaflet-popup-content, .display-content {
     max-width: 90vw;
-    min-width: min(80vw, 600px);
+    min-width: min(84vw, 600px);
     max-height: 80vh;
     overflow: auto;
 }
@@ -321,7 +321,7 @@ md-menu-item minidenticon-svg {
     padding-right: 5px;
     display: inline-block;
 }
-.times {
+.attribution-metadata {
     display: flex;
     flex-direction: column;
     align-items: end;
