@@ -449,6 +449,7 @@ export class Marker { // A wrapper around L.marker
   }
   async postReply(event) { // Post a reply to this marker's subject, in response to a text-field change event.
     resetInactivityTimer();
+    event.stopPropagation();
     const button = event.target;
     const inputElement = button.parentElement;
     let payload = inputElement.value.trim();
