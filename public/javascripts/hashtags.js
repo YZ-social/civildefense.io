@@ -172,5 +172,6 @@ export const Hashtags = {
 // First the persisted/default data:
 const persisted = JSON.parse(localStorage.getItem('hashtags') ||
 			     `{"🍰 ${Int`cake`}": true, "🔥 ${Int`fire`}": true, "🌊 ${Int`flood`}": true, "🆘 ${Int`help`}": "pub", "🧊 ${Int`ice`}": true}`);
+			     //`{"🎙️ news":"pub", "🎸 classic rock":true, "🎷 jazz":true, "🎵 pop":true, "🎤 hiphop":true, "🎧 edm":true, "🤠 country":true, "🎼 classical":true}`);			     
+			     //`{"🍰 ${Int`cake`}": true, "🔥 ${Int`fire`}": true, "🌊 ${Int`flood`}": true, "🆘 ${Int`help`}": "pub", "🧊 ${Int`ice`}": true, "🎙️ news":true, "🎸 classic rock":true, "🎷 jazz":true, "🎵 pop":true, "🎤 hiphop":true, "🎧 edm":true, "🤠 country":true, "🎼 classical":true}`);
 Object.entries(persisted).forEach(([tag, active]) => Hashtags.add(tag, active, false));
-if (!Hashtags.getPublish()) Hashtags.setPublish(Hashtags.getSubscribe()[0]);

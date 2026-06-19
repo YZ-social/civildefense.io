@@ -247,7 +247,8 @@ export class Marker { // A wrapper around L.marker
     wrapper ||= this.markers[subject] = new this();
     const {lat, lng, originalPosting} = payload;
     // TODO: Now that msgId is the same at each level, there's no reason for a separate GUID subject.
-    Object.assign(wrapper, {lat, lng, subject, originalPosting, issuedTime, hashtag, act});
+    const region = P2PWebNetwork.regionCode(lat, lng);
+    Object.assign(wrapper, {lat, lng, subject, originalPosting, issuedTime, hashtag, act, region});
     let {marker} = wrapper;
     if (!marker) {
       const icon = this.makeIcon(hashtag);
@@ -255,7 +256,7 @@ export class Marker { // A wrapper around L.marker
       marker.bindPopup('', {className: 'alert'})
 	.on('popupopen', event => wrapper.ensureContent(event.popup));
       // Subscribe to replies to this subject, now that we're set up to receive them.
-      const publisher = P2PWebNetwork.regionPublisher(lat, lng);
+      const publisher = P2PWebNetwork.code2Publisher(region);
       networkPromise.then(async contact => contact.subscribe({eventName: subject, publisher, autoRenewal: true, handler: data => wrapper.handleReply(data)}));
       if (subject === openOnReceive) {
 	openOnReceive = false;
@@ -416,7 +417,7 @@ export class Marker { // A wrapper around L.marker
 	const contact = await networkPromise;
 	console.log('*** got contact');
 	// Before pushing data on to replies.
-	const {string, messageIdentifiers} = await contact.assembleChunkedString(file, P2PWebNetwork.regionPublisher(this.lat, this.lng));
+	const {string, messageIdentifiers} = await contact.assembleChunkedString(file, P2PWebNetwork.code2publisher(this.region));
 	payload.file = string;
 	payload.messageIdentifiers = messageIdentifiers;
 	console.log('*** now file length', payload.file.length);	
@@ -454,8 +455,8 @@ export class Marker { // A wrapper around L.marker
     const button = event.target;
     const inputElement = button.parentElement;
     let payload = inputElement.value.trim();
-    const {lat, lng, subject, hashtag} = this;
-    const publisher = P2PWebNetwork.regionPublisher(lat, lng);
+    const {subject, hashtag, region} = this;
+    const publisher = P2PWebNetwork.code2publisher(region);
     const files = inputElement.parentElement.querySelector('input[type="file"]').files;
     const contact = await networkPromise;
     if (files.length) {
@@ -471,8 +472,8 @@ export class Marker { // A wrapper around L.marker
   }
   deleteReply(replyElement) {
     resetInactivityTimer();
-    const {lat, lng} = this;
-    const publisher = P2PWebNetwork.regionPublisher(lat, lng); // TODO: we can canche the publisher in the Marker
+    const {region} = this;
+    const publisher = P2PWebNetwork.code2publisher(region);
     networkPromise.then(contact => contact.publish({eventName: this.subject, subject: replyElement.dataset.subject, payload: null, publisher}));
   }
   formatReplies() { // Answer HTML for the replies and input box.
