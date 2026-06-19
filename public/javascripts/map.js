@@ -468,22 +468,6 @@ export class Marker { // A wrapper around L.marker
     inputElement.value = '';
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     await contact.publish({eventName: subject, publisher, payload, act: Agent.tag}); // Publish the new reply.
-
-    // Extend the expiration of the original event, and of the public handle/avatar of everyone in the conversation.
-    // this is done by republishing with no payload (not null!).
-    const cells = getContainingCells(lat, lng);  // Touch alert publication stack.
-    for (const cell of cells) {
-      const eventName = alertTopic(cell, hashtag);
-      await contact.publish({eventName, subject, publisher});
-    }
-    for (const reply of this.replies) { // Touch existing replies.
-      await contact.publish({eventName: subject, subject: reply.subject, publisher}); // Top level reply message.
-      // for (const messageIdentifier of reply.messageIdentifiers || []) // File chunks, if any.
-      // 	await contact.publish({eventName: reply.fileTopic, messageIdentifier, publisher});  // fixme restore
-      const eventName = Agent.networkPersistKey(reply.act); // Actor's data.
-      await contact.publish({eventName, subject: await Agent.recreateMessageTag(subject, 'handle')});
-      await contact.publish({eventName, subject: await Agent.recreateMessageTag(subject, 'avatar')});
-    }
   }
   deleteReply(replyElement) {
     resetInactivityTimer();
