@@ -194,11 +194,16 @@ let subscribeOneShot;
 const goodPositionLabel = Int`Your Location`;
 
 function initializeGeolocation(subscribe = false) { // Arrange to constantly updateLocation, but:
+  // Arrange to constantly updateLocation when geolocation updates (or a default init if that's not possible).
+  // Once updateLocation has been called, updateSubscriptions() if the subscribe arg is true.
+  //
+  // Non-geo cases:
   // if no support, message and defaultInit
   // if no permission, message and defaultInit
-  // if !checkOnline, nothing further
+  // if !checkOnline, nothing further - we'll be called again later.
   // if other error; delay and try again
-  // ... and ...
+  //
+  // Subscription:
   // If this was for a new node, we will be told to subscribe. That cannot meaningfully happen
   // until we get our first position, so we do so ONCE in the watch position handler.
   // Any subsequent location updates will update position in the map, but not move the map

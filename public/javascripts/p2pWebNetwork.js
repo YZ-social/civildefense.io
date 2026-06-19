@@ -168,8 +168,7 @@ export class P2PWebNetwork {
     //console.log({eventName, publisher, payload, subject, issuedTime, rest});
     if (payload) return await this.peer.pub(eventName, {issuedTime, payload, ...rest}, options);
     if (!subject) return null;
-    if (payload === null) return await this.peer.kill(eventName, subject, options);
-    return await this.peer.touch(eventName, subject, options);
+    return await this.peer.kill(eventName, subject, options);
   }
 
   // Mostly internal stuff.
