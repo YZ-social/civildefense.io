@@ -69,7 +69,7 @@ export class P2PWebNetwork {
     // FIXME. It would be great if we could remove ourselves from any non-leaf positions in the Axon, but stay subscribed.
   }
   fastDisconnect() { // Synchronous attempt to be polite to those connected.
-    this.leave();
+    this.leave(); // Execution is asynchronous. Will not finish -- or perhaps even really start -- within the call.
   }
 
   // civildefense and alert-bot explicitly handle files in an application-specific way:
@@ -175,8 +175,11 @@ export class P2PWebNetwork {
   static regionCode(lat, lng) { // Answer containing region code.
     return geoCellId(lat, lng).toString(16).padStart(2, '0');
   }
+  static code2publisher(code) {
+    return code + '0'.repeat(64);
+  }
   static regionPublisher(lat, lng) { // Answer the region containing lat/lng as a string suitable as some forms of the "publisher" parameter.
-    return this.regionCode(lat, lng) + '0'.repeat(64);
+    return this.code2publisher(this.regionCode(lat, lng));
   }
   static delay(ms, label = '', result) { // Promise result after ms milliseconds.
     return new Promise(resolve => setTimeout(resolve, ms, result));
