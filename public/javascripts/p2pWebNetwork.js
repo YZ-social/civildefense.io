@@ -140,7 +140,6 @@ export class P2PWebNetwork {
   // The methods publish/subscribe map from the original civildefense-over-kdht API to Axona, and could be rewritten in the apps.
   // But since we needed this class anyway, it was easiest to retain them.
   // Besides, I don't like to see abbreviations in API names.
-  subscriptions = {}; // eventName => subscription. TODO: use unsub() instead of stop().
   async subscribe({eventName, publisher = null, handler}) { // Assign handler for eventName, or remove any handler if falsy.
     await this.attachment;
     if (handler) {
@@ -154,12 +153,9 @@ export class P2PWebNetwork {
 	//console.log('fired:', {eventName, topic, publisher, topicId: await deriveTopicId(publisher, topic), deleted, message, ts});
 	handler({...message, subject: msgId});
       };
-      this.subscriptions[eventName] = await this.peer.sub(eventName, callback, { publisher, since: 'all' });
-      //console.log('subscribed', eventName, publisher, await deriveTopicId(publisher, eventName, this.subscriptions[eventName]?.id));
+      await this.peer.sub(eventName, callback, { publisher, since: 'all' });
     } else {
-      //this.subscriptions[eventName]?.stop(); // fixme remove this.susbscriptions
       this.peer.unsub(eventName, {publisher});
-      delete this.subscriptions[eventName];
     }
   }
   async publish({eventName, publisher = null, issuedTime = Date.now(), subject, payload, ...rest}) { // Publish data to subscribers of eventName.
