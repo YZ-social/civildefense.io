@@ -469,6 +469,7 @@ export class Marker { // A wrapper around L.marker
     inputElement.value = '';
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     await contact.publish({eventName: subject, publisher, payload, act: Agent.tag}); // Publish the new reply.
+    Agent.current.persistPublicMetadata();
   }
   deleteReply(replyElement) {
     resetInactivityTimer();
@@ -698,6 +699,7 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
     if (document.getElementById('map').querySelector('.leaflet-popup')) return; // Ignore clicks with popup open.
     const { lat, lng } = e.latlng;
     Marker.openPopup(await publishAlert({lat, lng}));
+    Agent.current.persistPublicMetadata();
   });
 
   showMessage(Int`Tap anywhere to mark a concern. Markers fade after 24 hours.`, 'instructions');
