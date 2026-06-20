@@ -408,20 +408,14 @@ export class Marker { // A wrapper around L.marker
       const existing = replies.find(reply => reply.subject === data.subject);
       if (existing) return; // Until we do editing.
 
-      // Fix up data: expand file, and also keep fileTopic so that it can be touched.
       const {act, issuedTime, payload} = data;
       const {file} = payload;
-      // if (file) {
-      // 	data.fileTopic = file;
-      // 	console.log('*** file length', file.length);
-      // 	const contact = await networkPromise;
-      // 	console.log('*** got contact');
-      // 	// Before pushing data on to replies.
-      // 	const {string, messageIdentifiers} = await contact.assembleChunkedString(file, P2PWebNetwork.code2publisher(this.region));
-      // 	payload.file = string;
-      // 	payload.messageIdentifiers = messageIdentifiers;
-      // 	console.log('*** now file length', payload.file.length);
-      // }
+      if (file) {
+	data.fileTopic = file;
+	const contact = await networkPromise;
+	// Before pushing data on to replies.
+	payload.file = await contact.assembleChunkedString(file);
+      }
       replies.push(data); // TODO: when we implement edited replies, we'll have to find the existing
       replies.sort((a, b) => a.issuedTime - b.issuedTime); // Could be slightly out of order.
       const element = marker.getElement();
@@ -460,7 +454,7 @@ export class Marker { // A wrapper around L.marker
     const contact = await networkPromise;
     if (files.length) {
       const dataURL = await downsampledFile2dataURL(files[0]);
-      const file = await contact.chunkifyString(dataURL, region);
+      const file = await contact.chunkifyString({string: dataURL, region});
       console.log({dataURL, file});
       payload = {message: payload, file, name: files[0].name};
     }

@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { AxonaPeer, AxonaDomain, NeuronNode, createNodeIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from '@axona/protocol';
+import { stringToBytes, bytesToString, publishChunkedBytes, receiveChunkedBytes } from '@axona/protocol/std';
 // FIXME: What is the right way to use Axona web transport. It doesn't seem to provide either a functioning export nor declare its dependencies.
 import { webTransport } from './../axona-protocol/src/transport/web/index.js';
 globalThis.RTCPeerConnection ||= await import('node-datachannel/polyfill').then(ndc => ndc.RTCPeerConnection);
@@ -80,61 +81,21 @@ export class P2PWebNetwork {
   // Thus there's no need for transport to deal with that.
   //
   // However, Axona cannot handle a message that might contain a string that is, say, a megabyte.
-  // So it's up to us to provide a utility that the app can use to chunk and re-assemble string
-  // that the app knows might be large. That's what these two methods do.
-  // They should be used to replace all strings that might push a message payload above 256kB (or maybe 16kB, see below).
-  async chunkifyString(string, publisher = null) { // Publish string and answer an identifier that can be used to re-assemble.
+  // These two methods should be used to replace all strings that might push a message payload above 16kB.
+  // TODO: For now, these work on strings tha are already base64, and convert them to Uin8Array. Change that to operate on original binary.
+  async chunkifyString({string, region, signWith = this.constructor.currentPublishIdentity, owner = signWith.authorId}) {
+    // Publish string and answer an identifier that can be used to re-assemble.
     if (!string.length) throw new Error(`Cannot chunkify empty string '${string}.`);
-    // FIXME: This implementation can be disrupted when another user publishes garbage to the same topic.
-    const topic = uuidv4(); // Publish the chunks to this topic.
-    // A specific RTCPeerConnection has an sctp.maxMessageSize negotiated between the peers.
-    // Alas, we will be publishing a bunch of substrings to topic and we have no control or insight into the
-    // specific webrtc connections it will pass through -- which might not even be our connection.
-    // So the only safe thing to do is to use the largest size that is guaranteed to work across implementations
-    // in all networks, which is only 16k. Ugh!
-    const SIZE_LIMIT = 230e3; // FIXME: should be less than 16e3 (Allowing room for envelopes.) But that won't work for even basic downrezed photos. So do a large size for now that we KNOW will not work on some browser/network combinations.
-    const THROTTLE = 1e3//fixme 150; // ms
-    const numChunks = Math.ceil(string.length / SIZE_LIMIT);
-    const options = {publisher};
-    // TODO: It would be nice to send these in parallel, but instead, we have to pause for throttling.
-    const sent = await this.peer.pub(topic, {i: 0, v: numChunks}, options);
-    this.info(`Fragmenting ${string.length.toLocaleString()} byte message ${topic} into ${numChunks} chunks of ${SIZE_LIMIT}, starting with ${sent}, publisher ${publisher}.`);
-    for (let i = 1, o = 0; i <= numChunks; ++i, o += SIZE_LIMIT) {
-      const frag = {i, v: string.substr(o, SIZE_LIMIT)};
-      await this.constructor.delay(THROTTLE);
-      const msgId = await this.peer.pub(topic, frag, options);
-      this.info('chunk', i, msgId, frag.v.length, frag.v.slice(0, 40), frag.v.slice(-40));
-    }
-    this.info('completed', numChunks);
-    return topic;
+    region = '0x'+region; // TODO: Is this necessary?
+    const topic = {name: uuidv4(), region, owner};
+    const data = await publishChunkedBytes(this.peer, stringToBytes(string), {topic, signWith, throttleMs: 150});
+    //console.log('chunked to', data);
+    return data.topic;
   }
-  async assembleChunkedString(topic, publisher = null) { // Promise the {string, messageIdentifiers} that was chunkified to topic.
-    // The messageIdentifiers must be retained if the app intends to extend the lifetime of the chunks by "touching" them.
-    console.log('*** assembling', topic, publisher);
-    return new Promise(async resolve => {
-      let chunks = [], messageIdentifiers = [];
-      const subscription = await this.peer.sub(topic, (envelope) => {
-	const {message, msgId} = envelope;
-	const {i, v} = message;
-	this.info('*** received chunk', i, msgId, 'of total', chunks.length, v.length, i ? v.slice(0, 40) : v, i ? v.slice(-40) : '-');
-	if (i === 0) {
-	  chunks.length = parseInt(v);
-	} else {
-	  chunks[i - 1] = v;
-	  // We don't care about the order of messageIdentifiers. Push leaves no gaps, and length tells us how many chunks have been received.
-	  messageIdentifiers.push(msgId);
-	}
-	const done = chunks.length && (messageIdentifiers.length >= chunks.length);
-	console.log('*** total:', messageIdentifiers.length, 'of', chunks.length, 'done:', done);
-	if (done) {
-	  const string = chunks.join('');
-	  console.log('*** resolving', string.length, string.slice(0, 40), string.slice(-40), messageIdentifiers);
-	  this.peer.unsub(topic, {publisher});
-	  resolve({string, messageIdentifiers});
-	}
-      }, {publisher, since: 'all'});
-      console.log('*** subscribed', subscription);
-    });
+  async assembleChunkedString(topic) { // Promise the string that was chunkified to topic.
+    const data = await receiveChunkedBytes(this.peer, topic, {timeoutMs: 60e3/*, onProgress: console.log*/});
+    //console.log('reassembled:', data);
+    return bytesToString(data.bytes);
   }
 
   // The methods publish/subscribe map from the original civildefense-over-kdht API to Axona, and could be rewritten in the apps.
