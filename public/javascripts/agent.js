@@ -54,8 +54,8 @@ export class Agent {
     // If this was a deletion, we have no type in the data. Find the one that matches subject.
     type ||= Object.keys(this.publicMsgId).find(key => this.publicMsgId[key] === subject);
     if (!type) return; // Delete of a value that we don't have.
-    this.updateValue(payload, 'public', type, false);
-    this.publicMsgId[type] = subject;
+    this.updateValue(payload, 'public', type);
+    if (subject) this.publicMsgId[type] = subject;
   }
   
   static agents = {}; // tag => Agent
@@ -72,12 +72,12 @@ export class Agent {
   getValue(scope, type) {
     return this.values[type][scope];
   }
-  updateValue(value, scope, type, publish = true) { // Updates dependent elements, and if necessary, the mixed values/elements as well.
+  updateValue(value, scope, type) { // Updates dependent elements, and if necessary, the mixed values/elements as well.
     if (this.values[type][scope] === value) return;
 
-    // Persist. For public, that will boomerang through subscription.
+    // Persist if private. For public, update locally but do not publish until this agent publishes and alert or reply.
     if (scope === 'private') this.persistPrivate(value, type);
-    else if (publish && (scope === 'public')) return this.persistPublic(value, type);
+    else if (scope === 'public') return this.setPublicData({payload: value, type});
 
     this.values[type][scope] = value;
     for (const element of this.elements[type][scope]) this.updateElement(element, type, value);
@@ -96,11 +96,15 @@ export class Agent {
     if (value === null) localStorage.removeItem(key);
     else localStorage.setItem(key, value);
   }
+  async persistPublicMetadata() { // Publish handle and avatar.
+    await Promise.all(['handle', 'avatar'].map(type => this.persistPublic(this.getValue('public', type) || null, type));
+  }
   async persistPublic(value, type) { // Publish (and we will act on subscription).
     const eventName = this.networkPersistKey();
     const contact = await networkPromise;
-    if (value) return contact.publish({eventName, type, payload: value});
+    if (value) return contact.publish({eventName, type, payload: value}); // TODO: chunk for type==='avatar'
     const subject = this.recreateMessageTag(type);
+    if (!subject) return null; // We have not published a value, so nothing to kill.
     return contact.publish({eventName, subject, payload: null});
   }
 
