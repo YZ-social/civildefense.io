@@ -85,36 +85,37 @@ export function getShareableURL(subject = null, tags = Hashtags.getSubscribe()) 
 }
 
 let subscriptions = []; // array of stringy keys <mumble>:<cellID>:<hashtag>
+let subscriptionsRegion;
 // We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
 let lastLevel9Cell; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
 export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Update current subscriptions to the new map bounds.
   // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
   if (!networkPromise) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
-  let publisher; // Not used for oldKeys or for empty newKeys array.
-  if (!newKeys) {
+  let region;
+  if (!newKeys) { // None specified. Compute them.
     const center = map.getCenter();
     const bounds = map.getBounds();
     const northEast = bounds.getNorthEast();
     const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
-    publisher = P2PWebNetwork.regionPublisher(center.lat, center.lng);
+    region = P2PWebNetwork.regionCode(center.lat, center.lng);
     newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => alertTopic(cell, hash)));
     // Record a zoomed-out cell id in case next session does not have geolocation services.
     let level9Cell = getContainingCells(center.lat, center.lng)[9];
     if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
   }
 
-  const subscribe = (key, handler, publisher = null) =>
-	networkPromise.then(async contact => contact.subscribe({eventName: key, publisher, handler}));
+  const subscribe = (key, region, handler) =>
+	networkPromise.then(async contact => contact.subscribe({eventName: key, region, handler}));
 
   // For each entry in the new subscription set that was not previously subscribed, subscribe now.
-
-  for (const key of newKeys) oldKeys.includes(key) || subscribe(key, data => Marker.ensure(data), publisher, true);
+  for (const key of newKeys) oldKeys.includes(key) || subscribe(key, region, data => Marker.ensure(data));
 
   // For each existing subscription, if it does not appear in the new set then unsubscribe.
-  for (const key of oldKeys) newKeys.includes(key) || subscribe(key, null);
-  console.log('Subscribed', {newKeys, length: newKeys.length, oldKeys});
+  for (const key of oldKeys) newKeys.includes(key) || subscribe(key, subscriptionsRegion, null);
+  console.log('Subscribed', {newKeys, region, length: newKeys.length, oldKeys, subscriptionsRegion});
 
   subscriptions = newKeys;
+  subscriptionsRegion = region;
 }
 
 let last = []; // Last published lat, lng, subject
@@ -151,20 +152,20 @@ async function publishAlert({lat, lng,
     const {lat, lng, hashtag, subject} = cancel;
     oldCells = getContainingCells(lat, lng);
     oldHash = hashtag; oldSubject = subject;
-    const publisher = P2PWebNetwork.regionPublisher(lat, lng);
+    const region = P2PWebNetwork.regionCode(lat, lng);
     for (const cell of oldCells) {
       const eventName = alertTopic(cell, hashtag);
       // Note: we cannot unpublish replies by others, but they expire after a while anyway.
-      contact.publish({eventName, publisher, subject, payload: null});
+      contact.publish({eventName, region, subject, payload: null});
     }
   }
 
   const cells = getContainingCells(lat, lng);
-  const publisher = P2PWebNetwork.regionPublisher(lat, lng);
+  const region = P2PWebNetwork.regionCode(lat, lng);
   for (const cell of cells) {
     const eventName = alertTopic(cell, hashtag);
     if (payload) {
-      const msgId = await contact.publish({eventName, publisher, payload, issuedTime, hashtag, act, ...rest});
+      const msgId = await contact.publish({eventName, region, payload, issuedTime, hashtag, act, ...rest});
       if (subject && subject !== msgId) throw new Error(`msgId is drifting: ${subject} => ${msgId}`);
       subject = msgId;
       if (lastFillIn) {
@@ -172,14 +173,14 @@ async function publishAlert({lat, lng,
 	lastFillIn = null;
       }
     } else {
-      await contact.publish({eventName, publisher, subject, payload: null});
+      await contact.publish({eventName, region, subject, payload: null});
     }
   }
   if (!payload) {
     const index = last.findIndex(past => past.subject === subject);
     if (index >= 0) last.splice(index, 1);
   }
-  console.log('Published', {cells, n: cells.length, publisher, hashtag, subject, payload, oldCells, oldHash, oldSubject});
+  console.log('Published', {cells, n: cells.length, region, hashtag, subject, payload, oldCells, oldHash, oldSubject});
   return subject;
 }
 
@@ -256,8 +257,7 @@ export class Marker { // A wrapper around L.marker
       marker.bindPopup('', {className: 'alert'})
 	.on('popupopen', event => wrapper.ensureContent(event.popup));
       // Subscribe to replies to this subject, now that we're set up to receive them.
-      const publisher = P2PWebNetwork.code2Publisher(region);
-      networkPromise.then(async contact => contact.subscribe({eventName: subject, publisher, handler: data => wrapper.handleReply(data)}));
+      networkPromise.then(async contact => contact.subscribe({eventName: subject, region, handler: data => wrapper.handleReply(data)}));
       if (subject === openOnReceive) {
 	openOnReceive = false;
 	wrapper.openPopup();
@@ -411,17 +411,17 @@ export class Marker { // A wrapper around L.marker
       // Fix up data: expand file, and also keep fileTopic so that it can be touched.
       const {act, issuedTime, payload} = data;
       const {file} = payload;
-      if (file) {
-	data.fileTopic = file;
-	console.log('*** file length', file.length);
-	const contact = await networkPromise;
-	console.log('*** got contact');
-	// Before pushing data on to replies.
-	const {string, messageIdentifiers} = await contact.assembleChunkedString(file, P2PWebNetwork.code2publisher(this.region));
-	payload.file = string;
-	payload.messageIdentifiers = messageIdentifiers;
-	console.log('*** now file length', payload.file.length);	
-      }
+      // if (file) {
+      // 	data.fileTopic = file;
+      // 	console.log('*** file length', file.length);
+      // 	const contact = await networkPromise;
+      // 	console.log('*** got contact');
+      // 	// Before pushing data on to replies.
+      // 	const {string, messageIdentifiers} = await contact.assembleChunkedString(file, P2PWebNetwork.code2publisher(this.region));
+      // 	payload.file = string;
+      // 	payload.messageIdentifiers = messageIdentifiers;
+      // 	console.log('*** now file length', payload.file.length);
+      // }
       replies.push(data); // TODO: when we implement edited replies, we'll have to find the existing
       replies.sort((a, b) => a.issuedTime - b.issuedTime); // Could be slightly out of order.
       const element = marker.getElement();
@@ -456,26 +456,24 @@ export class Marker { // A wrapper around L.marker
     const inputElement = button.parentElement;
     let payload = inputElement.value.trim();
     const {subject, hashtag, region} = this;
-    const publisher = P2PWebNetwork.code2publisher(region);
     const files = inputElement.parentElement.querySelector('input[type="file"]').files;
     const contact = await networkPromise;
     if (files.length) {
       const dataURL = await downsampledFile2dataURL(files[0]);
-      const file = await contact.chunkifyString(dataURL, publisher);
+      const file = await contact.chunkifyString(dataURL, region);
       console.log({dataURL, file});
       payload = {message: payload, file, name: files[0].name};
     }
     if (!payload) return;
     inputElement.value = '';
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
-    await contact.publish({eventName: subject, publisher, payload, act: Agent.tag}); // Publish the new reply.
+    await contact.publish({eventName: subject, region, payload, act: Agent.tag}); // Publish the new reply.
     Agent.current.persistPublicMetadata();
   }
   deleteReply(replyElement) {
     resetInactivityTimer();
     const {region} = this;
-    const publisher = P2PWebNetwork.code2publisher(region);
-    networkPromise.then(contact => contact.publish({eventName: this.subject, subject: replyElement.dataset.subject, payload: null, publisher}));
+    networkPromise.then(async contact => contact.publish({eventName: this.subject, region, subject: replyElement.dataset.subject, payload: null}));
   }
   formatReplies() { // Answer HTML for the replies and input box.
     const { replies, act, originalPosting } = this;
@@ -558,7 +556,7 @@ export class Marker { // A wrapper around L.marker
     clearInterval(this.fader);
     this.clearAvatars();
     // Unsubscribe from replies.
-    networkPromise?.then(async contact => contact.subscribe({eventName: this.subject, handler: null}));
+    networkPromise?.then(async contact => contact.subscribe({eventName: this.subject, region: this.region, handler: null}));
     this.marker.removeFrom(map);
     delete this.constructor.markers[this.subject];
   }

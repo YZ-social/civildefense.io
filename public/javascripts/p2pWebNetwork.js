@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { AxonaPeer, AxonaDomain, NeuronNode, deriveIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from '@axona/protocol';
+import { AxonaPeer, AxonaDomain, NeuronNode, createNodeIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from '@axona/protocol';
 // FIXME: What is the right way to use Axona web transport. It doesn't seem to provide either a functioning export nor declare its dependencies.
 import { webTransport } from './../axona-protocol/src/transport/web/index.js';
 globalThis.RTCPeerConnection ||= await import('node-datachannel/polyfill').then(ndc => ndc.RTCPeerConnection);
@@ -24,7 +24,7 @@ export class P2PWebNetwork {
     // Promise a ready-to-use network peer.
     // Complex region/identity behavior: Must pass either identity or region (either can be a promise), or will wait for setSessionRegion() to be called.
     if (!identity) region ||= this.canonicalizeRegion(await (region || this.sessionRegion));
-    identity ||= deriveIdentity(region);
+    identity ||= createNodeIdentity(region);
     identity = await identity;
     region ||= identity.region;
 
@@ -140,42 +140,43 @@ export class P2PWebNetwork {
   // The methods publish/subscribe map from the original civildefense-over-kdht API to Axona, and could be rewritten in the apps.
   // But since we needed this class anyway, it was easiest to retain them.
   // Besides, I don't like to see abbreviations in API names.
-  async subscribe({eventName, publisher = null, handler}) { // Assign handler for eventName, or remove any handler if falsy.
+  async subscribe({eventName, region, owner, handler}) { // Assign handler for eventName, or remove any handler if falsy.
     await this.attachment;
+    region = '0x'+region; // TODO: Is this necessary?
+    const topic = {region, name: eventName};
+    if (owner) topic.owner = owner;
     if (handler) {
       const callback = async envelope => {
 	const {message, deleted, msgId, signerPubkey, topic, ts} = envelope;
+	console.log('fired', {msgId, topic, signerPubkey, deleted, message});
 	if (deleted) {
-	  //console.log('deleted:', {eventName, subject: msgId});
 	  handler({subject: msgId, payload: null});
 	  return;
 	}
-	//console.log('fired:', {eventName, topic, publisher, topicId: await deriveTopicId(publisher, topic), deleted, message, ts});
 	handler({...message, subject: msgId});
       };
-      await this.peer.sub(eventName, callback, { publisher, since: 'all' });
+      await this.peer.sub(topic, callback, {since: 'all'});
     } else {
-      this.peer.unsub(eventName, {publisher});
+      this.peer.unsub(topic, {});
     }
   }
-  async publish({eventName, publisher = null, issuedTime = Date.now(), subject, payload, ...rest}) { // Publish data to subscribers of eventName.
+  static currentPublishIdentity = null;
+  async publish({eventName, region, owner, signWith = this.constructor.currentPublishIdentity, issuedTime = Date.now(), subject, payload, ...rest}) {
+    // Publish data to subscribers of eventName.
     await this.attachment; // Get connected.
-    const options = {publisher};
-    //console.log({eventName, publisher, payload, subject, issuedTime, rest});
-    if (payload) return await this.peer.pub(eventName, {issuedTime, payload, ...rest}, options);
+    region = '0x'+region; // TODO: Is this necessary?
+    const topic = {region, name: eventName};
+    if (owner) topic.owner = owner;
+    const options = {signWith};
+    //console.log({topic, subject, payload, issuedTime, rest, signWith});
+    if (payload) return await this.peer.pub(topic, {issuedTime, payload, ...rest}, options);
     if (!subject) return null;
-    return await this.peer.kill(eventName, subject, options);
+    return await this.peer.kill(topic, subject, options);
   }
 
   // Mostly internal stuff.
   static regionCode(lat, lng) { // Answer containing region code.
     return geoCellId(lat, lng).toString(16).padStart(2, '0');
-  }
-  static code2publisher(code) {
-    return code + '0'.repeat(64);
-  }
-  static regionPublisher(lat, lng) { // Answer the region containing lat/lng as a string suitable as some forms of the "publisher" parameter.
-    return this.code2publisher(this.regionCode(lat, lng));
   }
   static delay(ms, label = '', result) { // Promise result after ms milliseconds.
     return new Promise(resolve => setTimeout(resolve, ms, result));
