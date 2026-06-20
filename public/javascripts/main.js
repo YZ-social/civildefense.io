@@ -3,7 +3,6 @@ import { appVersion } from './versions.js';
 import { Int } from './translations.js';
 import { openDisplay } from './display.js';
 import { Agent} from './agent.js';
-import { deriveIdentity, loadIdentity, dumpIdentity } from '@axona/protocol';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { getPointInCell } from './s2.js';
 import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
@@ -294,19 +293,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
       const {promise, resolve} = Promise.withResolvers();
       networkPromise = promise;
       console.log('Creating node.');
-      // FIXME: Currently, Axona uses one identify for node/subscribe and for publish.
-      // We need to retain the same publish identity across sessions for kill, so for now, we retain that identity indefinitely.
-      const identityPersistenceKey = 'nodeIdentity';
-      const identityString = localStorage.getItem(identityPersistenceKey);
-      let identity;
-      if (identityString) {
-	identity = await loadIdentity(JSON.parse(identityString));
-      } else {
-	identity = await deriveIdentity(await P2PWebNetwork.sessionRegion);
-	localStorage.setItem(identityPersistenceKey, JSON.stringify(await dumpIdentity(identity)));
-      }
-
-      resolve(P2PWebNetwork.create({identity}));
+      resolve(P2PWebNetwork.create({}));
       networkPromise.then(contact => {
 	globalThis.contact = contact; // For debugging.
 	// On leaving, we would like to copy stored data and politely say 'bye' (so others can clean up their connections). Alas:
@@ -343,7 +330,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	  // }))
       });
     }
-    Agent.initialize();
+    await Agent.initialize();
     if (event) await delay();
   } finally {
     checking = false;

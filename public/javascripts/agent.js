@@ -1,17 +1,20 @@
 const { localStorage } = globalThis;
 import { v4 as uuidv4 } from 'uuid';
 import { minidenticonSvg } from 'minidenticons';
+import { createAuthorIdentity }  from '@axona/protocol';
 import { agentTopic } from './versions.js';
 import { Int } from './translations.js';
 import { consume, openDisplay, downsampledFile2dataURL } from './display.js';
 import { networkPromise, resetInactivityTimer } from './main.js';
+import { P2PWebNetwork } from './p2pWebNetwork.js';
 
 export class Agent {
   // Tracks what we know of people, and updates avatars and handles representing them.
   
-  constructor({tag}) { // Subscribe to public data for tag.
+  constructor({tag, identity}) { // Subscribe to public data for tag.
     // Throughout, 'type' is either 'avatar' (indicating an image) or 'handle' (a string).
 
+    this.identity = identity; // (tag gets carried through the system handle.)
     // The system value for handle and avatar is the same, but it is convenient to
     // represent this as two types, like everything else.
     this.updateValue(tag, 'system', 'handle');
@@ -25,6 +28,7 @@ export class Agent {
     // FIXME
     // networkPromise.then(contact => contact.subscribe({
     //   eventName: this.networkPersistKey(tag),
+    //   fixme region, owner coming from tag
     //   handler: data => this.setPublicData(data),
     // }));
   }
@@ -60,8 +64,8 @@ export class Agent {
   }
   
   static agents = {}; // tag => Agent
-  static ensure(tag) { // Answer Agent for tag, creating it if necessary.
-    return this.agents[tag] ||= new this({tag});
+  static ensure(tag, identity) { // Answer Agent for tag, creating it if necessary.
+    return this.agents[tag] ||= new this({tag, identity});
   }
 
   // Track values of various types and scope.
@@ -98,10 +102,11 @@ export class Agent {
     else localStorage.setItem(key, value);
   }
   async persistPublicMetadata() { // Publish handle and avatar.
-    await Promise.all(['handle', 'avatar'].map(type => this.persistPublic(this.getValue('public', type) || null, type));
+    await Promise.all(['handle', 'avatar'].map(type => this.persistPublic(this.getValue('public', type) || null, type)));
   }
   async persistPublic(value, type) { // Publish (and we will act on subscription).
     const eventName = this.networkPersistKey();
+    // fixme topic: region, and owner coming from this agent. also signWith.
     const contact = await networkPromise;
     // FIXME
     // if (value) return contact.publish({eventName, type, payload: value}); // TODO: chunk for type==='avatar'
@@ -227,13 +232,17 @@ export class Agent {
   }
   static current = null;
   static tag = null;
-  static switchUser(tag) { // Set/persist/ensure the current user, return Agent
+  static identity = null;
+  static switchUser(tag, identity) { // Set/persist/ensure the current user, return Agent
     this.tag = tag; // Before the ensure().
+    this.identity = P2PWebNetwork.currentPublishIdentity = identity;
     localStorage.setItem('usertag', this.tag);
-    return this.current = this.ensure(this.tag);
+    return this.current = this.ensure(this.tag, identity);
   }
-  static initialize() { // Initialize what the agent needs from the about screen
-    const myAgent = Agent.switchUser(localStorage.getItem('usertag') || uuidv4());
+  static async initialize() { // Initialize what the agent needs from the about screen
+    const tag = localStorage.getItem('usertag') || uuidv4();
+    const myIdentity = await createAuthorIdentity({persistAs: tag});
+    const myAgent = Agent.switchUser(tag, myIdentity);
     const myHandle = document.getElementById('myHandle');
     const myAvatar = document.getElementById('myAvatar');
     myAgent.addElement(myHandle, 'public', 'handle');
