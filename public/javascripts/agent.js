@@ -22,10 +22,11 @@ export class Agent {
     this.updateFromLocal(scope, 'handle');
     this.updateFromLocal(scope, 'avatar');
 
-    networkPromise.then(contact => contact.subscribe({
-      eventName: this.networkPersistKey(tag),
-      handler: data => this.setPublicData(data),
-    }));
+    // FIXME
+    // networkPromise.then(contact => contact.subscribe({
+    //   eventName: this.networkPersistKey(tag),
+    //   handler: data => this.setPublicData(data),
+    // }));
   }
   get tag() { // Retrieved from system handle or avatar.
     return this.values.handle.system;
@@ -102,10 +103,11 @@ export class Agent {
   async persistPublic(value, type) { // Publish (and we will act on subscription).
     const eventName = this.networkPersistKey();
     const contact = await networkPromise;
-    if (value) return contact.publish({eventName, type, payload: value}); // TODO: chunk for type==='avatar'
-    const subject = this.recreateMessageTag(type);
-    if (!subject) return null; // We have not published a value, so nothing to kill.
-    return contact.publish({eventName, subject, payload: null});
+    // FIXME
+    // if (value) return contact.publish({eventName, type, payload: value}); // TODO: chunk for type==='avatar'
+    // const subject = this.recreateMessageTag(type);
+    // if (!subject) return null; // We have not published a value, so nothing to kill.
+    // return contact.publish({eventName, subject, payload: null});
   }
 
   // We represent handles and avatars by inserting stuff into given elements.
