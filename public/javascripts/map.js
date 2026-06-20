@@ -103,8 +103,8 @@ export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Updat
     if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
   }
 
-  const subscribe = (key, handler, publisher = null, autoRenewal = false) =>
-	networkPromise.then(async contact => contact.subscribe({eventName: key, publisher, handler, autoRenewal}));
+  const subscribe = (key, handler, publisher = null) =>
+	networkPromise.then(async contact => contact.subscribe({eventName: key, publisher, handler}));
 
   // For each entry in the new subscription set that was not previously subscribed, subscribe now.
 
@@ -257,7 +257,7 @@ export class Marker { // A wrapper around L.marker
 	.on('popupopen', event => wrapper.ensureContent(event.popup));
       // Subscribe to replies to this subject, now that we're set up to receive them.
       const publisher = P2PWebNetwork.code2Publisher(region);
-      networkPromise.then(async contact => contact.subscribe({eventName: subject, publisher, autoRenewal: true, handler: data => wrapper.handleReply(data)}));
+      networkPromise.then(async contact => contact.subscribe({eventName: subject, publisher, handler: data => wrapper.handleReply(data)}));
       if (subject === openOnReceive) {
 	openOnReceive = false;
 	wrapper.openPopup();
