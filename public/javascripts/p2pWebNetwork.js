@@ -88,7 +88,7 @@ export class P2PWebNetwork {
     if (!string.length) throw new Error(`Cannot chunkify empty string '${string}.`);
     region = '0x'+region; // TODO: Is this necessary?
     const topic = {name: uuidv4(), region, owner};
-    const data = await publishChunkedBytes(this.peer, stringToBytes(string), {topic, signWith, throttleMs: 150});
+    const data = await publishChunkedBytes(this.peer, stringToBytes(string), {topic, signWith});
     //console.log('chunked to', data);
     return data.topic;
   }

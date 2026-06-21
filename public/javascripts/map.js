@@ -290,7 +290,7 @@ export class Marker { // A wrapper around L.marker
   }
   clearAvatars(popup = this.marker?.getPopup()) {
     popup?.getElement()?.querySelectorAll('.correspondent[data-tag]')
-      .forEach(element => Agent.ensure(element.dataset.tag).removeElement(element, 'mixed', element.classList.contains('avatar') ? 'avatar' : 'handle'));
+      .forEach(element => Agent.ensure({tag: element.dataset.tag}).removeElement(element, 'mixed', element.classList.contains('avatar') ? 'avatar' : 'handle'));
   }
   initializeHandlers(popup) { // subtle: Leaflet pupup will recreate from last setContent string. Need to re-establish handlers.
     const popupElement = popup.getElement();
@@ -316,7 +316,7 @@ export class Marker { // A wrapper around L.marker
     this.initChangeHashtag(popupElement);
     for (const correspondent of popupElement.querySelectorAll('.correspondent')) {
       const tag = correspondent.dataset.tag;
-      const agent = Agent.ensure(tag);
+      const agent = Agent.ensure({tag, region: this.region});
       const isAvatar = correspondent.classList.contains('avatar');
       if (agent.addElement(correspondent, 'mixed', isAvatar ? 'avatar' : 'handle')) {
 	correspondent.onclick = event => {
@@ -451,6 +451,9 @@ export class Marker { // A wrapper around L.marker
     let payload = inputElement.value.trim();
     const {subject, hashtag, region} = this;
     const files = inputElement.parentElement.querySelector('input[type="file"]').files;
+    if (!payload && !files.length) return;
+    inputElement.value = '';
+    inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     const contact = await networkPromise;
     if (files.length) {
       const dataURL = await downsampledFile2dataURL(files[0]);
@@ -458,9 +461,6 @@ export class Marker { // A wrapper around L.marker
       console.log({dataURL, file});
       payload = {message: payload, file, name: files[0].name};
     }
-    if (!payload) return;
-    inputElement.value = '';
-    inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     await contact.publish({eventName: subject, region, payload, act: Agent.tag}); // Publish the new reply.
     Agent.current.persistPublicMetadata();
   }
