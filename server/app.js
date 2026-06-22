@@ -102,7 +102,7 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   const { P2PWebNetwork } = await import('../public/javascripts/p2pWebNetwork.js');
   await P2PWebNetwork.delay(cluster.worker?.id * 1e3); // One second between startups.
   const { location:region } = await import('./getLocation.js');  // First invocation caches.
-  const network = await P2PWebNetwork.create({region, bridgeUrl: 'wss://bridge.axona.net'});
+  const network = await P2PWebNetwork.create({region});
   process.title = 'axona-' + network.identity.id;
   let update = null//setInterval(() => network.info(network.health().axonRoles.map(role => role.topic)), 5e3);
   process.on('SIGINT', async () => { // Leave the network politely.
