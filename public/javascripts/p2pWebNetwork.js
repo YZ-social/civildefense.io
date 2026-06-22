@@ -62,7 +62,7 @@ export class P2PWebNetwork {
   async disconnect() { // Politely close network connection.
     const health = this.health();
     await this.leave();
-    this.info(`disconnected with ${health.peers.length} connections and ${health.axonRoles.length} axons: [${health.axonRoles.map(role => role.topic)}]`);
+    this.info(`disconnected with ${health.peers.length} connections and ${health.axonRoles.length} ${health.axonRoles.length} axons.`);
     await this.stop();
     this.resetStatePromises();
   }
