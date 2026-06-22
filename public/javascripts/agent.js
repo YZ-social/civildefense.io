@@ -107,10 +107,7 @@ export class Agent {
 
     // Persist if private. For public, update locally but do not publish until this agent publishes an alert or reply.
     if (scope === 'private') this.persistPrivate(value, type);
-    else if (pushPublic && (scope === 'public')) {
-      console.log('fixme updateValue', {value, scope, type, pushPublic});
-      return this.persistPublic(value, type);
-    }
+    else if (pushPublic && (scope === 'public')) return this.persistPublic(value, type);
     this.values[type][scope] = value;
     for (const element of this.elements[type][scope]) this.updateElement(element, type, value);
     if (scope === 'mixed') return null;
@@ -129,7 +126,6 @@ export class Agent {
     else localStorage.setItem(key, value);
   }
   async persistPublicMetadata(region) { // Publish handle and avatar.
-    console.log('fixme persistPublicMeadata', {region});
     this.currentRegion = region;
     await Promise.all(['handle', 'avatar'].map(type => this.persistPublic(this.getValue('public', type) || null, type)));
   }
@@ -138,7 +134,6 @@ export class Agent {
     const region = this.currentRegion;
     // TODO: set owner as well.
     const contact = await networkPromise;
-    console.log('fixme persistPublic', {value, type, eventName, region, contact});
     if (value) {
       let payload = value;
       if (type === 'avatar') {
