@@ -462,7 +462,7 @@ export class Marker { // A wrapper around L.marker
       payload = {message: payload, file, name: files[0].name};
     }
     await contact.publish({eventName: subject, region, payload, act: Agent.tag}); // Publish the new reply.
-    Agent.current.persistPublicMetadata();
+    Agent.current.persistPublicMetadata(region);
   }
   deleteReply(replyElement) {
     resetInactivityTimer();
@@ -691,7 +691,7 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
     if (document.getElementById('map').querySelector('.leaflet-popup')) return; // Ignore clicks with popup open.
     const { lat, lng } = e.latlng;
     Marker.openPopup(await publishAlert({lat, lng}));
-    Agent.current.persistPublicMetadata();
+    Agent.current.persistPublicMetadata(P2PWebNetwork.regionCode(lat, lng));
   });
 
   showMessage(Int`Tap anywhere to mark a concern. Markers fade after 24 hours.`, 'instructions');
