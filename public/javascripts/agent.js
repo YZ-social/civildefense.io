@@ -69,6 +69,7 @@ export class Agent {
     networkPromise.then(contact => this.trackedRegions[region] = contact.subscribe({
       eventName: this.networkPersistKey(),
       region,
+      since: 'latest',
       // FIXME: owner: this.tag
       handler: data => this.setPublicData(data),
     }));
