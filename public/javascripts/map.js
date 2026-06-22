@@ -99,6 +99,7 @@ export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Updat
     const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
     region = P2PWebNetwork.regionCode(center.lat, center.lng);
     newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => alertTopic(cell, hash)));
+    Agent.current.trackPublicChanges(region);
     // Record a zoomed-out cell id in case next session does not have geolocation services.
     let level9Cell = getContainingCells(center.lat, center.lng)[9];
     if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
