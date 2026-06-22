@@ -10,7 +10,20 @@ import { P2PWebNetwork } from './p2pWebNetwork.js';
 
 export class Agent {
   // Tracks what we know of people, and updates avatars and handles representing them.
-  
+
+  // Agent metadata are always republished with each alert/reply, using alert's region in region/name/author
+  // Not republished when the value changes.
+  // Next time the agent is used in an alert/reply, it will publish to the region/name/author
+  //   Any subscribers in that region will see the new value.
+  //   Subscribers in other regions will not know of the change -- until the user has activity there.
+  // A map display might cross across two or more regions. We do not want the same user to appear
+  // differently for alerts on the other side of an arbitrary and invisible line.
+  // Thus we keep on Agent per persona tag, and have it display the latest info we have.
+  // Currently, this is done with a subscription for each region in which we have had
+  // a referencing open alert this session, and it remains an active subscription through the session.
+  // (We don't want to try to determine when the last reference goes away to unsubscribe, and we
+  // don't want to continuously subscribe/unsubscribe when opening and closing alerts.)
+
   constructor({tag, identity}) { // Subscribe to public data for tag.
     // Throughout, 'type' is either 'avatar' (indicating an image) or 'handle' (a string).
 
@@ -24,13 +37,6 @@ export class Agent {
     const scope = tag == Agent.tag ? 'public' : 'private';
     this.updateFromLocal(scope, 'handle');
     this.updateFromLocal(scope, 'avatar');
-
-    // FIXME
-    // networkPromise.then(contact => contact.subscribe({
-    //   eventName: this.networkPersistKey(tag),
-    //   fixme region, owner coming from tag
-    //   handler: data => this.setPublicData(data),
-    // }));
   }
   get tag() { // Retrieved from system handle or avatar.
     return this.values.handle.system;
@@ -46,7 +52,7 @@ export class Agent {
   }
   updateFromLocal(scope, type, tag = this.tag) { // get value locally, and then update (which may have side-effect)
     const value = localStorage.getItem(this.localPersistKey(type, tag));
-    this.updateValue(value, scope, type);
+    this.updateValue(value, scope, type, false); // Don't publish until we post.
   }
   static recreateMessageTag(tag, type) { // For the agent specified by tag, promise the messageTag for the specified agent tag, type.
     return this.agents[tag]?.recreateMessageTag(type);
@@ -54,18 +60,37 @@ export class Agent {
   recreateMessageTag(type) {// Promise the Axona msgId that provided the specified type of public data, if any.
     return this.publicMsgId[type];
   }
-  setPublicData(data) { // Subscription to public data has fired. Update value, but do not not re-publish.
+  trackedRegions = {};
+  currentRegion = null;
+  trackPublicChanges(region) {
+    this.currentRegion = region;
+    if (this.trackedRegions[region]) return;
+    this.persistPublicMetadata(region);
+    networkPromise.then(contact => this.trackedRegions[region] = contact.subscribe({
+      eventName: this.networkPersistKey(),
+      region,
+      // FIXME: owner: this.tag
+      handler: data => this.setPublicData(data),
+    }));
+  }
+  async setPublicData(data) { // Subscription to public data has fired. Update value, but do not not re-publish.
     let {payload, subject, type} = data;
     // If this was a deletion, we have no type in the data. Find the one that matches subject.
     type ||= Object.keys(this.publicMsgId).find(key => this.publicMsgId[key] === subject);
     if (!type) return; // Delete of a value that we don't have.
-    this.updateValue(payload, 'public', type);
+    if (type === 'avatar' && payload) {
+      const contact = await networkPromise;
+      payload = await contact.assembleChunkedString(payload);
+    }
+    this.updateValue(payload, 'public', type, false);
     if (subject) this.publicMsgId[type] = subject;
   }
   
   static agents = {}; // tag => Agent
-  static ensure(tag, identity) { // Answer Agent for tag, creating it if necessary.
-    return this.agents[tag] ||= new this({tag, identity});
+  static ensure({tag, identity, region}) { // Answer Agent for tag, creating it if necessary.
+    const agent = this.agents[tag] ||= new this({tag, identity});
+    if (region) agent.trackPublicChanges(region);
+    return agent;
   }
 
   // Track values of various types and scope.
@@ -77,13 +102,15 @@ export class Agent {
   getValue(scope, type) {
     return this.values[type][scope];
   }
-  updateValue(value, scope, type) { // Updates dependent elements, and if necessary, the mixed values/elements as well.
+  updateValue(value, scope, type, pushPublic = true) { // Updates dependent elements, and if necessary, the mixed values/elements as well.
     if (this.values[type][scope] === value) return;
 
-    // Persist if private. For public, update locally but do not publish until this agent publishes and alert or reply.
+    // Persist if private. For public, update locally but do not publish until this agent publishes an alert or reply.
     if (scope === 'private') this.persistPrivate(value, type);
-    else if (scope === 'public') return this.setPublicData({payload: value, type});
-
+    else if (pushPublic && (scope === 'public')) {
+      console.log('fixme updateValue', {value, scope, type, pushPublic});
+      return this.persistPublic(value, type);
+    }
     this.values[type][scope] = value;
     for (const element of this.elements[type][scope]) this.updateElement(element, type, value);
     if (scope === 'mixed') return null;
@@ -101,18 +128,27 @@ export class Agent {
     if (value === null) localStorage.removeItem(key);
     else localStorage.setItem(key, value);
   }
-  async persistPublicMetadata() { // Publish handle and avatar.
+  async persistPublicMetadata(region) { // Publish handle and avatar.
+    console.log('fixme persistPublicMeadata', {region});
+    this.currentRegion = region;
     await Promise.all(['handle', 'avatar'].map(type => this.persistPublic(this.getValue('public', type) || null, type)));
   }
   async persistPublic(value, type) { // Publish (and we will act on subscription).
     const eventName = this.networkPersistKey();
-    // fixme topic: region, and owner coming from this agent. also signWith.
+    const region = this.currentRegion;
+    // TODO: set owner as well.
     const contact = await networkPromise;
-    // FIXME
-    // if (value) return contact.publish({eventName, type, payload: value}); // TODO: chunk for type==='avatar'
-    // const subject = this.recreateMessageTag(type);
-    // if (!subject) return null; // We have not published a value, so nothing to kill.
-    // return contact.publish({eventName, subject, payload: null});
+    console.log('fixme persistPublic', {value, type, eventName, region, contact});
+    if (value) {
+      let payload = value;
+      if (type === 'avatar') {
+	payload = await contact.chunkifyString({string: value, region});
+      }
+      return contact.publish({eventName, type, region, payload});
+    }
+    const subject = this.recreateMessageTag(type);
+    if (!subject) return null; // We have not published a value, so nothing to kill.
+    return contact.publish({eventName, subject, region, payload: null});
   }
 
   // We represent handles and avatars by inserting stuff into given elements.
@@ -237,7 +273,7 @@ export class Agent {
     this.tag = tag; // Before the ensure().
     this.identity = P2PWebNetwork.currentPublishIdentity = identity;
     localStorage.setItem('usertag', this.tag);
-    return this.current = this.ensure(this.tag, identity);
+    return this.current = this.ensure({tag, identity});
   }
   static async initialize() { // Initialize what the agent needs from the about screen
     const tag = localStorage.getItem('usertag') || uuidv4();
