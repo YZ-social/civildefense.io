@@ -124,6 +124,7 @@
     .carousel-wrap {
       position: relative;
       max-width: 760px;
+      margin: auto;
       margin: 0 auto;
       padding: 0 1rem;
     }
@@ -144,9 +145,10 @@
     }
     .carousel-slide img, .carousel-slide video {
       width: 100%;
+      max-height: 70vh;
       height: auto;
       display: block;
-      object-fit: cover;
+      object-fit: contain;
     }
     .carousel-caption {
       background: rgba(10, 24, 70, 0.92);
@@ -299,9 +301,9 @@
     footer a { color: rgba(255,255,255,0.7); }
 
     /* ── Responsive tweaks ──────────────────────────────────── */
-    @media (max-width: 520px) {
-      .carousel-btn { display: none; }
-    }
+    <!-- @media (max-width: 520px) { -->
+    <!--   .carousel-btn { display: none; } -->
+    <!-- } -->
   </style>
 </head>
 <body>
@@ -341,6 +343,15 @@
         <div class="carousel-slide">
           <img src="streaming-radio.png" alt="North America map with playable streaming radio station markers">
           <div class="carousel-caption">Communities can spontaneously create their own hashtags in any language simply by typing them.<br>This example shows playable streaming radio stations.</div>
+        </div>
+
+        <div class="carousel-slide">
+          <img src="hero.png" alt="One man with shoping bags in Tiananmen Square, facing an enormous column of tanks.">
+          <div class="carousel-caption">Bear witness.</div>
+        </div>
+
+        <div class="carousel-slide">
+          <img src="nazis.png" alt="WWII-style poster exhorting the public to use Civil Defense in case of Nazi attack.">
         </div>
 
       </div>
@@ -458,17 +469,34 @@
     startX = null;
   }, { passive: true });
 
-  // Auto-advance every 7 seconds
-  function resetAuto() {
-    clearInterval(autoTimer);
-    autoTimer = setInterval(() => goTo(current + 1), 7e3);
-  }
-  resetAuto();
-
   // Pause on hover/focus
   const wrap = document.querySelector('.carousel-track-outer');
-  wrap.addEventListener('mouseenter', () => clearInterval(autoTimer));
+  wrap.addEventListener('mouseenter', stopAuto);
   wrap.addEventListener('mouseleave', resetAuto);
+
+  // Auto-advance every 7 seconds
+  function advance() {
+    goTo(current + 1);
+  }
+  function resetAuto() {
+    const video = document.querySelector('video');
+    if (video.currentTime > 0 && !video.paused && !video.ended && video.readyState > 2) return;
+    if (wrap.matches(':hover')) return;
+    clearInterval(autoTimer);
+    autoTimer = setInterval(advance, 7e3);
+  }
+  function stopAuto() {
+    clearInterval(autoTimer);
+  }
+  resetAuto();
+  document.querySelectorAll('video').forEach(video => {
+    video.addEventListener('play', stopAuto);
+    video.addEventListener('ended', () => {
+      advance();
+      resetAuto();
+    });
+  });
+
 </script>
 
 </body>
