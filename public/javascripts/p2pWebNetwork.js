@@ -86,7 +86,6 @@ export class P2PWebNetwork {
   async chunkifyString({string, region, signWith = this.constructor.currentPublishIdentity, owner = signWith.authorId}) {
     // Publish string and answer an identifier that can be used to re-assemble.
     if (!string.length) throw new Error(`Cannot chunkify empty string '${string}.`);
-    region = '0x'+region; // TODO: Is this necessary?
     const topic = {name: uuidv4(), region, owner};
     const data = await publishChunkedBytes(this.peer, stringToBytes(string), {topic, signWith});
     //console.log('chunked to', data);
@@ -103,7 +102,6 @@ export class P2PWebNetwork {
   // Besides, I don't like to see abbreviations in API names.
   async subscribe({eventName, region, owner, handler}) { // Assign handler for eventName, or remove any handler if falsy.
     await this.attachment;
-    region = '0x'+region; // TODO: Is this necessary?
     const topic = {region, name: eventName};
     if (owner) topic.owner = owner;
     if (handler) {
@@ -125,7 +123,6 @@ export class P2PWebNetwork {
   async publish({eventName, region, owner, signWith = this.constructor.currentPublishIdentity, issuedTime = Date.now(), subject, payload, ...rest}) {
     // Publish data to subscribers of eventName.
     await this.attachment; // Get connected.
-    region = '0x'+region; // TODO: Is this necessary?
     const topic = {region, name: eventName};
     if (owner) topic.owner = owner;
     const options = {signWith};
@@ -137,7 +134,7 @@ export class P2PWebNetwork {
 
   // Mostly internal stuff.
   static regionCode(lat, lng) { // Answer containing region code.
-    return geoCellId(lat, lng).toString(16).padStart(2, '0');
+    return geoCellId(lat, lng);
   }
   static delay(ms, label = '', result) { // Promise result after ms milliseconds.
     return new Promise(resolve => setTimeout(resolve, ms, result));
