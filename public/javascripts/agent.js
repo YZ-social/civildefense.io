@@ -44,21 +44,12 @@ export class Agent {
   localPersistKey(type, tag = this.tag) { // for localStorage of our private data about this Agent.
     return `${type}-${tag}`;
   }
-  static networkPersistKey(tag) {
-    return this.agents[tag]?.networkPersistKey(tag);
-  }
-  networkPersistKey(tag = this.tag) {
-    return agentTopic(tag);
+  networkPersistKey(type, tag = this.tag) {
+    return agentTopic(this.localPersistKey(type, tag));
   }
   updateFromLocal(scope, type, tag = this.tag) { // get value locally, and then update (which may have side-effect)
     const value = localStorage.getItem(this.localPersistKey(type, tag));
     this.updateValue(value, scope, type, false); // Don't publish until we post.
-  }
-  static recreateMessageTag(tag, type) { // For the agent specified by tag, promise the messageTag for the specified agent tag, type.
-    return this.agents[tag]?.recreateMessageTag(type);
-  }
-  recreateMessageTag(type) {// Promise the Axona msgId that provided the specified type of public data, if any.
-    return this.publicMsgId[type];
   }
   trackedRegions = {};
   currentRegion = null;
@@ -66,20 +57,20 @@ export class Agent {
     this.currentRegion = region;
     if (this.trackedRegions[region]) return;
     this.persistPublicMetadata(region);
-    networkPromise.then(contact => this.trackedRegions[region] = contact.subscribe({
-      eventName: this.networkPersistKey(),
-      region,
-      since: 'latest',
-      // FIXME: owner: this.tag
-      handler: data => this.setPublicData(data),
-    }));
+    networkPromise.then(contact => {
+      this.trackedRegions[region] = true;
+      const owner = this.tag;
+      ['handle', 'avatar'].forEach(type => {
+	const eventName = this.networkPersistKey(type);
+	console.log('fixme subscribing', {type, eventName, region, owner}); // fixme: remove this and restore since:'latest'
+	contact.subscribe({eventName, region, owner, /*since: 'latest',*/ handler: data => this.setPublicData({...data, type})});
+      });
+    });
   }
   async setPublicData(data) { // Subscription to public data has fired. Update value, but do not not re-publish.
-    let {payload, subject, type} = data;
-    // If this was a deletion, we have no type in the data. Find the one that matches subject.
-    type ||= Object.keys(this.publicMsgId).find(key => this.publicMsgId[key] === subject);
-    if (!type) return; // Delete of a value that we don't have.
-    if (type === 'avatar' && payload) {
+    let {payload, subject, type, topic, ts} = data; // fixme remove topic and ts
+    console.log('fixme got data', {tag: this.tag, topic, ts, type, subject, payload});
+    if (payload && (type === 'avatar')) {
       const contact = await networkPromise;
       payload = await contact.assembleChunkedString(payload);
     }
@@ -131,8 +122,9 @@ export class Agent {
     await Promise.all(['handle', 'avatar'].map(type => this.persistPublic(this.getValue('public', type) || null, type)));
   }
   async persistPublic(value, type) { // Publish (and we will act on subscription).
-    const eventName = this.networkPersistKey();
+    const eventName = this.networkPersistKey(type);
     const region = this.currentRegion;
+    const owner = this.tag;
     // TODO: set owner as well.
     const contact = await networkPromise;
     if (value) {
@@ -140,11 +132,15 @@ export class Agent {
       if (type === 'avatar') {
 	payload = await contact.chunkifyString({string: value, region});
       }
-      return contact.publish({eventName, type, region, payload});
+      console.log('fixme publish', {eventName, region, owner, payload});
+      return contact.publish({eventName, region, owner, payload});
     }
-    const subject = this.recreateMessageTag(type);
+    const subject = this.publicMsgId[type];
+    console.log('fixme publish delete', {eventName, region, owner, subject}); // fixme remove this.
     if (!subject) return null; // We have not published a value, so nothing to kill.
-    return contact.publish({eventName, subject, region, payload: null});
+    await contact.publish({eventName, region, owner, subject, payload: null});
+    await contact.peer.unpub({region, name: eventName, owner}, {signWith: this.identity}); // fixme remove this
+    return null;
   }
 
   // We represent handles and avatars by inserting stuff into given elements.
@@ -272,8 +268,17 @@ export class Agent {
     return this.current = this.ensure({tag, identity});
   }
   static async initialize() { // Initialize what the agent needs from the about screen
-    const tag = localStorage.getItem('usertag') || uuidv4();
-    const myIdentity = await createAuthorIdentity({persistAs: tag});
+    let tag = localStorage.getItem('usertag');
+    const persistAs = tag || uuidv4(); // Give it SOMETHING to persistAs.
+    const myIdentity = await createAuthorIdentity({persistAs});
+    if (tag !== persistAs) { // Fix up persistence by moving it to where it need to go.
+      // WARNING: This relies on undocumented behavior of createAuthorIdentity().
+      const realTag = myIdentity.authorId;
+      const dumpedIdentity = localStorage.getItem(persistAs);
+      localStorage.setItem(realTag, dumpedIdentity);
+      localStorage.removeItem(persistAs);
+      tag = realTag;
+    }
     const myAgent = Agent.switchUser(tag, myIdentity);
     const myHandle = document.getElementById('myHandle');
     const myAvatar = document.getElementById('myAvatar');
