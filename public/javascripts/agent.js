@@ -72,7 +72,8 @@ export class Agent {
     console.log('fixme got data', {tag: this.tag, topic, ts, type, subject, payload});
     if (payload && (type === 'avatar')) {
       const contact = await networkPromise;
-      payload = await contact.assembleChunkedString(payload);
+      const {dataURL} = await contact.assembleChunkedDataURL(payload);
+      payload = dataURL;
     }
     this.updateValue(payload, 'public', type, false);
     if (subject) this.publicMsgId[type] = subject;
@@ -130,7 +131,8 @@ export class Agent {
     if (value) {
       let payload = value;
       if (type === 'avatar') {
-	payload = await contact.chunkifyString({string: value, region});
+	const blob = await P2PWebNetwork.dataURL2blob(value);
+	payload = await contact.chunkifyBlob({blob, region});
       }
       console.log('fixme publish', {eventName, region, owner, payload});
       return contact.publish({eventName, region, owner, payload});
@@ -234,8 +236,8 @@ export class Agent {
       fileChooser.onchange = async event => {
 	consume(event);
 	if (!fileChooser.files.length) return;
-	const url = await downsampledFile2dataURL(fileChooser.files[0], Agent.downsampleResolution);
-	this.updateValue(url, 'private', 'avatar');
+	const blob = await P2PWebNetwork.downsampledBlob({blob: fileChooser.files[0], maxDimension: Agent.downsampleResolution});
+	this.updateValue(await P2PWebNetwork.blob2dataURL(blob), 'private', 'avatar');
 	console.log('clearing avatar selection');
       };
       fileChooser.click();
@@ -304,7 +306,8 @@ export class Agent {
       fileChooser.onchange = async event => {
 	consume(event);
 	if (!fileChooser.files.length) return;
-	const url = await downsampledFile2dataURL(fileChooser.files[0], Agent.downsampleResolution);
+	const blob = await P2PWebNetwork.downsampledBlob({blob: fileChooser.files[0], maxDimension: Agent.downsampleResolution});
+	const url = await P2PWebNetwork.blob2dataURL(blob);
 	myAgent.updateValue(url, 'public', 'avatar');
 	myAgent.persistPrivate(url, 'avatar'); // So that we'll have it next session.
       };
