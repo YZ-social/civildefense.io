@@ -339,6 +339,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
 document.addEventListener('visibilitychange', initialize);
 window.addEventListener('online', initialize);
 
+document.querySelector('#aboutContainer h1').textContent += ` @${location.hostname}`;
 // Set up text for the browser language.
 function initText(selector, content = selector) {
   const element = document.querySelector(selector);
