@@ -143,9 +143,11 @@ export class P2PWebNetwork {
     const u8 = new Uint8Array(buffer);
     return this.u82dataURL(u8, blob.type);
   }
-  static async dataURL2blob(dataURL) { // Promise a Blob.
+  static async dataURL2blob(dataURL, filename='') { // Promise a Blob.
     const res = await fetch(dataURL);
-    return await res.blob();
+    const blob = await res.blob();
+    if (!filename) return blob;
+    return new File([blob], filename, {type: blob.type});
   }
   async chunkifyBlob({blob, region, signWith = this.constructor.currentPublishIdentity, owner = signWith.authorId, maxDimension = 1024, ...rest}) {
     // Publish Blob (or File) and answer an identifier that can be used to re-assemble.

@@ -4,7 +4,7 @@ import { minidenticonSvg } from 'minidenticons';
 import { createAuthorIdentity }  from '@axona/protocol';
 import { agentTopic } from './versions.js';
 import { Int } from './translations.js';
-import { consume, openDisplay, downsampledFile2dataURL } from './display.js';
+import { consume, openDisplay } from './display.js';
 import { networkPromise, resetInactivityTimer } from './main.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 

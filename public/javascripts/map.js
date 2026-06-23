@@ -2,7 +2,7 @@ const { domtoimage, localStorage, URL, Blob, URLSearchParams, getComputedStyle }
 import * as L from 'leaflet';
 import { s2 } from 's2js';
 import { Int } from './translations.js';
-import { consume, openDisplay, file2dataURL, dataURL2file, downsampledFile2dataURL } from './display.js';
+import { consume, openDisplay } from './display.js';
 import { alertTopic } from './versions.js';
 import { Agent } from './agent.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
@@ -34,6 +34,11 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   }
 }
 
+export async function dataURL2file(url, name) { // Promise a File object corresponding to the given dataURL and file name string.
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new File([blob], name, {type: blob.type});
+}
 export async function share(properties) {  // Invoke platform share API on properties.
   if (!navigator.share) {
     showMessage(navigator.userAgent.includes('Firefox') ? Int`In Firefox, sharing must be explicitly enabled through the <a target="civildefense_help" href="https://developer.mozilla.org/en-US/docs/Mozilla/Firefox/Experimental_features#webshare_api">dom.webshare.enabled</a> preference in about:config.` : Int`This browser does not support sharing.`);
@@ -60,7 +65,7 @@ export async function share(properties) {  // Invoke platform share API on prope
     icon.style = 'opacity: 1;';
     const capture = await domtoimage.toPng(target);
     subPopoverControls.style = leafletControls.style = icon.style = '';
-    const file = await dataURL2file(capture, 'map.png');
+    const file = await P2PWebNetwork.dataURL2blob(capture, 'map.png');
     trackMap();
     properties.files = [file];
   }
@@ -520,7 +525,7 @@ export class Marker { // A wrapper around L.marker
     let textBase = `New CivilDefense.io alert @${lat},${lng}`;
     const extendedText = text ? `${textBase}\n${text}` : textBase;
     const data = {text: extendedText, url};
-    if (file) data.files = [await dataURL2file(file, name)];
+    if (file) data.files = [await P2PWebNetwork.dataURL2blob(file, name)];
     share(data);
   }
   startFader(remaining) { // Set up or update fader.
