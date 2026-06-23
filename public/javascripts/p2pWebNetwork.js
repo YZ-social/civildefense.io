@@ -107,12 +107,12 @@ export class P2PWebNetwork {
     if (handler) {
       const callback = async envelope => {
 	const {message, deleted, msgId, signerPubkey, topic, ts} = envelope;
-	console.log('fired', {msgId, topic, signerPubkey, deleted, message});
+	console.log('fired', {msgId, topic, ts, signerPubkey, deleted, message});
 	if (deleted) {
-	  handler({subject: msgId, payload: null});
+	  handler({subject: msgId, payload: null, topic, ts}); // fixme remove topic, ts here and below.
 	  return;
 	}
-	handler({...message, subject: msgId});
+	handler({...message, subject: msgId, topic, ts});
       };
       await this.peer.sub(topic, callback, {since});
     } else {

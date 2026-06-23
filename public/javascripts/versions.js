@@ -12,8 +12,8 @@ export function canonicalTag(tag) { // A string representing tag, without the (l
   return stripLeadingEmoji(tag);
 }
 
-export function agentTopic(tag) { // Return topic name for public info about agent specified by tag.
-  return `public:${dataVersion}:${tag}`;
+export function agentTopic(string) { // Return topic name for public info about agent specified by tag.
+  return `public:${dataVersion}:${string}`;
 }
 export function alertTopic(cellid, tag) { // Return topic name for public info about specified tag in cellid.
   return `civildefense.io:${dataVersion}:${cellid}:${canonicalTag(tag)}`;
