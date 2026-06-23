@@ -1,4 +1,4 @@
-const { domtoimage, localStorage, URL, URLSearchParams, getComputedStyle } = globalThis;
+const { domtoimage, localStorage, URL, Blob, URLSearchParams, getComputedStyle } = globalThis;
 import * as L from 'leaflet';
 import { s2 } from 's2js';
 import { Int } from './translations.js';
@@ -415,7 +415,9 @@ export class Marker { // A wrapper around L.marker
 	data.fileTopic = file;
 	const contact = await networkPromise;
 	// Before pushing data on to replies.
-	payload.file = await contact.assembleChunkedString(file);
+	const {dataURL, name} = await contact.assembleChunkedDataURL(file);
+	payload.file = dataURL;
+	payload.name = name;
       }
       replies.push(data); // TODO: when we implement edited replies, we'll have to find the existing
       replies.sort((a, b) => a.issuedTime - b.issuedTime); // Could be slightly out of order.
@@ -457,10 +459,8 @@ export class Marker { // A wrapper around L.marker
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     const contact = await networkPromise;
     if (files.length) {
-      const dataURL = await downsampledFile2dataURL(files[0]);
-      const file = await contact.chunkifyString({string: dataURL, region});
-      console.log({dataURL, file});
-      payload = {message: payload, file, name: files[0].name};
+      const file = await contact.chunkifyBlob({blob: files[0], region});
+      payload = {message: payload, file};
     }
     await contact.publish({eventName: subject, region, payload, act: Agent.tag}); // Publish the new reply.
     Agent.current.persistPublicMetadata(region);
@@ -479,12 +479,12 @@ export class Marker { // A wrapper around L.marker
 	  .replace(/https?:\/\/\S+\.(mp4|mov|webm)$/ig, url => `<video controls src="${url}"></video>`) // show video urls as players
 	  .replace(/(?<!")https?:\/\/\S+/g, url => `<a href="${url}" target="yz.sidebar">${url}</a>`); // show urls as links
       let attachment = '';
-      if (file?.startsWith('data:image')) attachment = `<a href="${file}" download><img class="attachment" src="${file}"></img></a>`;
-      else if (file?.startsWith('data:audio')) attachment = `<a href="${file}" download><audio controls class="attachment" src="${file}"></audio></a>`;
-      else if (file?.startsWith('data:video')) attachment = `<a href="${file}" download><video controls class="attachment" src="${file}"></video></a>`;
+      if (file?.startsWith('data:image')) attachment = `<a href="${file}" download="${name}"><img class="attachment" src="${file}"></img></a>`;
+      else if (file?.startsWith('data:audio')) attachment = `<a href="${file}" download="${name}"><audio controls class="attachment" src="${file}"></audio></a>`;
+      else if (file?.startsWith('data:video')) attachment = `<a href="${file}" download="${name}"><video controls class="attachment" src="${file}"></video></a>`;
       else if (file) attachment = `
 <div class="attachment file">
-  <a href="${file}" download>
+  <a href="${file}" download="${name}">
     <md-icon class="material-icons">attachment</md-icon>
     ${name}
   </a>

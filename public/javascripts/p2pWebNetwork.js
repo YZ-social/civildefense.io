@@ -4,7 +4,7 @@ import { stringToBytes, bytesToString, publishChunkedBytes, receiveChunkedBytes 
 // FIXME: What is the right way to use Axona web transport. It doesn't seem to provide either a functioning export nor declare its dependencies.
 import { webTransport } from './../axona-protocol/src/transport/web/index.js';
 globalThis.RTCPeerConnection ||= await import('node-datachannel/polyfill').then(ndc => ndc.RTCPeerConnection);
-const { BigInt } = globalThis;
+const { BigInt, URL, File, pica } = globalThis;
 
 /* Example:
    const network = await P2PWebNetwork.create({lat: 37.468467587148844, lng: -122.25860595703126});
@@ -73,28 +73,97 @@ export class P2PWebNetwork {
     this.leave(); // Execution is asynchronous. Will not finish -- or perhaps even really start -- within the call.
   }
 
-  // civildefense and alert-bot explicitly handle files in an application-specific way:
-  // they convert them to data urls, which contain an explicit mime type and are represented
-  // as text, so they can go as JSON. The apps also downsample images in a way that is
-  // appropriate for their specific use within the application.  When receiving, the surrounding
-  // JSON identifies the string to be converted by the application to other application-specific forms.
-  // Thus there's no need for transport to deal with that.
-  //
-  // However, Axona cannot handle a message that might contain a string that is, say, a megabyte.
-  // These two methods should be used to replace all strings that might push a message payload above 16kB.
-  // TODO: For now, these work on strings tha are already base64, and convert them to Uin8Array. Change that to operate on original binary.
   async chunkifyString({string, region, signWith = this.constructor.currentPublishIdentity, owner = signWith.authorId}) {
     // Publish string and answer an identifier that can be used to re-assemble.
     if (!string.length) throw new Error(`Cannot chunkify empty string '${string}.`);
     const topic = {name: uuidv4(), region, owner};
     const data = await publishChunkedBytes(this.peer, stringToBytes(string), {topic, signWith});
-    //console.log('chunked to', data);
     return data.topic;
   }
   async assembleChunkedString(topic) { // Promise the string that was chunkified to topic.
     const data = await receiveChunkedBytes(this.peer, topic, {timeoutMs: 60e3/*, onProgress: console.log*/});
-    //console.log('reassembled:', data);
     return bytesToString(data.bytes);
+  }
+
+  static getCanvas(file) { // Promise a Canvas from a File of type image/*.
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      img.onload = () => {
+	canvas.width = img.width;
+	canvas.height = img.height;
+	ctx.drawImage(img, 0, 0);
+	URL.revokeObjectURL(img.src);
+	resolve(canvas);
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  }
+  static  async downsampledBlob({blob, outputType = 'image/jpeg', maxDimension = 1024}) {
+    // Promise a reasonably sized Blob (or File) for a given Blob of type image/*, else blob unchanged.
+    if (!blob.type.startsWith('image/')) return blob;
+
+    let sizedWidth, sizedHeight;  // Largest will be 1024, preserving aspect ratio.
+    const from = await this.getCanvas(blob);
+    const {width, height} = from;
+    if (width > height) {
+      sizedWidth = maxDimension;
+      sizedHeight = Math.round(maxDimension * height/width);
+    } else {
+      sizedHeight = maxDimension;
+      sizedWidth = Math.round(maxDimension * width/height);
+    }
+    if ((blob.type === outputType) && (sizedWidth >= width)) return blob;
+
+    const resizer = pica();
+    const to = document.createElement('canvas');
+    to.width = sizedWidth;
+    to.height = sizedHeight;
+    const buffer = await resizer.resize(from, to);
+    outputType ||= blob.type;
+    let result = await resizer.toBlob(buffer, outputType, 0.90);
+    if (blob.name) { // Answer a File with original name, but with extension matching result type.
+      let {name} = blob;
+      const parts = name.split('.');
+      const type = result.type;
+      parts[parts.length - 1] = type.slice('image/'.length);
+      name = parts.join('.');
+      result = new File([result], name, {type});
+    }
+    console.log('fixme in:', width, height, blob.type, blob.size, 'out:', sizedWidth, sizedHeight, result.type, result.size);
+    return result;
+  }
+  static u82dataURL(u8, mime) { // Answer a dataURL from the Uint8Array and mime type string.
+    return `data:${mime};base64,${u8.toBase64()}`;
+  }
+  static async blob2dataURL(blob) { // Promise a dataURL preserving mime type (but not File name, if any).
+    const buffer = await blob.arrayBuffer();
+    const u8 = new Uint8Array(buffer);
+    return this.u82dataURL(u8, blob.type);
+  }
+  static async dataURL2blob(dataURL) { // Promise a Blob.
+    const res = await fetch(dataURL);
+    return await res.blob();
+  }
+  async chunkifyBlob({blob, region, signWith = this.constructor.currentPublishIdentity, owner = signWith.authorId, maxDimension = 1024, ...rest}) {
+    // Publish Blob (or File) and answer an identifier that can be used to re-assemble.
+    if (!blob.size) throw new Error(`Cannot chunkify empty Blob.`);
+    if (maxDimension) blob = await this.constructor.downsampledBlob({blob, maxDimension});
+    const {type:mime, name} = blob;
+    const topic = {name: uuidv4(), region, owner};
+    const buffer = await blob.arrayBuffer();
+    const u8 = new Uint8Array(buffer);
+    const data = await publishChunkedBytes(this.peer, u8, {topic, signWith, mime, name, ...rest});
+    return data.topic;
+  }
+  async assembleChunkedDataURL(topic) { // Promise {bytes, mime, name, dataURL} that was chunkified to topic.
+    const data = await receiveChunkedBytes(this.peer, topic, {timeoutMs: 60e3/*, onProgress: console.log*/});
+    // Using dataURL is not terribly efficient, but it is convenient, because formatReplies can return HTML strings with all the data in them,
+    // instead of, e.g., needing javascript to later set properties of elements to createObjectURL of a Blob.
+    data.dataURL = this.constructor.u82dataURL(data.bytes, data.mime);
+    return data;
   }
 
   // The methods publish/subscribe map from the original civildefense-over-kdht API to Axona, and could be rewritten in the apps.
