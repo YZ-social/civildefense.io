@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Civil Defense App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <script>var ariaSlideLabel = 'Slide ';</script>
+</head>
+<body>
+
+<!-- ── HERO ──────────────────────────────────────────────────── -->
+<header class="hero">
+  <div class="hero-inner">
+    <img class="hero-logo" src="civil-defense.png" alt="Civil Defense Logo">
+    <h1>The Civil Defense <span>App</span></h1>
+    <div class="hero-divider"></div>
+    <p class="hero-tagline">Crowdmap current dangers with Free and Open-Source Software.</p>
+  </div>
+  <div class="language-selector">
+    <label for="language">Language:</label>
+    <select id="language" name="language" onchange="location = this.value;">
+      <option value="en.html" selected>English</option>
+      <option value="es.html">Español</option>
+    </select>
+  </div>
+</header>
+
+<!-- ── CAROUSEL ──────────────────────────────────────────────── -->
+<section class="carousel-section" aria-label="App screenshots">
+
+  <div class="carousel-wrap">
+    <div class="carousel-track-outer">
+      <div class="carousel-track" id="carouselTrack">
+
+        <div class="carousel-slide">
+          <video controls src="CivilDefense.mp4"></video>
+          <div class="carousel-caption">A 30 second AI vibe video overview.</div>
+        </div>
+
+        <div class="carousel-slide">
+          <img src="flood-fire-ice.png" alt="Map view showing alert markers scattered across a neighborhood">
+          <div class="carousel-caption">Alerts fade away after 24 hours.<br>Toggling a hashtag changes what alerts are shown.<br>Think of it as "spatial twitter".</div>
+        </div>
+
+        <div class="carousel-slide">
+          <img src="conversation-and-image.png" alt="Map with an open alert popup showing a photo and comment thread">
+          <div class="carousel-caption">Clicking a marker allows reading and adding comments and attachments.</div>
+        </div>
+
+        <div class="carousel-slide">
+          <img src="streaming-radio.png" alt="North America map with playable streaming radio station markers">
+          <div class="carousel-caption">Communities can spontaneously create their own hashtags in any language simply by typing them.<br>This example shows playable streaming radio stations.</div>
+        </div>
+
+        <div class="carousel-slide">
+          <img src="hero.png" alt="One man with shoping bags in Tiananmen Square, facing an enormous column of tanks.">
+          <div class="carousel-caption">Bear witness.</div>
+        </div>
+
+        <div class="carousel-slide">
+          <img src="nazis.png" alt="WWII-style poster exhorting the public to use Civil Defense in case of Nazi attack.">
+        </div>
+
+      </div>
+    </div>
+
+    <button class="carousel-btn prev" id="prevBtn" aria-label="Previous slide">&#8249;</button>
+    <button class="carousel-btn next" id="nextBtn" aria-label="Next slide">&#8250;</button>
+
+    <div class="carousel-dots" id="carouselDots" role="tablist" aria-label="Carousel position"></div>
+  </div>
+</section>
+
+<!-- ── CONTENT ───────────────────────────────────────────────── -->
+<main class="content-wrap">
+
+  <h1>What It Does</h1>
+
+  <ul>
+    <li>Warn others of danger by tapping the map.</li>
+    <li>Add comments, photos, video, or other attachments.</li>
+    <li>Get notified of new alerts near you or on your current map.</li>
+    <li>Share to social media, text, or email.</li>
+    <li>(Discuss an alert by video conference this Fall.)</li>
+    <li>Alerts disappear after 24 hours—this is not an archive or long-term storage system. (This Winter, users will be able to download tamper-evident reports for use in other systems.)</li>
+  </ul>
+
+  <a href="https://civildefense.io" class="launch-btn" target="_blank" rel="noopener noreferrer">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+    Try it!
+  </a>
+
+  <!-- <hr class="rule"> -->
+
+  <h1>Safety First</h1>
+
+  <h2>Available</h2>
+  <ul>
+    <li>No app store can block Civil Defense—the app is just a web page. It can be installed to your home screen if desired.</li>
+    <li>Taking down web servers or domain names cannot block access for those who already have it, because the app caches everything on first use. The <a href="https://github.com/yz-social/civildefense.io" target="_blank" rel="noopener">open-source code</a> is available so anyone can host an alternative mirror.</li>
+    <li>There is no back-end server or data center to take down. All alert data is entirely peer-to-peer using Axona. All mirrors share this network—a post on <a href="https://civildefense.io" target="_blank" rel="noopener">civildefense.io</a> appears on the mirror at <a href="https://ki1r0y.com" target="_blank" rel="noopener">ki1r0y.com</a> and vice versa.</li>
+    <li>Blocking network traffic is extremely difficult, because the low-level data is identical to video conferencing traffic and does not pass through identifiable servers.</li>
+    <li>No user can be censored because there are no accounts. No one can steal your account information because there isn't any.</li>
+    <li>Civil Defense is highly resistant to Denial of Service attacks. However, it does require a working Internet, and does not by itself offer any protection against a complete Internet shutdown.</li>
+  </ul>
+
+  <h2>Anonymous</h2>
+  <ul>
+    <li>You cannot be identified as a person because there is no login, sign-up, or accounts. No phone number or email is used. There is no app store logging downloads.</li>
+    <li>It is extremely difficult to identify your IP address or network patterns, because alerts are distributed phone-to-phone using the Axona peer-to-peer network in a form identical to encrypted video conferencing standards.</li>
+    <li>Notifications are sent directly through the foreground app on your phone, without going through Apple or Google's messaging service. (Backgrounded app notifications available this Winter.)</li>
+    <li>Alerts disappear everywhere on the network after 24 hours. There are no records of calls or requested hashtags. An alert can only be associated with a device through physical access to that unlocked device—and only if the app data has not been wiped.</li>
+    <li>Users can reliably recognize postings from people with whom they've previously interacted, without knowing their actual names or phone numbers.</li>
+  </ul>
+
+  <!-- <hr class="rule"> -->
+
+  <h1>The Bigger Picture</h1>
+  <p>The Civil Defense software was created by a group of experienced system developers who are also developing the <a href="https://github.com/axona-net/axona-protocol" target="_blank" rel="noopener">Axona network</a> that it runs on. Both are free and open source.</p>
+  <p>Axona is a modern descendant of the old <a href="https://en.wikipedia.org/wiki/Peer-to-peer" target="_blank" rel="noopener">peer-to-peer networks</a> such as Napster. It has a unique self-healing routing mechanism that uses neuron-learning techniques to find the best way to distribute alerts—analogous to <a href="https://en.wikipedia.org/wiki/Tor_(network)" target="_blank" rel="noopener">TOR</a> (The Onion Router), but designed from the ground up to run in mobile and desktop browsers.</p>
+  <p>We are also developing a comprehensive quantum-ready cryptography system that will add private-groups for Civil Defense and any software on the network. We believe there are many applications where developers and users alike benefit from open software and secure, decentralized networks — without app stores, servers, or data centers. Beyond Civil Defense, we are also developing large-scale <a href="https://en.wikipedia.org/wiki/Distributed_computing" target="_blank" rel="noopener">multiuser collaboration</a> and <a href="https://poverty-action.org/inclusive-instant-payment-systems-evidence-based-approach-design-impact" target="_blank" rel="noopener">Inclusive Instant Payment Systems</a>.</p>
+
+</main>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────── -->
+<footer>
+  <p><a href="https://civildefense.io" target="_blank" rel="noopener">civildefense.io</a> &mdash; Safe and free crowdmapping for vulnerable populations.<br>
+  We gratefully use open software from:
+            <a href="https://leafletjs.com/" target="yz.other">Leaflet</a>,
+            <a href="https://www.openstreetmap.org/" target="yz.other">OpenStreetMap</a>,
+            <a href="http://s2geometry.io" target="yz.other">S2Geometry</a>,
+            <a href="https://github.com/kozakdenys/qr-code-styling" target="yz.other">qr-code-styling</a>,
+            <a href="https://expressjs.com/" target="yz.other">Express.js</a>,
+            <a href="https://nodejs.org/" target="yz.other">Node.js</a></p>
+</footer>
+
+<!-- ── CAROUSEL SCRIPT ───────────────────────────────────────── -->
+<script src="script.js"></script>
+
+</body>
+</html>
