@@ -145,7 +145,6 @@ async function publishAlert({lat, lng,
     publishing = true;
 
     const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
-    const act = Agent.tag;
     let oldCells = null, oldHash, oldSubject = null; // Recorded for logging, below.
     let lastFillIn;
     if (payload) {
@@ -175,7 +174,7 @@ async function publishAlert({lat, lng,
     for (const cell of cells) {
       const eventName = alertTopic(cell, hashtag);
       if (payload) {
-	const msgId = await contact.publish({eventName, region, payload, issuedTime, hashtag, act, ...rest});
+	const msgId = await contact.publish({eventName, region, payload, issuedTime, hashtag, ...rest});
 	if (subject && subject !== msgId) throw new Error(`msgId is drifting: ${subject} => ${msgId}`);
 	subject = msgId;
 	if (lastFillIn) {
@@ -230,7 +229,7 @@ export class Marker { // A wrapper around L.marker
   }
   static updateMarkers(canonicalHashtag, extendedHashtag) { // Update markers becase we have discovered an extendedHashtag that we have only had as canonical.
     for (const wrapper of Object.values(this.markers)) {
-      const { hashtag, marker, act } = wrapper;
+      const { hashtag, marker, agent } = wrapper;
       if (hashtag !== canonicalHashtag) continue;
       const newIcon = this.makeIcon(extendedHashtag);
       const popup = marker.getPopup();
@@ -242,14 +241,14 @@ export class Marker { // A wrapper around L.marker
       const popupAttribution = popup.getElement().querySelector('.attribution');
       const attributionActions = popupAttribution.lastElementChild;
       attributionActions.lastElementChild.remove();
-      attributionActions.insertAdjacentHTML('beforeend', this.formatAttributionHashtag(act, extendedHashtag));
+      attributionActions.insertAdjacentHTML('beforeend', this.formatAttributionHashtag(agent, extendedHashtag));
       wrapper.initChangeHashtag(popupAttribution);
     }
   }
   static ensure(data) { // Add marker at position with appropriate fade if not already present.
-    let { payload, subject, issuedTime, act, hashtag} = data;
+    let { payload, subject, issuedTime, agent, hashtag} = data;
     let wrapper = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
-    console.log('Handling event', {wrapper, hashtag, subject, payload, act, usertag: Agent.tag, data});
+    console.log('Handling event', {wrapper, hashtag, subject, payload, agent, usertag: Agent.tag, data});
 
     if (!payload) return wrapper?.destroy();
     const now = Date.now(),
@@ -262,7 +261,7 @@ export class Marker { // A wrapper around L.marker
     const {lat, lng, originalPosting} = payload;
     // TODO: Now that msgId is the same at each level, there's no reason for a separate GUID subject.
     const region = P2PWebNetwork.regionCode(lat, lng);
-    Object.assign(wrapper, {lat, lng, subject, originalPosting, issuedTime, hashtag, act, region});
+    Object.assign(wrapper, {lat, lng, subject, originalPosting, issuedTime, hashtag, agent, region});
     let {marker} = wrapper;
     if (!marker) {
       const icon = this.makeIcon(hashtag);
@@ -275,7 +274,7 @@ export class Marker { // A wrapper around L.marker
 	openOnReceive = false;
 	wrapper.openPopup();
       }
-      wrapper.showNotification({tag: subject, act, issuedTime});
+      wrapper.showNotification({tag: subject, agent, issuedTime});
     } else {
       wrapper.needsRedisplay = true;
     }
@@ -290,9 +289,9 @@ export class Marker { // A wrapper around L.marker
       return;
     }
     this.needsRedisplay = false;
-    const {issuedTime, originalPosting, hashtag, act}  = this;
+    const {issuedTime, originalPosting, hashtag, agent}  = this;
     this.clearAvatars(popup);
-    let content = this.formatAttribution({act, issuedTime, originalPosting, hashtag});
+    let content = this.formatAttribution({agent, issuedTime, originalPosting, hashtag});
     content += this.formatReplies();
     popup.setContent(content);
     delay(100).then(() => {
@@ -363,10 +362,10 @@ export class Marker { // A wrapper around L.marker
       menu.addEventListener('close-menu', handler); // Must be addEventListener because there's no onclosemenu.
     };
   }
-  static formatAttributionHashtag(act, hashtag) { // Answer HTML for the hashtag button/display in an a post attribution.
+  static formatAttributionHashtag(agent, hashtag) { // Answer HTML for the hashtag button/display in an a post attribution.
     // It will be either a simple HTML element with pubtag.
     const pubtag = Hashtags.formatPubtag(hashtag);
-    if (act !== Agent.tag) return `<span>${pubtag}</span>`;
+    if (agent !== Agent.tag) return `<span>${pubtag}</span>`;
 
     // ... or an HTML button, with a side-effect of populating the popoverMenu with the choices to display when the button is pressed.
     document.getElementById('popoverMenu').innerHTML = `
@@ -379,22 +378,22 @@ export class Marker { // A wrapper around L.marker
 `;
     return `<md-outlined-button class="changeHashtag">${pubtag}</md-outlined-button>`;
   }
-  formatAttributionActions({act, hashtag}) { // Anser div HTML containing: [deleter] sharer [hashtag]
+  formatAttributionActions({agent, hashtag}) { // Anser div HTML containing: [deleter] sharer [hashtag]
     // Where deletere appears if it our reply (no hashtag), and hashtag if present is a button if ours (and otherwise just text).
-    const deleter = !hashtag && act === Agent.tag ? `<md-outlined-icon-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-icon-button>` : '';
-    const pubtag = hashtag ? this.constructor.formatAttributionHashtag(act, hashtag) : '';
+    const deleter = !hashtag && agent === Agent.tag ? `<md-outlined-icon-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-icon-button>` : '';
+    const pubtag = hashtag ? this.constructor.formatAttributionHashtag(agent, hashtag) : '';
     return `<div>${deleter} ${pubtag}</div>`;
   }
-  formatAttribution({act, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/[deleter]+sharer+[hashtag]
+  formatAttribution({agent, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/[deleter]+sharer+[hashtag]
     const sharer = `<md-outlined-icon-button class="share"><md-icon class="material-icons">ios_share</md-icon></md-outlined-icon-button>`;
-    const actions = this.formatAttributionActions({act, hashtag});
+    const actions = this.formatAttributionActions({agent, hashtag});
     const dataText = hashtag ? 'data-text=""' : ''; // Used in sharing.
     return `
 <div class="attribution" ${dataText}>
   ${sharer}
-  <md-outlined-icon-button class="correspondent avatar" data-tag="${act}"></md-outlined-icon-button>
+  <md-outlined-icon-button class="correspondent avatar" data-tag="${agent}"></md-outlined-icon-button>
   <div class="attribution-metadata">
-    <div class="correspondent handle" data-tag="${act}"></div>
+    <div class="correspondent handle" data-tag="${agent}"></div>
     <div>${new Date(originalPosting || issuedTime).toLocaleString()}</div>
     ${originalPosting ? `<div>${Int`updated`} ${new Date(issuedTime).toLocaleString()}</div>` : ''}
   </div>
@@ -421,7 +420,7 @@ export class Marker { // A wrapper around L.marker
       const existing = replies.find(reply => reply.subject === data.subject);
       if (existing) return; // Until we do editing.
 
-      const {act, issuedTime, payload} = data;
+      const {agent, issuedTime, payload} = data;
       const {file} = payload;
       if (file) {
 	data.fileTopic = file;
@@ -438,16 +437,16 @@ export class Marker { // A wrapper around L.marker
       element.style.animationName = element.style.animationName === 'pulse2' ? 'pulse' : 'pulse2';
       if (replies[replies.length - 1] !== data) return; // Replies can come out of order.
       this.startFader(issuedTime + ttl - Date.now());
-      this.showNotification({act, issuedTime, body: payload.message || payload.name || payload});
+      this.showNotification({agent, issuedTime, body: payload.message || payload.name || payload});
     } else {
       replies.splice(replies.findIndex(reply => reply.subject === data.subject), 1);
     }
     this.needsRedisplay = true;
     this.ensureContent();
   }
-  showNotification({issuedTime = this.issuedTime, body = '', act = this.act, tag = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
+  showNotification({issuedTime = this.issuedTime, body = '', agent = this.agent, tag = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
     // Give OS notification that comes back to here, unless act is us.
-    if (act == Agent.tag || !notificationsAllowed()) return;
+    if (agent == Agent.tag || !notificationsAllowed()) return;
     navigator.serviceWorker.ready.then(registration => {
       const timestamp = issuedTime;
       const icon = new URL('./images/civil-defense-192.png', location.href).href;
@@ -474,7 +473,7 @@ export class Marker { // A wrapper around L.marker
       const file = await contact.chunkifyBlob({blob: files[0], region});
       payload = {message: payload, file};
     }
-    await contact.publish({eventName: subject, region, payload, act: Agent.tag}); // Publish the new reply.
+    await contact.publish({eventName: subject, region, payload}); // Publish the new reply.
     Agent.current.persistPublicMetadata(region);
   }
   deleteReply(replyElement) {
@@ -483,7 +482,7 @@ export class Marker { // A wrapper around L.marker
     networkPromise.then(async contact => contact.publish({eventName: this.subject, region, subject: replyElement.dataset.subject, payload: null}));
   }
   formatReplies() { // Answer HTML for the replies and input box.
-    const { replies, act, originalPosting } = this;
+    const { replies, agent, originalPosting } = this;
     const formatReply = ({subject, payload, ...rest}) => {
       const {message = payload, file, name} = payload;
       let text = message
