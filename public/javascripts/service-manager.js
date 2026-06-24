@@ -20,7 +20,7 @@ import { Int } from './translations.js';
   The service WORKER does NOT fill any cache on installation, nor delete old on activation (as many service worker examples do).
   Instead, if the service MANAGER sees that the appVersion cache does not exist yet, it explicitly fills it with the host's current source.
 
-  The service WORKER handles requests from any cache version, rather than just serviceVersion, but stores missing items in serviceVersion.
+  The service WORKER handles requests from ANY cache version, rather than just serviceVersion, but STORES missing items in serviceVersion.
   Thus the explicitly filled source is from the one-time filling by the service MANAGER.
   Other requests on the web (such as map tiles) are cached to serviceVersion, responded from there, and do not get updated until cache is cleared or new app version installed.
 
@@ -31,125 +31,28 @@ import { Int } from './translations.js';
   The user is informed (in About and in a popup), and we persist a marker in storage in case the user reloads (which would not otherwise see a new serviceVersion
   because it already has it).
 
-  When user says to update, the service MANAGER deletes the appVersion cache (so that next step doesn't use old dat), explicitly fills the new serviceVersion cache,
+  When user says to update, the service MANAGER deletes the appVersion cache (so that next step doesn't use old data), explicitly fills the new serviceVersion cache,
   and then we reload with new v=version parameter.
   This busts the browser's caching so that it reloads index.html from the new cache.
-  (The v parameter is stripped on load so that it doesn't hang around. Other parameters such as dht=1 are not affected.)
+  (The v parameter is stripped on load so that it doesn't hang around. Other parameters are not affected.)
   The service WORKER responds with the new cached source, and external resources have been pulled no earlier than the host's service worker release.
   We also broadcast to any other open tabs at the same host, so that they reload to the new v as well.
+
+  When caching an explicit list of files for use going forward, that list is defined in the new/current service worker, not the stale/cached service manager.
   
   If the user clears cache and reloads (even if there is no source/worker update, or a stale worker), they get the currently hosted versions.
 */
 
-
-async function cacheSource(version) { // Cache source in the given version.
-  const cache = await caches.open(version);
-  await cache.addAll([
-    "/",
-    "/index.html", // Just in case anyone is specifying that.
-    "favicon.ico",
-    "manifest.json",
-    "package.json",
-
-    "javascripts/versions.js",
-    "javascripts/main.js",
-    "javascripts/display.js",
-    "javascripts/map.js",
-    "javascripts/hashtags.js",
-    "javascripts/s2.js",
-    "javascripts/agent.js",
-    "javascripts/translations.js",
-    "javascripts/service-manager.js",
-    "javascripts/p2pWebNetwork.js",
-
-    "stylesheets/style.css",
-
-    "images/qr-scan.svg",
-    "images/share.svg",
-    "images/recenter.svg",
-    "images/civil-defense-122.png",
-    "images/civil-defense-192.png",
-    "images/civil-defense-240.png",
-    "images/civil-defense-512.png",
-
-    "axona-protocol/src/index.js",
-    "axona-protocol/src/errors.js",
-    "axona-protocol/src/bridgeDirectory.js",
-    "axona-protocol/src/contracts/Transport.js",
-    "axona-protocol/src/contracts/DHT.js",
-    "axona-protocol/src/contracts/BootstrapService.js",
-    "axona-protocol/src/identity/index.js",
-    "axona-protocol/src/identity/nodeid.js",
-    "axona-protocol/src/pow/pow.js",
-    "axona-protocol/src/dht/AxonaPeer.js",
-    "axona-protocol/src/dht/AxonaDomain.js",
-    "axona-protocol/src/dht/DHTNode.js",
-    "axona-protocol/src/dht/NeuronNode.js",
-    "axona-protocol/src/dht/Synapse.js",
-    "axona-protocol/src/dht/Subscription.js",
-    "axona-protocol/src/pubsub/AxonaManager.js",
-    "axona-protocol/src/pubsub/authorClass.js",
-    "axona-protocol/src/pubsub/kill.js",
-    "axona-protocol/src/pubsub/touch.js",
-    "axona-protocol/src/pubsub/post.js",
-    "axona-protocol/src/pubsub/unpub.js",
-    "axona-protocol/src/pubsub/envelope.js",
-    "axona-protocol/src/pubsub/ed25519.js",
-    "axona-protocol/src/pubsub/metrics.js",
-    "axona-protocol/src/utils/region-names.js",
-    "axona-protocol/src/utils/geo.js",
-    "axona-protocol/src/utils/s2.js",
-    "axona-protocol/src/utils/hexid.js",
-    "axona-protocol/src/transport/handshake.js",
-    "axona-protocol/src/transport/handshake-auth.js",
-    "axona-protocol/src/transport/wire.js",
-    "axona-protocol/src/transport/web/index.js",
-    "axona-protocol/src/transport/web/mesh.js",
-    "axona-protocol/src/transport/web/mesh-auth.js",
-    "axona-protocol/src/transport/web/webrtc.js",
-    "axona-protocol/src/transport/web/bridge.js",
-    "axona-protocol/src/transport/web/composite.js",
-    "axona-protocol/src/transport/sim/index.js",
-    "axona-protocol/src/transport/sim/network.js",
-    "axona-protocol/src/transport/sim/transport.js",
-    "axona-protocol/src/persistence/interface.js",
-    "axona-protocol/src/crypto/noble-ed25519.js",
-    "axona-protocol/std/index.js",
-    "axona-protocol/std/chunk.js",    
-
-    "leaflet/leaflet.css",
-    "leaflet/leaflet-src.esm.js",
-    "leaflet/images/marker-icon.png",
-    "leaflet/images/marker-icon-2x.png",
-    "leaflet/images/marker-shadow.png",
-
-    "pica/pica.min.js",
-    "minidenticons/minidenticons.min.js",
-    "s2js/s2js.esm.js",
-    "bigfloat/esm/index.js",
-    "bigfloat/esm/BigFloat32",
-    "bigfloat/esm/BigFloat53",
-    "bigfloat/esm/BigComplex",
-    "bigfloat/esm/BaseInfo32",
-    "bigfloat/esm/util",
-
-    // TODO: the libraries
-  ].map(name => new Request(name, {cache: 'no-store'}))); // Might not be necessary, but if any browsers insist on their own caching...
-  await Promise.all([
-    // These are referenced within material web, but missing. Turns out we don't need them,
-    // but let's cache empty responses to keep the console cleaner.
-    "https://esm.run/npm/lit@3.3.1/+esm",
-    "https://esm.run/npm/tslib@2.8.1/+esm",
-    "https://esm.run/npm/lit@3.3.1/static-html.js/+esm",
-    "https://esm.run/npm/lit@3.3.1/decorators.js/+esm",
-    "https://esm.run/npm/lit@3.3.1/directives/style-map.js/+esm",
-    "https://esm.run/npm/lit@3.3.1/directives/class-map.js/+esm",
-    "https://esm.run/npm/lit@3.3.1/directives/when.js/+esm",
-    "https://esm.run/npm/lit@3.3.1/directives/live.js/+esm",
-  ].map(url => cache.put(new Request(url),
-			 new Response("", {headers: { "Content-Type": "text/javascript" }}))));
+let resolveCached;
+async function cacheSource(version) {
+  console.log(`service-manager ${appVersion} requesting service-worker to cache source in ${version}.`);
+  const {promise, resolve} = Promise.withResolvers();
+  resolveCached = resolve;
+  const registration = await navigator.serviceWorker.ready;
+  registration.active.postMessage({method: 'cacheSource', params: version});
+  await promise;
+  console.log(`source ${version} is cached.`);
 }
-
 
 const checkButton = document.getElementById('checkForUpdates');
 const updateText = document.getElementById('updateStatus');
@@ -226,6 +129,9 @@ await navigator.serviceWorker
 	  serviceVersion = params;
 	  newVersionAvailable(params);
 	}
+	break;
+      case 'cached':
+	resolveCached?.(params);
 	break;
       case 'go':
 	go(params);

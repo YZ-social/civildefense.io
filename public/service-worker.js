@@ -1,6 +1,6 @@
 const { Request, Response, URL, clients} = self;
 // Little point in trying to automatically pull this through package.json, as we need a byte change in THIS file to trigger a new worker.
-const serviceVersion = '2.0.0';
+const serviceVersion = '2.0.9';
 
 async function cacheFirst({request, event}) {
   // Handle request from any cache, else fetch and store it in serviceCache.
@@ -54,9 +54,7 @@ self.addEventListener('install', event => {
   // after panic will cause a harmless but confusing "new version available" popup. Instead,
   // one must manually close the tab after panic.
   let p = self.skipWaiting();
-  console.log('skipWaiting promise', p);
   event.waitUntil(p);
-  console.log('after witUntil', p);
 });
 
 self.addEventListener('activate', async event => {
@@ -71,13 +69,126 @@ self.addEventListener('fetch', event => {
   event.respondWith(cacheFirst({request: event.request, event}));
 });
 
+async function cacheSource(version, event) { // Cache source in the given version.
+  console.log(`service-worker ${serviceVersion} is caching source in cache ${version}.`);
+  const cache = await caches.open(version);
+  await cache.addAll([
+    "/",
+    "/index.html", // Just in case anyone is specifying that.
+    "favicon.ico",
+    "manifest.json",
+    "package.json",
+
+    "javascripts/versions.js",
+    "javascripts/main.js",
+    "javascripts/display.js",
+    "javascripts/map.js",
+    "javascripts/hashtags.js",
+    "javascripts/s2.js",
+    "javascripts/agent.js",
+    "javascripts/translations.js",
+    "javascripts/service-manager.js",
+    "javascripts/p2pWebNetwork.js",
+
+    "stylesheets/style.css",
+
+    "images/qr-scan.svg",
+    "images/share.svg",
+    "images/recenter.svg",
+    "images/civil-defense-122.png",
+    "images/civil-defense-192.png",
+    "images/civil-defense-240.png",
+    "images/civil-defense-512.png",
+
+    "axona-protocol/src/index.js",
+    "axona-protocol/src/errors.js",
+    "axona-protocol/src/bridgeDirectory.js",
+    "axona-protocol/src/contracts/Transport.js",
+    "axona-protocol/src/contracts/DHT.js",
+    "axona-protocol/src/contracts/BootstrapService.js",
+    "axona-protocol/src/identity/index.js",
+    "axona-protocol/src/identity/nodeid.js",
+    "axona-protocol/src/pow/pow.js",
+    "axona-protocol/src/dht/AxonaPeer.js",
+    "axona-protocol/src/dht/AxonaDomain.js",
+    "axona-protocol/src/dht/DHTNode.js",
+    "axona-protocol/src/dht/NeuronNode.js",
+    "axona-protocol/src/dht/Synapse.js",
+    "axona-protocol/src/dht/Subscription.js",
+    "axona-protocol/src/pubsub/AxonaManager.js",
+    "axona-protocol/src/pubsub/authorClass.js",
+    "axona-protocol/src/pubsub/kill.js",
+    "axona-protocol/src/pubsub/touch.js",
+    "axona-protocol/src/pubsub/post.js",
+    "axona-protocol/src/pubsub/unpub.js",
+    "axona-protocol/src/pubsub/envelope.js",
+    "axona-protocol/src/pubsub/ed25519.js",
+    "axona-protocol/src/pubsub/metrics.js",
+    "axona-protocol/src/utils/region-names.js",
+    "axona-protocol/src/utils/geo.js",
+    "axona-protocol/src/utils/s2.js",
+    "axona-protocol/src/utils/hexid.js",
+    "axona-protocol/src/transport/handshake.js",
+    "axona-protocol/src/transport/handshake-auth.js",
+    "axona-protocol/src/transport/wire.js",
+    "axona-protocol/src/transport/web/index.js",
+    "axona-protocol/src/transport/web/mesh.js",
+    "axona-protocol/src/transport/web/mesh-auth.js",
+    "axona-protocol/src/transport/web/webrtc.js",
+    "axona-protocol/src/transport/web/bridge.js",
+    "axona-protocol/src/transport/web/composite.js",
+    "axona-protocol/src/transport/sim/index.js",
+    "axona-protocol/src/transport/sim/network.js",
+    "axona-protocol/src/transport/sim/transport.js",
+    "axona-protocol/src/persistence/interface.js",
+    "axona-protocol/src/crypto/noble-ed25519.js",
+    "axona-protocol/std/index.js",
+    "axona-protocol/std/chunk.js",
+
+    "leaflet/leaflet.css",
+    "leaflet/leaflet-src.esm.js",
+    "leaflet/images/marker-icon.png",
+    "leaflet/images/marker-icon-2x.png",
+    "leaflet/images/marker-shadow.png",
+
+    "pica/pica.min.js",
+    "minidenticons/minidenticons.min.js",
+    "s2js/s2js.esm.js",
+    "bigfloat/esm/index.js",
+    "bigfloat/esm/BigFloat32",
+    "bigfloat/esm/BigFloat53",
+    "bigfloat/esm/BigComplex",
+    "bigfloat/esm/BaseInfo32",
+    "bigfloat/esm/util",
+
+    // TODO: the libraries
+  ].map(name => new Request(name, {cache: 'no-store'}))); // Might not be necessary, but if any browsers insist on their own caching...
+  await Promise.all([
+    // These are referenced within material web, but missing. Turns out we don't need them,
+    // but let's cache empty responses to keep the console cleaner.
+    "https://esm.run/npm/lit@3.3.1/+esm",
+    "https://esm.run/npm/tslib@2.8.1/+esm",
+    "https://esm.run/npm/lit@3.3.1/static-html.js/+esm",
+    "https://esm.run/npm/lit@3.3.1/decorators.js/+esm",
+    "https://esm.run/npm/lit@3.3.1/directives/style-map.js/+esm",
+    "https://esm.run/npm/lit@3.3.1/directives/class-map.js/+esm",
+    "https://esm.run/npm/lit@3.3.1/directives/when.js/+esm",
+    "https://esm.run/npm/lit@3.3.1/directives/live.js/+esm",
+  ].map(url => cache.put(new Request(url),
+                         new Response("", {headers: { "Content-Type": "text/javascript" }}))));
+  return version;
+}
+
+
 self.addEventListener('message', async event => {
-  //console.log('service worker got message', event.data);
   const {method, params} = event.data;
   switch (method) {
   case 'version':
-    console.log('service-worker reporting serviceVersion', serviceVersion);
     event.waitUntil(event.source.postMessage({method: 'version', params: serviceVersion}));
+    break;
+  case 'cacheSource': // Cache source in the given version.
+    event.waitUntil(cacheSource(params, event)
+		    .then(version => event.source.postMessage({method: 'cached', params: version})));
     break;
   default:
     console.warn(`Unrecognized service worker message: "${event.data}".`);
