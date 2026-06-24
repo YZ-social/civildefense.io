@@ -184,12 +184,25 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     width: 125px;
     height: 34px;
 }
+.alert-marker {
+    text-shadow: 8px -3px 10px rgb(0 0 0 / 60%);
+    animation: pulse ease 0.8s 1;
+}
+.alert-commented {
+    display: none;
+    height: 40px;
+    border-radius: 20px;
+    background-image: radial-gradient(transparent 30%, var(--md-sys-color-secondary));
+    animation: pulse ease 0.8s 1;
+}
 .alert-pin {
     text-shadow: 8px -3px 10px rgb(0 0 0 / 60%);
-    font-size: 40px;
-    line-height: 40px;
+    font-size: 30px;
+    line-height: 30px;
+    position: absolute;
+    top: 5px;
+    left: 5px;
     text-align: center;
-    animation: pulse ease 0.8s 1;
 }
 @keyframes pulse {
     0% { filter: saturate(1); }

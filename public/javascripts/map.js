@@ -221,10 +221,10 @@ export class Marker { // A wrapper around L.marker
   }
   static makeIcon(hashtag) { // Return a Leaflet icon
     return L.divIcon({
-      html: Hashtags.formatMarker(hashtag),
+      html: `<div class="alert-commented"></div><div class="alert-pin">${Hashtags.formatMarker(hashtag)}</div>`,
       iconSize: [40, 40],
       popupAnchor: [0, 0],
-      className: 'alert-pin'
+      className: 'alert-marker'
     });
   }
   static updateMarkers(canonicalHashtag, extendedHashtag) { // Update markers becase we have discovered an extendedHashtag that we have only had as canonical.
@@ -278,7 +278,8 @@ export class Marker { // A wrapper around L.marker
     } else {
       wrapper.needsRedisplay = true;
     }
-    wrapper.startFader(remaining); // From the new value of remaining, after marker is set in wrapper, regardless of popup/dirty state.
+    wrapper.startFader('.alert-pin', remaining); // From the new value of remaining, after marker is set in wrapper, regardless of popup/dirty state.
+    wrapper.destroyer = setTimeout(() => wrapper.destroy(), remaining);
     return wrapper;
   }
   needsRedisplay = true;
@@ -432,11 +433,11 @@ export class Marker { // A wrapper around L.marker
       }
       replies.push(data); // TODO: when we implement edited replies, we'll have to find the existing
       replies.sort((a, b) => a.issuedTime - b.issuedTime); // Could be slightly out of order.
-      const element = marker.getElement();
+      const element = this.startFader('.alert-commented', issuedTime + ttl - Date.now());
+      element.style.display = 'block';
       // Restart the pulse animation by setting animationName to something it isn't.
       element.style.animationName = element.style.animationName === 'pulse2' ? 'pulse' : 'pulse2';
-      if (replies[replies.length - 1] !== data) return; // Replies can come out of order.
-      this.startFader(issuedTime + ttl - Date.now());
+      if (replies[replies.length - 1] !== data) return; // Replies could come out of order.
       this.showNotification({agent, issuedTime, body: payload.message || payload.name || payload});
     } else {
       replies.splice(replies.findIndex(reply => reply.subject === data.subject), 1);
@@ -534,14 +535,14 @@ export class Marker { // A wrapper around L.marker
     if (file) data.files = [await P2PWebNetwork.dataURL2blob(file, name)];
     share(data);
   }
-  startFader(remaining) { // Set up or update fader.
+  startFader(selector, remaining) { // Set up or update fader on the specified marker element, returning that element.
     const { marker } = this;
+    const element = marker.getElement().querySelector(selector);
     const fraction = remaining / ttl; // Start at 1 and go to 0, but we may be some way along that.
     const endOpacity = 0.5; // Fully transparent is 0, but that's too hard to see. :-)
     const endGrayscale = 1; // Fully gray.
     let opacity = Math.max(endOpacity, fraction);
     let grayscale = 1 - fraction;
-    const element = marker.getElement();
     element.style.filter = `grayscale(${grayscale})`;
     element.style.opacity = opacity;
     // I'd like to let css transitions do the work, but as we zoom, we make different subscriptions and thus start
@@ -549,17 +550,17 @@ export class Marker { // A wrapper around L.marker
     const interval = 2e3; // Milliseconds / step
     const opacityFade = (endOpacity - opacity) *  interval / remaining; // change / step
     const grayscaleFade = (endGrayscale - grayscale) * interval / remaining;
-    clearInterval(this.fader);
-    this.fader = setInterval(() => {
+    clearInterval(this[selector]);
+    this[selector] = setInterval(() => {
       element.style.filter = `grayscale(${grayscale += grayscaleFade})`;
       element.style.opacity = (opacity += opacityFade);
     }, interval);
-
-    clearInterval(this.destroyer);
-    this.destroyer = setTimeout(() => this.destroy(), remaining);
+    return element;
   }
   destroy() { // Remove this Marker pin entirely.
-    clearInterval(this.fader);
+    clearInterval(this['.alert-pin']);
+    clearInterval(this['.alert-commented']);
+    clearInterval(this.destroyer);
     this.clearAvatars();
     // Unsubscribe from replies.
     networkPromise?.then(async contact => contact.subscribe({eventName: this.subject, region: this.region, handler: null}));
