@@ -17,7 +17,7 @@ const translations = {
   ['Unable to get location.']: {es: "No se puede obtener la ubicación."},
   ['The service connection has closed. Please reload.']: {es: "La conexión de servicio se ha cerrado. Por favor, recargue la página."},
   ['Connection closed due to inactivity. Will reconnect on use.']: {es: "Conexión cerrada por inactividad. Se reconectará al usarla."},
-  ['Getting your location...']: {es: "Obteniendo tu ubicación..."},
+  ['Connecting to network...']: {es: "Conectando a la red..."},
   ['Disconnected. Retrying in ']: {es: "Desconectado. Reintentando en "},
   [' seconds.']: {es: " segundos."},
 
