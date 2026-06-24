@@ -290,6 +290,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
     showMessage('');
     initializeGeolocation(needsConnection);
     if (!networkPromise) {
+      showMessage(Int`Connecting to network...`);
       const {promise, resolve} = Promise.withResolvers();
       networkPromise = promise;
       console.log('Creating node.');
@@ -310,6 +311,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	window.onpagehide = () => contact.fastDisconnect();
 	// causes errors in some browsers: window.onunload = () => contact.fastDisconnect();
 
+	showMessage(Int`Tap anywhere to mark a concern. Markers fade after 24 hours.`, 'instructions');
 	contact.detachment.then(onPurpose => { // On disconnect (whether initiated by us or not), message user and set up for reconnection.
 	  networkPromise = null;
 	  const message = onPurpose ? Int`Connection closed. Will reconnect on use.` :

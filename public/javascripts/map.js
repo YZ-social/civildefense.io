@@ -1,4 +1,4 @@
-const { domtoimage, localStorage, URL, Blob, URLSearchParams, getComputedStyle } = globalThis;
+const { domtoimage, localStorage, URL, File, URLSearchParams, getComputedStyle } = globalThis;
 import * as L from 'leaflet';
 import { s2 } from 's2js';
 import { Int } from './translations.js';
@@ -127,6 +127,7 @@ export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Updat
 let last = []; // Last published lat, lng, subject
 const maxPublish = 5;
 // Publish an alert to all applicable eventNames, canceling as required. Promises subject (msgId).
+let publishing = false;
 async function publishAlert({lat, lng,
 			     originalPosting = undefined,
 			     hashtag = Hashtags.getPublish(),
@@ -139,55 +140,61 @@ async function publishAlert({lat, lng,
   // However, the 'unpublishing' (if any) is invoked first.
   // To do this, we must hash the eventName ourselves.
   //console.log('publishAlert', {lat, lng, hashtag, payload, cancel, subject, issuedTime, rest});
+  if (publishing) { console.log('skiping overlappying publish'); return; } // do not stack them up.
+  try {
+    publishing = true;
 
-  const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
-  const act = Agent.tag;
-  let oldCells = null, oldHash, oldSubject = null; // Recorded for logging, below.
-  let lastFillIn;
-  if (payload) {
-    lastFillIn = {lat, lng, hashtag, issuedTime};
-    last.push(lastFillIn); // Capture the added data.
-    const periodStart = Date.now() - (maxPublish * 60e3); // maxPublish minutes ago.
-    last = last.filter(past => past.issuedTime >= periodStart);
-    if (cancel === undefined && last.length > maxPublish) { // Unless specified otherwise, cancel oldest over maxPublish.
-      showMessage(Int`Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.`, 'instructions');
-      cancel = last.shift();
-    }
-  }
-  if (cancel) {
-    const {lat, lng, hashtag, subject} = cancel;
-    oldCells = getContainingCells(lat, lng);
-    oldHash = hashtag; oldSubject = subject;
-    const region = P2PWebNetwork.regionCode(lat, lng);
-    for (const cell of oldCells) {
-      const eventName = alertTopic(cell, hashtag);
-      // Note: we cannot unpublish replies by others, but they expire after a while anyway.
-      contact.publish({eventName, region, subject, payload: null});
-    }
-  }
-
-  const cells = getContainingCells(lat, lng);
-  const region = P2PWebNetwork.regionCode(lat, lng);
-  for (const cell of cells) {
-    const eventName = alertTopic(cell, hashtag);
+    const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
+    const act = Agent.tag;
+    let oldCells = null, oldHash, oldSubject = null; // Recorded for logging, below.
+    let lastFillIn;
     if (payload) {
-      const msgId = await contact.publish({eventName, region, payload, issuedTime, hashtag, act, ...rest});
-      if (subject && subject !== msgId) throw new Error(`msgId is drifting: ${subject} => ${msgId}`);
-      subject = msgId;
-      if (lastFillIn) {
-	lastFillIn.subject = subject;
-	lastFillIn = null;
+      lastFillIn = {lat, lng, hashtag, issuedTime};
+      last.push(lastFillIn); // Capture the added data.
+      const periodStart = Date.now() - (maxPublish * 60e3); // maxPublish minutes ago.
+      last = last.filter(past => past.issuedTime >= periodStart);
+      if (cancel === undefined && last.length > maxPublish) { // Unless specified otherwise, cancel oldest over maxPublish.
+	showMessage(Int`Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.`);
+	cancel = last.shift();
       }
-    } else {
-      await contact.publish({eventName, region, subject, payload: null});
     }
+    if (cancel) {
+      const {lat, lng, hashtag, subject} = cancel;
+      oldCells = getContainingCells(lat, lng);
+      oldHash = hashtag; oldSubject = subject;
+      const region = P2PWebNetwork.regionCode(lat, lng);
+      for (const cell of oldCells) {
+	const eventName = alertTopic(cell, hashtag);
+	// Note: we cannot unpublish replies by others, but they expire after a while anyway.
+	contact.publish({eventName, region, subject, payload: null});
+      }
+    }
+
+    const cells = getContainingCells(lat, lng);
+    const region = P2PWebNetwork.regionCode(lat, lng);
+    for (const cell of cells) {
+      const eventName = alertTopic(cell, hashtag);
+      if (payload) {
+	const msgId = await contact.publish({eventName, region, payload, issuedTime, hashtag, act, ...rest});
+	if (subject && subject !== msgId) throw new Error(`msgId is drifting: ${subject} => ${msgId}`);
+	subject = msgId;
+	if (lastFillIn) {
+	  lastFillIn.subject = subject;
+	  lastFillIn = null;
+	}
+      } else {
+	await contact.publish({eventName, region, subject, payload: null});
+      }
+    }
+    if (!payload) {
+      const index = last.findIndex(past => past.subject === subject);
+      if (index >= 0) last.splice(index, 1);
+    }
+    console.log('Published', {cells, n: cells.length, region, hashtag, subject, payload, oldCells, oldHash, oldSubject});
+    return subject;
+  } finally {
+    publishing = false;
   }
-  if (!payload) {
-    const index = last.findIndex(past => past.subject === subject);
-    if (index >= 0) last.splice(index, 1);
-  }
-  console.log('Published', {cells, n: cells.length, region, hashtag, subject, payload, oldCells, oldHash, oldSubject});
-  return subject;
 }
 
 let openOnReceive = null;
@@ -626,7 +633,6 @@ var trackMap;
 export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate zoomed initial map and handlers for this position.
   // Then show initial message and updateSubscriptions.
 
-  showMessage(Int`Getting your location...`);
   P2PWebNetwork.setSessionRegion({lat, lng});
 
   // Map will be centered at the given current location marker, unless overriden by query parameters.
@@ -699,6 +705,4 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
     Marker.openPopup(await publishAlert({lat, lng}));
     Agent.current.persistPublicMetadata(P2PWebNetwork.regionCode(lat, lng));
   });
-
-  showMessage(Int`Tap anywhere to mark a concern. Markers fade after 24 hours.`, 'instructions');
 }

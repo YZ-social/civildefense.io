@@ -207,7 +207,7 @@ export class P2PWebNetwork {
   static regionCode(lat, lng) { // Answer containing region code.
     return geoCellId(lat, lng);
   }
-  static delay(ms, label = '', result) { // Promise result after ms milliseconds.
+  static delay(ms, result) { // Promise result after ms milliseconds.
     return new Promise(resolve => setTimeout(resolve, ms, result));
   }
   resetStatePromises() { // Fire any existing detach(), and assign new promises and resolvers for attachment and detachment.
