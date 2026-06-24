@@ -132,7 +132,6 @@ export class P2PWebNetwork {
       name = parts.join('.');
       result = new File([result], name, {type});
     }
-    console.log('fixme in:', width, height, blob.type, blob.size, 'out:', sizedWidth, sizedHeight, result.type, result.size);
     return result;
   }
   static u82dataURL(u8, mime) { // Answer a dataURL from the Uint8Array and mime type string.
@@ -175,15 +174,16 @@ export class P2PWebNetwork {
     await this.attachment;
     const topic = {region, name: eventName};
     if (owner) topic.owner = owner;
+    console.log('*** fixme', {eventName, region, owner, since, topic});
     if (handler) {
       const callback = async envelope => {
 	const {message, deleted, msgId, signerPubkey, topic, ts} = envelope;
 	console.log('fired', {msgId, topic, ts, signerPubkey, deleted, message});
 	if (deleted) {
-	  handler({subject: msgId, payload: null, topic, ts}); // fixme remove topic, ts here and below.
+	  handler({subject: msgId, payload: null, agent: signerPubkey, topic, ts}); // fixme remove topic, ts here and below.
 	  return;
 	}
-	handler({...message, subject: msgId, topic, ts});
+	handler({...message, agent: signerPubkey, subject: msgId, topic, ts});
       };
       await this.peer.sub(topic, callback, {since});
     } else {
