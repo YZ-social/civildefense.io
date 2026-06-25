@@ -117,7 +117,7 @@ document.getElementById('wipe').onclick = async event => {
   localStorage.clear();
   await caches.keys().then(keys => Promise.all(keys.map(key => caches.delete(key))));
   await navigator.serviceWorker.getRegistrations().then(registrations => Promise.all(registrations.map(r => r.unregister())));
-  window.location.replace('https://yz.social/civildefense.html');
+  window.location.replace('about/index.html');
 };
 document.getElementById('scriptChooser').onchange = event => { // Run a script module chosen by the user. e.g., for testing.
   const file = event.currentTarget.files[0];

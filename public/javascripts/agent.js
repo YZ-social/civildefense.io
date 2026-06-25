@@ -141,7 +141,7 @@ export class Agent {
     console.log('fixme publish delete', {eventName, region, owner, subject}); // fixme remove this.
     if (!subject) return null; // We have not published a value, so nothing to kill.
     await contact.publish({eventName, region, owner, subject, payload: null});
-    await contact.peer.unpub({region, name: eventName, owner}, {signWith: this.identity}); // fixme remove this
+    //await contact.peer.unpub({region, name: eventName, owner}, {signWith: this.identity}); // fixme remove this
     return null;
   }
 
