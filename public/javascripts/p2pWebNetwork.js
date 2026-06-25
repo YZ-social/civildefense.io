@@ -174,7 +174,6 @@ export class P2PWebNetwork {
     await this.attachment;
     const topic = {region, name: eventName};
     if (owner) topic.owner = owner;
-    console.log('*** fixme', {eventName, region, owner, since, topic});
     if (handler) {
       const callback = async envelope => {
 	const {message, deleted, msgId, signerPubkey, topic, ts} = envelope;
