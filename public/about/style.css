@@ -149,7 +149,7 @@ a:hover { color: var(--red); }
     background: rgba(10, 24, 70, 0.92);
     color: rgba(255,255,255,0.88);
     padding: 0.8rem 1.1rem;
-    font-size: 0.88rem;
+    font-size: 18px;
     line-height: 1.5;
     text-align: center;
     border-top: 2px solid var(--red);
