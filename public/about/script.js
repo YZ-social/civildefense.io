@@ -43,17 +43,17 @@ const wrap = document.querySelector('.carousel-track-outer');
 wrap.addEventListener('mouseenter', stopAuto);
 wrap.addEventListener('mouseleave', resetAuto);
 
-// Auto-advance every 7 seconds
+// Auto-advance every few seconds
 function advance() {
   goTo(current + 1);
 }
 function resetAuto() {
-  if (navigator.userAgentData?.mobile || navigator.maxTouchPoints > 0 || window.matchMedia("(max-width: 768px)").matches) return; // Do not autospin on mobile.
+  if (navigator.userAgentData?.mobile || navigator.maxTouchPoints > 0 || window.matchMedia("(max-width: 768px)").matches) return; // Do not auto-advance on mobile.
   const video = document.querySelector('video');
   if (video.currentTime > 0 && !video.paused && !video.ended && video.readyState > 2) return;
   if (wrap.matches(':hover')) return;
   clearInterval(autoTimer);
-  autoTimer = setInterval(advance, 7e3);
+  autoTimer = setInterval(advance, 10e3);
 }
 function stopAuto() {
   clearInterval(autoTimer);
