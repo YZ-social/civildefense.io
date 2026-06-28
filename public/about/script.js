@@ -48,6 +48,7 @@ function advance() {
   goTo(current + 1);
 }
 function resetAuto() {
+  if (navigator.userAgentData?.mobile || navigator.maxTouchPoints > 0 || window.matchMedia("(max-width: 768px)").matches) return; // Do not autospin on mobile.
   const video = document.querySelector('video');
   if (video.currentTime > 0 && !video.paused && !video.ended && video.readyState > 2) return;
   if (wrap.matches(':hover')) return;
