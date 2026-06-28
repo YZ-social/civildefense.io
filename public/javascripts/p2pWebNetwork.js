@@ -48,12 +48,15 @@ export class P2PWebNetwork {
     await this.transport.start(this.identity.id);
     await this.join();
     this.debug('Joined', this.health().synaptomeSize, 'connections.');
-    // FIXME: This is required to get good results. Shouldn't it be built in to join()?
-    const t0 = Date.now();
-    while (Date.now() - t0 < timeoutMs) {
-      const size = this.synaptomeSize;
-      if (size >= synapseCount) break;
-      await this.constructor.delay(200);
+    if (parseInt(this.constructor.kernelVersion) < 4) {
+      const t0 = Date.now();
+      while (Date.now() - t0 < timeoutMs) {
+	const size = this.synaptomeSize;
+	if (size >= synapseCount) break;
+	await this.constructor.delay(200);
+      }
+    } else {
+      await this.peer.ready({ minPeers: synapseCount, timeoutMs });
     }
     this.info('Connected', this.health().synaptomeSize, 'connections.');
     this.attached(this);
@@ -81,7 +84,7 @@ export class P2PWebNetwork {
     return data.topic;
   }
   async assembleChunkedString(topic) { // Promise the string that was chunkified to topic.
-    const data = await receiveChunkedBytes(this.peer, topic, {timeoutMs: 60e3/*, onProgress: console.log*/});
+    const data = await receiveChunkedBytes(this.peer, topic, {/*, onProgress: console.log*/});
     return bytesToString(data.bytes);
   }
 
@@ -156,11 +159,12 @@ export class P2PWebNetwork {
     const topic = {name: uuidv4(), region, owner};
     const buffer = await blob.arrayBuffer();
     const u8 = new Uint8Array(buffer);
+    console.log('blob', blob.size, u8.length);
     const data = await publishChunkedBytes(this.peer, u8, {topic, signWith, mime, name, ...rest});
     return data.topic;
   }
   async assembleChunkedDataURL(topic) { // Promise {bytes, mime, name, dataURL} that was chunkified to topic.
-    const data = await receiveChunkedBytes(this.peer, topic, {timeoutMs: 60e3/*, onProgress: console.log*/});
+    const data = await receiveChunkedBytes(this.peer, topic, {/*, onProgress: console.log*/});
     // Using dataURL is not terribly efficient, but it is convenient, because formatReplies can return HTML strings with all the data in them,
     // instead of, e.g., needing javascript to later set properties of elements to createObjectURL of a Blob.
     data.dataURL = this.constructor.u82dataURL(data.bytes, data.mime);
@@ -198,7 +202,8 @@ export class P2PWebNetwork {
     const options = {signWith};
     //console.log({topic, subject, payload, issuedTime, rest, signWith});
     if (payload) return await this.peer.pub(topic, {issuedTime, payload, ...rest}, options);
-    if (!subject) return null;
+    // The next would not normally happen, but until since:'latest' works, we need a way to send a null payload and have the handler delete the entry.
+    if (!subject) return await this.peer.pub(topic, {issuedTime, payload, ...rest}, options);
     return await this.peer.kill(topic, subject, options);
   }
 

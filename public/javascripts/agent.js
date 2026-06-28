@@ -62,19 +62,19 @@ export class Agent {
       const owner = this.tag;
       ['handle', 'avatar'].forEach(type => {
 	const eventName = this.networkPersistKey(type);
-	console.log('fixme subscribing', {type, eventName, region, owner}); // fixme: remove this and restore since:'latest'
 	contact.subscribe({eventName, region, owner, /*since: 'latest',*/ handler: data => this.setPublicData({...data, type})});
       });
     });
   }
   async setPublicData(data) { // Subscription to public data has fired. Update value, but do not not re-publish.
     let {payload, subject, type, topic, ts} = data; // fixme remove topic and ts
-    console.log('fixme got data', {tag: this.tag, topic, ts, type, subject, payload});
-    if (payload && (type === 'avatar')) {
-      const contact = await networkPromise;
-      const {dataURL} = await contact.assembleChunkedDataURL(payload);
-      payload = dataURL;
-    }
+    // WARNING: IF we chunkify avatars, and we use since:'all', then we need lock out asynchronous
+    // decoding of later timestamps, or of null payloads.
+    // if (payload && (type === 'avatar')) {
+    //   const contact = await networkPromise;
+    //   const {dataURL} = await contact.assembleChunkedDataURL(payload);
+    //   payload = dataURL;
+    // }
     this.updateValue(payload, 'public', type, false);
     if (subject) this.publicMsgId[type] = subject;
   }
@@ -130,19 +130,19 @@ export class Agent {
     const contact = await networkPromise;
     if (value) {
       let payload = value;
-      if (type === 'avatar') {
-	const blob = await P2PWebNetwork.dataURL2blob(value);
-	payload = await contact.chunkifyBlob({blob, region});
-      }
-      console.log('fixme publish', {eventName, region, owner, payload});
+      // Our downsampling is such that we do not need to chunkify.
+      // if (type === 'avatar') {
+      // 	const blob = await P2PWebNetwork.dataURL2blob(value);
+      // 	payload = await contact.chunkifyBlob({blob, region});
+      // }
       return contact.publish({eventName, region, owner, payload});
     }
-    const subject = this.publicMsgId[type];
-    console.log('fixme publish delete', {eventName, region, owner, subject}); // fixme remove this.
-    if (!subject) return null; // We have not published a value, so nothing to kill.
-    await contact.publish({eventName, region, owner, subject, payload: null});
-    //await contact.peer.unpub({region, name: eventName, owner}, {signWith: this.identity}); // fixme remove this
-    return null;
+    // For now, until since:'latest' works, supply a null payload and no subject.
+    await contact.publish({eventName, region, owner, payload: null});
+    // const subject = this.publicMsgId[type];
+    // if (!subject) return null; // We have not published a value, so nothing to kill.
+    // await contact.publish({eventName, region, owner, subject, payload: null});
+    // return null;
   }
 
   // We represent handles and avatars by inserting stuff into given elements.
