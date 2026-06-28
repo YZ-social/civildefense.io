@@ -165,7 +165,7 @@ async function publishAlert({lat, lng,
       for (const cell of oldCells) {
 	const eventName = alertTopic(cell, hashtag);
 	// Note: we cannot unpublish replies by others, but they expire after a while anyway.
-	contact.publish({eventName, region, subject, payload: null});
+	await contact.publish({eventName, region, subject, payload: null});
       }
     }
 
