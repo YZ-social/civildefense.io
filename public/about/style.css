@@ -284,7 +284,12 @@ a:hover { color: var(--red); }
     box-shadow: 0 6px 36px rgba(255,90,0,0.65);
     transform: translateY(-2px);
 }
-
+.centered {
+    display: block;
+    margin: 0 auto;
+    width: fit-content;
+    padding-bottom: 20px;
+}
 /* ── Footer ─────────────────────────────────────────────── */
 footer {
     background: var(--navy-dark);
