@@ -127,8 +127,11 @@ export const Hashtags = {
     this.chipset.firstChild.onclick = event => { event.stopPropagation(); Marker.closePopup(); };
     this.chipset.firstChild.onchange = event => { // Add the new hashtag.
       resetInactivityTimer();
-      let tag = event.target.value.trim().replace(/^#/, '').toLocaleLowerCase();
-      if (tag.startsWith('#'))
+      let tag = event.target.value.trim()
+	  .replace(/^#/, '')       // No leading hash
+	  .replace(/\s+/g, ' ')    // Replace multiple spaces with a single space
+	  .normalize('NFD')        // Standardize different ways of making accents into decomposed form - but do not remove them.
+	  .toLocaleLowerCase();
       if (!tag) return;
       Marker.closePopup();
       this.add(tag);
