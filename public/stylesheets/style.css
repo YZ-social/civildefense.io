@@ -227,6 +227,11 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     align-items: center;
     gap: 10px;
 }
+.pub {
+    animation: pulse ease 0.8s 1;
+    --_label-text-weight: 800;
+    --_selected-label-text-color: var(--md-sys-color-secondary);
+}
 md-filter-chip {
     --md-sys-color-surface-container-low: #B8C2D7; /* non-selected elevated filter chip */
 }

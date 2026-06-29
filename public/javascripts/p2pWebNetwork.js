@@ -38,7 +38,7 @@ export class P2PWebNetwork {
     const network = new this();
     Object.assign(network, {infoLogger, debugLogger, identity, transport, node, peer});
     network.resetStatePromises();
-    network.info('Created network node for wire/kernel versions', this.wireVersion, this.kernelVersion);
+    network.info('Created network node for kernel', this.kernelVersion);
     await network.connect({synapseCount, timeoutMs});
     return network;
   }
