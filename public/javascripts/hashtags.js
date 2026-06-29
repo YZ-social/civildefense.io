@@ -149,7 +149,15 @@ export const Hashtags = {
   toggleChip(chip) {
     const label = chip.label;
     const isPub = label === this.getPublish();
-    const altPub = isPub && this.getSubscribe().find(tag => tag != label);
+    let altPub;
+    if (isPub) { // Find the next alternative, if possible.
+      let subs = this.getSubscribe();
+      if (subs.length > 1) {
+	let pubIndex = subs.indexOf(label);
+	let index = (pubIndex + 1) % subs.length;
+	altPub = subs[index];
+      }
+    }
     if (altPub) this.setPublish(altPub);
     else if (isPub && !chip.selected) { chip.selected = true; return; } // Don't allow deselecting the only pub tag.
     this.hashtags[label] = chip.selected;
