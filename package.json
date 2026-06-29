@@ -1,7 +1,7 @@
 {
   "name": "@yz-social/civildefense.io",
   "description": "Browser app to safely share live sightings on a map.",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "keywords": [
     "map",
     "browser",
