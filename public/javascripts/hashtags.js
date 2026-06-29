@@ -32,17 +32,17 @@ export const Hashtags = {
     // Here we accept a canonical or extended label, updating our records keyed by the canonical part,
     // but if we currently have just a canonical part we update our records to capture the extended.
     // (We do not change the emoji of an existing extended.)
-    const canonical = canonicalTag(label);
-    const ours = this.canonical2extended[canonical];
-    const extended = ours || label;
-    const isExtendingCanonical = !ours && label !== canonical; // We have only a canonical so far.
-    if (isExtendingCanonical) {
+    const canonical = canonicalTag(label);                   // no emoji, lower case.
+    const ourExtended = this.canonical2extended[canonical];  // our current version, if any
+    const oursHasEmoji = this.firstEmoji(ourExtended);
+    const extended = oursHasEmoji ? ourExtended : label;      // full emoji form to use
+    if (!oursHasEmoji) {
       active = this.hashtags[canonical] || active;
-      delete this.hashtags[canonical];
+      delete this.hashtags[ourExtended];
     }
     this.hashtags[extended] ||= active; // If it's 'pub', let it remain so.
-    if (canonical !== extended) this.canonical2extended[canonical] = extended;
-    if (isExtendingCanonical) {
+    this.canonical2extended[canonical] = extended;
+    if (!oursHasEmoji) {
       this.onchange({resetSubscriptions: false});
       if (updateMarkers) Marker.updateMarkers(canonical, extended);
     }
@@ -54,13 +54,16 @@ export const Hashtags = {
   getSubscribe() { // Return a list of the hashtags to which the user intendeds to subscribe.
     return this.getAll().filter(tag => this.hashtags[tag]);
   },
+  isPublish(key) {
+    return this.hashtags[key] === 'pub';
+  },
   getPublish() { // Return the one hashtag to which the user intends to publish.
-    return this.getAll().find(key => this.hashtags[key] === 'pub');
+    return this.getAll().find(key => this.isPublish(key));
   },  
   firstEmoji(tag) { // First emoji that appears in string, else falsy.
     // I would prefer that it take just the first emoji, but that doesn't grab double-wide ones
     // such as flags. So instead this will return any leading emoji ending with a space, terminator, or normal character.
-    return tag.match(/\p{Emoji}+/u)?.[0];
+    return tag && tag.match(/\p{Emoji}+/u)?.[0];
 
   },
   identicon(tag, slot = '') { // HTML for an identicon representing tag.
@@ -74,7 +77,7 @@ export const Hashtags = {
     const emoji = this.firstEmoji(tag);
     return emoji ? tag : this.identicon(tag) + tag;
   },
-  onchange({redisplaySubscribers = true, resetSubscriptions = true} = {}) { // Update and persist internal data, and update visuals.
+  onchange({redisplaySubscribers = true, highlightPublish = false, resetSubscriptions = true} = {}) { // Update and persist internal data, and update visuals.
     // If redisplaySubscribers, the presence/order may have changed.
     if (redisplaySubscribers) this.resetSubscriberDisplay();
     localStorage.setItem('hashtags', JSON.stringify(this.hashtags));
@@ -127,16 +130,15 @@ export const Hashtags = {
     this.chipset.firstChild.onclick = event => { event.stopPropagation(); Marker.closePopup(); };
     this.chipset.firstChild.onchange = event => { // Add the new hashtag.
       resetInactivityTimer();
-      let tag = event.target.value.trim()
+      let tag = event.target.value.trim()  // Get into standard form, but do not strip emoji or case into canonical yet.
 	  .replace(/^#/, '')       // No leading hash
 	  .replace(/\s+/g, ' ')    // Replace multiple spaces with a single space
-	  .normalize('NFD')        // Standardize different ways of making accents into decomposed form - but do not remove them.
-	  .toLocaleLowerCase();
+	  .normalize('NFD');        // Standardize different ways of making accents into decomposed form - but do not remove them.
       if (!tag) return;
       Marker.closePopup();
-      this.add(tag);
+      tag = this.add(tag); // Might exist, in which case tag might now be extended.
       this.setPublish(tag);
-      this.onchange();
+      this.onchange({highlightPublish: true});
     };
   },
   remove(chip, redisplaySubscribers = false) {
@@ -153,7 +155,7 @@ export const Hashtags = {
     this.hashtags[label] = chip.selected;
     chip.removable = !chip.selected;
   },
-  getChip(label) {
+  getChip(label) { // Handy for scripting, but not otherwise used in app.
     for (const chip of this.chipset.children) {
       if (chip.label === label) return chip;
     }

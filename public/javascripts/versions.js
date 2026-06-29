@@ -9,7 +9,7 @@ export function stripLeadingEmoji(string) { // Return string without any leading
     return string.replace(/^\p{Emoji}*\uFE0F?\s*/u, '') || string;
 };
 export function canonicalTag(tag) { // A string representing tag, without the (leading) emoji if any.
-  return stripLeadingEmoji(tag);
+  return stripLeadingEmoji(tag).toLocaleLowerCase();
 }
 
 export function agentTopic(string) { // Return topic name for public info about agent specified by tag.
