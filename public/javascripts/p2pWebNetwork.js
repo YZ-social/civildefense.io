@@ -20,7 +20,7 @@ export class P2PWebNetwork {
   static setSessionRegion = resolveSessionRegion;
   static sessionRegion = sessionRegionPromise;
   static async create({infoLogger = console.log, debugLogger,
-		       region, identity, bridgeUrl = 'wss://bridge.axona.net',
+		       region, identity, bridgeUrl = 'wss://testnet.axona.net',
 		       synapseCount = 4, timeoutMs = 10e3} = {}) {
     // Promise a ready-to-use network peer.
     // Complex region/identity behavior: Must pass either identity or region (either can be a promise), or will wait for setSessionRegion() to be called.
