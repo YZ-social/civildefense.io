@@ -1,6 +1,6 @@
 const { Request, Response, URL, clients} = self;
 // Little point in trying to automatically pull this through package.json, as we need a byte change in THIS file to trigger a new worker.
-const serviceVersion = '3.2.0';
+const serviceVersion = '4.3.0';
 
 async function cacheFirst({request, event}) {
   // Handle request from any cache, else fetch and store it in serviceCache.
