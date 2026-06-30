@@ -1,6 +1,5 @@
 const { domtoimage, localStorage, URL, File, URLSearchParams, getComputedStyle } = globalThis;
 import * as L from 'leaflet';
-import { s2 } from 's2js';
 import { Int } from './translations.js';
 import { consume, openDisplay } from './display.js';
 import { alertTopic } from './versions.js';
