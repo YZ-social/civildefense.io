@@ -380,8 +380,10 @@ export class Marker { // A wrapper around L.marker
   }
   formatAttributionActions({agent, hashtag}) { // Anser div HTML containing: [deleter] sharer [hashtag]
     // Where deletere appears if it our reply (no hashtag), and hashtag if present is a button if ours (and otherwise just text).
-    const deleter = !hashtag && agent === Agent.tag ? `<md-outlined-icon-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-icon-button>` : '';
+    const isOurs = agent === Agent.tag;
+    const deleter = !hashtag && isOurs ? `<md-outlined-icon-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-icon-button>` : '';
     const pubtag = hashtag ? this.constructor.formatAttributionHashtag(agent, hashtag) : '';
+    if (isOurs && !this.replies.length) showMessage(Int`Change the topic or remove the alert with the topic button in the upper right of the conversation dialog.`, 'instructions');
     return `<div>${deleter} ${pubtag}</div>`;
   }
   formatAttribution({agent, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/[deleter]+sharer+[hashtag]
