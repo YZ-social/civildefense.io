@@ -107,7 +107,8 @@ class Node {  // Stuff we have to do every time. TODO: build something like this
     const id = await deriveTopicId({ region, name: eventName });
     const topicIdentifier = metricTopic(id);
     if (handler) {
-      const callback = async ({...rest}) => handler({receiver: this, ...rest}); // Add receiver to envelope.
+      const callback = envelope => console.log('***** FIXME metrics callback *****', envelope);
+      //const callback = async ({...rest}) => handler({receiver: this, ...rest}); // Add receiver to envelope.
       await this.peer.sub(topicIdentifier, callback, {since});
     } else {
       await this.peer.unsub(topicIdentifier, {});
@@ -149,8 +150,9 @@ describe("CivilDefense", function () {
   // how long we are willing to wait in in the test before assuming it is never going to happen.
   const connectAllowanceMS = 20e3;
   const deliveryAllowanceMS = 20e3;
+
   //const location = regionCenter('uscentlw');
-  const location = regionCenter('uswest');  // tends to fail
+  const location = regionCenter('uswest');  // TODO: pick one
   
   let alice, bob, carol, david, emma;
   let aliceKillTag, currentOperation;
@@ -198,7 +200,6 @@ describe("CivilDefense", function () {
       TestNode.create({location, events: {}, label: 'alice', authorIdentity: '{"kind":"author","pubkey":"b08988518013fabc5949353281d263cb7916f273f3f8badf0b16443a67d0b05c","privkey":"MC4CAQAwBQYDK2VwBCIEIC7ZrU8C2WSBdoBQW/JoE0ZYRkp/kFcCGf7H25DVqM17","createdAt":1782508727637}'}),
       TestNode.create({location, events: {}, label: '  bob', authorIdentity: '{"kind":"author","pubkey":"6447bae1e8f1d5c99243251b43b4d354fb4928c10b69076563617c06fff46ca3","privkey":"MC4CAQAwBQYDK2VwBCIEIGGHVqedJBPtzSDR3P03HHpWTPlyXteHJAPtABmdwujM","createdAt":1782508849433}'})
     ]);
-    await alice.subscribeOpenMetrics({eventName, region:regionCode, since: 'latest', handler: envelope => console.log('*** fixme got metrics', envelope)});
     await Promise.all([alice.subscribe({expectedCount: 2}), bob.subscribe({expectedCount: 2})]);
     // Now carol joins and subscribes.
     carol = await TestNode.create({location, events: {}, label: 'carol', authorIdentity: '{"kind":"author","pubkey":"9fac71086211be29c685fc8aeab7725f4e78a0476482b817b9160273a40812e8","privkey":"MC4CAQAwBQYDK2VwBCIEILSc0paO923M0X8d8ux6JkjEFz65gk2BVBPlTtlZD6Q3","createdAt":1782508860832}'});
@@ -210,6 +211,7 @@ describe("CivilDefense", function () {
     await TestNode.delay(500); // FIXME: without this delay, subscription handlers are called in the wrong order.
     await   bob.publish({message: '  bob pub'});
     await Promise.all([alice.ready, bob.ready, carol.ready]);
+    await alice.subscribeOpenMetrics({eventName, region:regionCode, handler: envelope => console.log('*** fixme got metrics', envelope)});
   }, 2 * connectAllowanceMS + deliveryAllowanceMS);
   describe("initial", function () {
     it("alice receives all pubs from herself and bob", function () { expect(alice.events.initial).toEqual(inOrder); });
