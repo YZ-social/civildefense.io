@@ -76,6 +76,8 @@ const translations = {
   ['#pickLabels']: {en: "You can pick the labels you like, or securely capture any of the following...", es: "Puede elegir las etiquetas que prefiera o capturar de forma segura cualquiera de las siguientes..."},
   ['handle']: {es: "el título"},
   ['your handle']: {es: "tu título"},
+  ['Type a new topic name to see any alerts on the map with this topic.']: {es: "Escribe el nombre de un nuevo tema para ver en el mapa las alertas relacionadas con dicho tema."},
+  ['Change the topic or remove the alert with the topic button in the upper right of the conversation dialog.']: {es: "Cambia el tema o elimina la alerta mediante el botón de tema situado en la esquina superior derecha del cuadro de diálogo de la conversación."},
 
   ['Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.']: {es: "Demasiadas publicaciones. (Se permiten 5 cada 5 minutos). Eliminando las más antiguas de este período."},
   ['#wipe']: {en: "Wipe all CivilDefense.io data.", es: "Eliminar todos los datos de CivilDefense.io."}

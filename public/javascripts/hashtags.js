@@ -1,7 +1,7 @@
 const { localStorage } = globalThis; // For linters.
 import { stripLeadingEmoji, canonicalTag } from './versions.js';
 import { Int } from './translations.js';
-import { updateSubscriptions, Marker } from './map.js';
+import { updateSubscriptions, Marker, showMessage } from './map.js';
 import { resetInactivityTimer } from './main.js';
 
 // We subscribe to the cartesian product of the list of non-overlapping cells and all hashes.
@@ -133,7 +133,11 @@ export const Hashtags = {
     });
     this.chipset.insertAdjacentHTML("afterbegin",  // Chip to add a new hashtag.
 				    `<md-filled-text-field class="newtag" placeholder="➕${Int`add topic`}"></md-filled-text-field>`);
-    this.chipset.firstChild.onclick = event => { event.stopPropagation(); Marker.closePopup(); };
+    this.chipset.firstChild.onclick = event => {
+      event.stopPropagation();
+      Marker.closePopup();
+      showMessage(Int`Type a new topic name to see any alerts on the map with this topic.`, 'instructions');
+    };
     this.chipset.firstChild.onchange = event => { // Add the new hashtag.
       resetInactivityTimer();
       let tag = event.target.value.trim()  // Get into standard form, but do not strip emoji or case into canonical yet.
