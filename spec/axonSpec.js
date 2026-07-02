@@ -95,6 +95,7 @@ class Node {  // Stuff we have to do every time. TODO: build something like this
   async subscribe({eventName, region, owner, since = 'all', handler}) { // Assign handler for eventName, or remove any handler if falsy.
     const topic = {region, name: eventName};
     if (owner) topic.owner = owner;
+    console.log('subscription for', topic);
     if (handler) {
       const callback = async ({...rest}) => handler({receiver: this, ...rest}); // Add receiver to envelope.
       await this.peer.sub(topic, callback, {since});
@@ -105,6 +106,7 @@ class Node {  // Stuff we have to do every time. TODO: build something like this
   async subscribeOpenMetrics({eventName, region, since = 'all', handler}) { // Assign handler for metrics about eventName, or remove any handler if falsy.
     const topic = {region, name: eventName};
     const id = await deriveTopicId({ region, name: eventName });
+    console.log('metrics for', topic);
     const topicIdentifier = metricTopic(id);
     if (handler) {
       await this.peer.sub(topicIdentifier, handler, {since});
