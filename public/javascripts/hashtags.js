@@ -89,10 +89,12 @@ export const Hashtags = {
   chipset: document.body.querySelector('.watching-hashtags'), // Element containing the user's chips.
   chipHTML(label) {
     const active = this.hashtags[label];
-    return `<md-filter-chip label="${label}" elevated
+    return `<md-filter-chip label="${label}" elevated removable
         ${active === 'pub' ? 'class="pub"' : ''}
-        ${active ? ' selected' : 'removable'}
-      >${this.firstEmoji(label) ? '' : this.identicon(label, 'selected-icon')}</md-filter-chip>`;
+        ${active ? ' selected' : ''}
+      >${this.firstEmoji(label) ? '' : this.identicon(label, 'selected-icon')}
+        <md-icon-button slot="remove-trailing-icon"><md-icon class="material-icons"></md-icon></md-icon-button>
+      </md-filter-chip>`;
   },
   resetSubscriberDisplay() { // Lay out all the hashtag chips display, including the input for adding new ones.
     this.chipset.innerHTML = '';
@@ -114,7 +116,10 @@ export const Hashtags = {
       element.addEventListener('remove', event => {
 	resetInactivityTimer();
 	const chip = event.target;
-	this.remove(chip);
+	if (!chip.selected) return this.remove(chip);
+	event.preventDefault();
+	if (chip.classList.contains('pub')) return false;
+	return this.setPublish(chip.label);
       });
       element.onclick = event => {
 	event.stopPropagation();
@@ -122,6 +127,7 @@ export const Hashtags = {
 	const chip = event.target;
 	this.toggleChip(chip);
 	Marker.closePopup();
+	if (chip.selected) this.setPublish(chip.label);
 	this.onchange({redisplaySubscribers: false});
       };
     });
@@ -161,7 +167,6 @@ export const Hashtags = {
     if (altPub) this.setPublish(altPub);
     else if (isPub && !chip.selected) { chip.selected = true; return; } // Don't allow deselecting the only pub tag.
     this.hashtags[label] = chip.selected;
-    chip.removable = !chip.selected;
   },
   getChip(label) { // Handy for scripting, but not otherwise used in app.
     for (const chip of this.chipset.children) {
