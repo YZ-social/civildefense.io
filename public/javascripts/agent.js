@@ -34,9 +34,12 @@ export class Agent {
     this.updateValue(tag, 'system', 'avatar');
     // Our private choice for this user is stored locally.
     // But for our own avatar, is the public choice.
-    const scope = tag == Agent.tag ? 'public' : 'private';
+    const scope = Agent.isMine(tag) ? 'public' : 'private';
     this.updateFromLocal(scope, 'handle');
     this.updateFromLocal(scope, 'avatar');
+  }
+  static isMine(tag) { // Is this one of mine?
+    return tag === this.tag;
   }
   get tag() { // Retrieved from system handle or avatar.
     return this.values.handle.system;
@@ -56,7 +59,7 @@ export class Agent {
   trackPublicChanges(region) {
     this.currentRegion = region;
     if (this.trackedRegions[region]) return;
-    this.persistPublicMetadata(region);
+    if (Agent.isMine(this.tag)) this.persistPublicMetadata(region);
     networkPromise.then(contact => {
       this.trackedRegions[region] = true;
       const owner = this.tag;
@@ -291,6 +294,7 @@ export class Agent {
     myHandle.onchange = event => {
       resetInactivityTimer();
       const value = myHandle.value || null;
+      console.log('set my handle', value);
       myAgent.updateValue(value, 'public', 'handle');
       myAgent.persistPrivate(value, 'handle'); // So that we'll have it next session.
     };
@@ -299,6 +303,7 @@ export class Agent {
       const fileChooser = document.getElementById('correspondentContainer').querySelector('input[type="file"]');
       fileChooser.oncancel = event => {
 	consume(event);
+	console.log('cancel my avatar');
 	myAgent.updateValue(null, 'public', 'avatar');
 	myAgent.persistPrivate(null, 'avatar'); // So that we'll have it next session.
 	console.log('clearing avatar selection');
@@ -308,6 +313,7 @@ export class Agent {
 	if (!fileChooser.files.length) return;
 	const blob = await P2PWebNetwork.downsampledBlob({blob: fileChooser.files[0], maxDimension: Agent.downsampleResolution});
 	const url = await P2PWebNetwork.blob2dataURL(blob);
+	console.log('set my avatar', url.slice(0, 50));
 	myAgent.updateValue(url, 'public', 'avatar');
 	myAgent.persistPrivate(url, 'avatar'); // So that we'll have it next session.
       };
