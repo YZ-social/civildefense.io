@@ -1,8 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { AxonaPeer, AxonaDomain, NeuronNode, createNodeIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from '@axona/protocol';
 import { stringToBytes, bytesToString, publishChunkedBytes, receiveChunkedBytes } from '@axona/protocol/std';
-// FIXME: What is the right way to use Axona web transport. It doesn't seem to provide either a functioning export nor declare its dependencies.
-import { webTransport } from './../axona-protocol/src/transport/web/index.js';
+import { webTransport } from '@axona/protocol/transport/web/index.js';
 globalThis.RTCPeerConnection ||= await import('node-datachannel/polyfill').then(ndc => ndc.RTCPeerConnection);
 const { BigInt, URL, File, pica } = globalThis;
 
@@ -181,7 +180,7 @@ export class P2PWebNetwork {
     if (handler) {
       const callback = async envelope => {
 	const {message, deleted, msgId, signerPubkey, topic, ts} = envelope;
-	console.log('fired', {msgId, topic, ts, signerPubkey, deleted, message});
+	//console.log('fired', {msgId, topic, ts, signerPubkey, deleted, message});
 	if (deleted) {
 	  handler({subject: msgId, payload: null, agent: signerPubkey, topic, ts}); // fixme remove topic, ts here and below.
 	  return;

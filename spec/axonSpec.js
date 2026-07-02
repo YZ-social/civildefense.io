@@ -24,7 +24,7 @@ const { describe, it, expect, beforeAll, afterAll, BigInt } = globalThis;
 import { AxonaPeer, AxonaDomain, NeuronNode, createNodeIdentity, createAuthorIdentity, regionCenter, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION, deriveTopicId, metricTopic } from '@axona/protocol';
 
 // TODO: What is the right way to use Axona web transport. It doesn't seem to provide either a functioning export nor declare its dependencies.
-import { webTransport } from '../../axona-protocol/src/transport/web/index.js';
+import { webTransport } from '@axona/protocol/transport/web/index.js';
 globalThis.RTCPeerConnection ||= await import('node-datachannel/polyfill').then(ndc => ndc.RTCPeerConnection);
 
 class Node {  // Stuff we have to do every time. TODO: build something like this into Axona.
@@ -95,7 +95,6 @@ class Node {  // Stuff we have to do every time. TODO: build something like this
   async subscribe({eventName, region, owner, since = 'all', handler}) { // Assign handler for eventName, or remove any handler if falsy.
     const topic = {region, name: eventName};
     if (owner) topic.owner = owner;
-    console.log('subscription for', topic);
     if (handler) {
       const callback = async ({...rest}) => handler({receiver: this, ...rest}); // Add receiver to envelope.
       await this.peer.sub(topic, callback, {since});
@@ -105,11 +104,11 @@ class Node {  // Stuff we have to do every time. TODO: build something like this
   }
   async subscribeOpenMetrics({eventName, region, since = 'all', handler}) { // Assign handler for metrics about eventName, or remove any handler if falsy.
     const topic = {region, name: eventName};
-    const id = await deriveTopicId({ region, name: eventName });
-    console.log('metrics for', topic);
+    const id = await deriveTopicId(topic);
     const topicIdentifier = metricTopic(id);
     if (handler) {
-      await this.peer.sub(topicIdentifier, handler, {since});
+      const callback = async ({message, ...rest}) => handler({receiver: this, message: JSON.parse(message), ...rest}); // Add receiver to envelope, and parse message string.
+      await this.peer.sub(topicIdentifier, callback, {since});
     } else {
       await this.peer.unsub(topicIdentifier, {});
     }
@@ -192,6 +191,13 @@ describe("CivilDefense", function () {
       this.log('subscribed, expecting', expectedCount);
       return subscribed;
     }
+    // subscribeOpenMetrics({eventName, region, since = 'all', handler}) { // resolves with first metrics to come through.
+    //   //return new Promise(resolve => {
+    //   //const callback = async ({message}) => {console.log('got metrics', message); resolve(message);}; // Add receiver to envelope.
+    //   const callback = handler;
+    // 	super.subscribeOpenMetrics({eventName, region, since, callback});
+    //   //});
+    // }
   }
   const inOrder = ['alice pub', '  bob pub'];
 
@@ -209,9 +215,14 @@ describe("CivilDefense", function () {
     // 'alice pub' starts and completes before 'bob pub' starts.
     aliceKillTag = await alice.publish({message: 'alice pub'});
     await TestNode.delay(500); // FIXME: without this delay, subscription handlers are called in the wrong order.
+    console.log('alice published');
     await   bob.publish({message: '  bob pub'});
+    console.log('bob published');
+    //alice.subscribeOpenMetrics({eventName, region:regionCode, handler: envelope => console.log('*** fixme got metrics', envelope)});
     await Promise.all([alice.ready, bob.ready, carol.ready]);
-    await alice.subscribeOpenMetrics({eventName, region:regionCode, handler: envelope => console.log('*** fixme got metrics', envelope)});
+    //await TestNode.delay(4e3);
+    //expect(await statsPromise).toBe(2);
+    console.log('finished', currentOperation);
   }, 2 * connectAllowanceMS + deliveryAllowanceMS);
   describe("initial", function () {
     it("alice receives all pubs from herself and bob", function () { expect(alice.events.initial).toEqual(inOrder); });
@@ -231,6 +242,7 @@ describe("CivilDefense", function () {
       currentOperation = 'restart';
       await Promise.all([bob.subscribe({expectedCount: 2}), carol.subscribe({expectedCount: 2}), david.subscribe({expectedCount: 2})]);
       await Promise.all([bob.ready, carol.ready, david.ready]);
+      console.log('finished', currentOperation);
     }, 1 * connectAllowanceMS + deliveryAllowanceMS);
     it("  bob receives all pubs from himself and bob", function () { expect(  bob.events.restart).toEqual(inOrder); });
     it("carol receives all pubs from   alice and bob", function () { expect(carol.events.restart).toEqual(inOrder); });
@@ -249,6 +261,7 @@ describe("CivilDefense", function () {
 
 	await emma.subscribe({expectedCount: 1});
 	await Promise.all([alice.ready, bob.ready, carol.ready, david.ready, emma.ready]);
+	console.log('finished', currentOperation);
       }, connectAllowanceMS + deliveryAllowanceMS);
       it("alice receives kill", function () { expect(alice.events.kill).toEqual([null]); });
       it("  bob receives kill", function () { expect(  bob.events.kill).toEqual([null]); });
