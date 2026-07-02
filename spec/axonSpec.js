@@ -107,9 +107,7 @@ class Node {  // Stuff we have to do every time. TODO: build something like this
     const id = await deriveTopicId({ region, name: eventName });
     const topicIdentifier = metricTopic(id);
     if (handler) {
-      const callback = envelope => console.log('***** FIXME metrics callback *****', envelope);
-      //const callback = async ({...rest}) => handler({receiver: this, ...rest}); // Add receiver to envelope.
-      await this.peer.sub(topicIdentifier, callback, {since});
+      await this.peer.sub(topicIdentifier, handler, {since});
     } else {
       await this.peer.unsub(topicIdentifier, {});
     }
@@ -151,8 +149,8 @@ describe("CivilDefense", function () {
   const connectAllowanceMS = 20e3;
   const deliveryAllowanceMS = 20e3;
 
-  //const location = regionCenter('uscentlw');
-  const location = regionCenter('uswest');  // TODO: pick one
+  const location = regionCenter('uscentlw');
+  //const location = regionCenter('uswest');  // TODO: pick one
   
   let alice, bob, carol, david, emma;
   let aliceKillTag, currentOperation;
