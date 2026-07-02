@@ -231,9 +231,30 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     animation: pulse ease 0.8s 1;
     --_label-text-weight: 800;
     --_selected-label-text-color: var(--md-sys-color-secondary);
+    --md-filter-chip-selected-leading-icon-color: var(--md-sys-color-secondary);
 }
 md-filter-chip {
     --md-sys-color-surface-container-low: #B8C2D7; /* non-selected elevated filter chip */
+}
+md-filter-chip minidenticon-svg + md-icon-button {
+    bottom: 10px;
+}
+md-filter-chip md-icon-button {
+    position: relative;
+    bottom: 3px;
+    right: 3px;
+}
+md-filter-chip[selected]:not(.pub) md-icon::after {
+    content: "radio_button_unchecked";
+}
+md-filter-chip[selected].pub md-icon::after {
+    content: "radio_button_checked";
+}
+md-filter-chip:not([selected]) md-icon::after {
+    content: "cancel";
+}
+md-filter-chip.pub md-icon {
+    color: var(--md-sys-color-secondary);
 }
 md-filter-chip minidenticon-svg {
     background: white;
