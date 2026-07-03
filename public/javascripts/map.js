@@ -133,6 +133,7 @@ async function publishAlert({lat, lng,
 			     payload = {lat, lng, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
 			     cancel = undefined, // First unpublish the specified data, if any. Complicated default.
 			     issuedTime = Date.now(), subject,
+			     throttleMS = 0,
 			     ...rest
 			    }) {
   // We call all the publishing at once and return subject, without waiting for each to occur.
@@ -165,6 +166,7 @@ async function publishAlert({lat, lng,
 	const eventName = alertTopic(cell, hashtag);
 	// Note: we cannot unpublish replies by others, but they expire after a while anyway.
 	await contact.publish({eventName, region, subject, payload: null});
+	throttleMS && await P2PWebNetwork.delay(throttleMS);
       }
     }
 
@@ -182,6 +184,7 @@ async function publishAlert({lat, lng,
 	}
       } else {
 	await contact.publish({eventName, region, subject, payload: null});
+	throttleMS && await P2PWebNetwork.delay(throttleMS);
       }
     }
     if (!payload) {
