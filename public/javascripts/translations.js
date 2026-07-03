@@ -1,9 +1,14 @@
 const lang = navigator.language.split('-')[0].toLowerCase(); // Get the language the the user has their browser to.
 
-export function Int([string]) { // A tagged template function that converts to lang.
+export function Int(strings, ...values) { // A tagged template function that converts to lang.
   // E.g., if the browser lang is 'es', Int`Your Location` => "Tu Ubicación", and Int`#version` => "Versión"
-  let content = translations[string];
-  return content?.[lang] || content?.["en"] || string;
+  return strings.reduce((result, substring, i) => {
+    const value = values[i] !== undefined ? values[i] : '';
+    // Apply operation to the string, then append the interpolated value
+    const content = translations[substring];
+    const translated = content?.[lang] || content?.["en"] || substring;
+    return result + translated + value;
+  }, '');
 }
 
 const translations = {
@@ -78,6 +83,14 @@ const translations = {
   ['your handle']: {es: "tu título"},
   ['Type a new topic name to see any alerts on the map with this topic.']: {es: "Escribe el nombre de un nuevo tema para ver en el mapa las alertas relacionadas con dicho tema."},
   ['Change the topic or remove the alert with the topic button in the upper right of the conversation dialog.']: {es: "Cambia el tema o elimina la alerta mediante el botón de tema situado en la esquina superior derecha del cuadro de diálogo de la conversación."},
+  ['Topic "']: {es: "El tema «"},
+  ['" has been removed. You can add it back with "add topic".']: {es: "» se ha eliminado. Puedes volver a añadirlo con «añadir tema»."},
+  ['Tapping the map will now produce an alert for the "']: {es: "Al tocar el mapa, ahora se generará una alerta para el tema «"},
+  ['" topic.']: {es: "»."},
+  ['Turning "']: {es: "Volviendo a activar las alertas de «"},
+  ['" alerts back on in the map.']: {es: "» en el mapa."},
+  ['Turning off "']: {es: "Desactivando las alertas de «"},
+  ['" alerts in the map. You can delete the topic altogether with the X.']: {es: "» en el mapa. Puedes eliminar el tema por completo con la X."},
 
   ['Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.']: {es: "Demasiadas publicaciones. (Se permiten 5 cada 5 minutos). Eliminando las más antiguas de este período."},
   ['#wipe']: {en: "Wipe all CivilDefense.io data.", es: "Eliminar todos los datos de CivilDefense.io."}
