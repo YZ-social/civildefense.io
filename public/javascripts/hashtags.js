@@ -87,7 +87,7 @@ export const Hashtags = {
     }
   },
   chipset: document.body.querySelector('.watching-hashtags'), // Element containing the user's chips.
-  chipHTML(label) {
+  chipHTML(label) { // Answer an HTML string to represent label in the chipset.
     const active = this.hashtags[label];
     return `<md-filter-chip label="${label}" elevated removable
         ${active === 'pub' ? 'class="pub"' : ''}
@@ -113,18 +113,24 @@ export const Hashtags = {
     // IWBNI we just added handlers once to the chipset and relied on bubbling up, but there's something not working about that.
     [...this.chipset.children].forEach(element => {
       // Material design will update the displays. We have to handle the data changes.
-      element.addEventListener('remove', event => {
+      element.addEventListener('remove', event => { // Clicking the button WITHIN the chip (which is the material design 'remove' event).
 	resetInactivityTimer();
 	const chip = event.target;
-	if (!chip.selected) return this.remove(chip);
+	if (!chip.selected) { // 'x' icon. Not currently selected. Go ahead and remove it.
+	  showMessage(Int`Topic "${chip.label}" has been removed. You can add it back with "add topic".`, 'instructions');
+	  return this.remove(chip);
+	} // radio button icon. Chip is already selected. We are setting the publishing tag.
 	event.preventDefault();
+	showMessage(Int`Tapping the map will now produce an alert for the "${chip.label}" topic.`, 'instructions');
 	if (chip.classList.contains('pub')) return false;
 	return this.setPublish(chip.label);
       });
-      element.onclick = event => {
+      element.onclick = event => { // Toggle action on whole chip.
 	event.stopPropagation();
 	resetInactivityTimer();
 	const chip = event.target;
+	if (chip.selected) showMessage(Int`Turning "${chip.label}" alerts back on in the map.`, 'instructions');
+	else showMessage(Int`Turning off "${chip.label}" alerts in the map. You can delete the topic altogether with the X.`, 'instructions');
 	this.toggleChip(chip);
 	Marker.closePopup();
 	if (chip.selected) this.setPublish(chip.label);
@@ -133,7 +139,7 @@ export const Hashtags = {
     });
     this.chipset.insertAdjacentHTML("afterbegin",  // Chip to add a new hashtag.
 				    `<md-filled-text-field class="newtag" placeholder="➕${Int`add topic`}"></md-filled-text-field>`);
-    this.chipset.firstChild.onclick = event => {
+    this.chipset.firstChild.onclick = event => { // Focusing "add topic".
       event.stopPropagation();
       Marker.closePopup();
       showMessage(Int`Type a new topic name to see any alerts on the map with this topic.`, 'instructions');
@@ -151,12 +157,12 @@ export const Hashtags = {
       this.onchange({highlightPublish: true});
     };
   },
-  remove(chip, redisplaySubscribers = false) {
+  remove(chip, redisplaySubscribers = false) { // Remove this topic, persistently.
     delete this.hashtags[chip.label];
     delete this.canonical2extended[canonicalTag(chip.label)];
     this.onchange({redisplaySubscribers, resetSubscriptions: false});
   },
-  toggleChip(chip) {
+  toggleChip(chip) { // Switch whether the topic is or is not subscribed.
     const label = chip.label;
     const isPub = label === this.getPublish();
     let altPub;
@@ -178,7 +184,7 @@ export const Hashtags = {
     }
     return null;
   },
-  setPublish(newTag) {
+  setPublish(newTag) { // Make this topic be the one to be used when we next publish an alert.
     const oldTag = this.getPublish();
     this.hashtags[oldTag] = true;
     this.hashtags[newTag] = 'pub';
