@@ -5,7 +5,7 @@ import { createAuthorIdentity }  from '@axona/protocol';
 import { agentTopic } from './versions.js';
 import { Int } from './translations.js';
 import { consume, openDisplay } from './display.js';
-import { networkPromise, resetInactivityTimer } from './main.js';
+import { networkPromise, resetInactivityTimer, clickTip } from './main.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 
 export class Agent {
@@ -290,7 +290,7 @@ export class Agent {
     myAgent.addElement(myHandle, 'public', 'handle');
     myAgent.addElement(myAvatar, 'mixed', 'avatar'); // display the mixed result
     myHandle.label = Int`your handle`;
-    myHandle.onclick = consume;
+    clickTip(myHandle, Int`Change the text label for you shown in the conversation for your alerts and replies.`, consume);
     myHandle.onchange = event => {
       resetInactivityTimer();
       const value = myHandle.value || null;
@@ -298,7 +298,7 @@ export class Agent {
       myAgent.updateValue(value, 'public', 'handle');
       myAgent.persistPrivate(value, 'handle'); // So that we'll have it next session.
     };
-    myAvatar.onclick = event => {
+    clickTip(myAvatar, Int`Change the image shown for you in the conversation for your alerts and replies.`, event => {
       consume(event);
       const fileChooser = document.getElementById('correspondentContainer').querySelector('input[type="file"]');
       fileChooser.oncancel = event => {
@@ -318,7 +318,7 @@ export class Agent {
 	myAgent.persistPrivate(url, 'avatar'); // So that we'll have it next session.
       };
       fileChooser.click();
-    };
+    });
   }
 }
 
