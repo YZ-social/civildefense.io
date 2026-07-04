@@ -5,7 +5,7 @@ import { consume, openDisplay } from './display.js';
 import { alertTopic } from './versions.js';
 import { Agent } from './agent.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
-import { networkPromise, resetInactivityTimer, delay, notificationsAllowed, openAbout } from './main.js';
+import { networkPromise, resetInactivityTimer, delay, notificationsAllowed, openAbout, clickTip, tooltip, osName } from './main.js';
 import { Hashtags } from './hashtags.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 
@@ -272,6 +272,8 @@ export class Marker { // A wrapper around L.marker
 	.on('popupopen', event => wrapper.ensureContent(event.popup));
       // Subscribe to replies to this subject, now that we're set up to receive them.
       networkPromise.then(async contact => contact.subscribe({eventName: subject, region, handler: data => wrapper.handleReply(data)}));
+      console.log('marker', marker, marker.getElement());
+      tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
       if (subject === openOnReceive) {
 	openOnReceive = false;
 	wrapper.openPopup();
@@ -320,8 +322,8 @@ export class Marker { // A wrapper around L.marker
       const internalHighWater = Math.round(textarea.scrollHeight / parseFloat(getComputedStyle(textarea).lineHeight));
       input.rows = internalHighWater;
     };
-    replyButton.onclick = event => { this.postReply(event); };
-    replyAttachButton.onclick = event => { resetInactivityTimer(); fileChooser.click(); };
+    clickTip(replyButton, Int`Post your reply.`, event => this.postReply(event));
+    clickTip(replyAttachButton, Int`Attach a file to your reply.`, event => { resetInactivityTimer(); fileChooser.click(); });
     fileChooser.onchange = event => {
       resetInactivityTimer();
       replyButton.removeAttribute('disabled');
@@ -341,20 +343,25 @@ export class Marker { // A wrapper around L.marker
       }
     }
     for (const deleter of popupElement.querySelectorAll('.reply .attribution > div:last-child md-outlined-icon-button')) {
-      deleter.onclick = event => { // Delete reply.
+      clickTip(deleter, Int`Delete your reply.`, event => { // Delete reply.
 	consume(event);
 	this.deleteReply(event.currentTarget.closest('.reply'));
-      };
+      });
+    }
+    for (const downloadable of popupElement.querySelectorAll('[download]')) {
+      tooltip(downloadable, Int`Click to download ${downloadable.download}.`);
     }
     const shareable = popupElement.querySelectorAll('.share');
-    for (const element of shareable) element.onclick = event => this.share(event);
+    for (const element of shareable) clickTip(element, element.closest('.reply') ?
+					      Int`Share though ${osName()} the text and attachments of this reply, with a link to open this alert.` :
+					      Int`Share through ${osName()} a link to open this alert.`, event => this.share(event));
   }
   initChangeHashtag(someParent) { // Init handler on the menu button, if any, as (re-) init of menu for open popup
     const changeHashtag = someParent.querySelector('.changeHashtag');
     if (!changeHashtag) return;
     const menu = document.getElementById('popoverMenu');
     menu.anchorElement = changeHashtag;
-    changeHashtag.onclick = event => {
+    clickTip(changeHashtag, Int`Change the topic or delete your alert.`, event => {
       consume(event);
       menu.open = !menu.open;
       menu.onclick = consume; // Must be onlick rather than addEventListener.
@@ -363,7 +370,7 @@ export class Marker { // A wrapper around L.marker
 	this.updatePost(event.detail.initiator.dataset.tag);
       };
       menu.addEventListener('close-menu', handler); // Must be addEventListener because there's no onclosemenu.
-    };
+    });
   }
   static formatAttributionHashtag(agent, hashtag) { // Answer HTML for the hashtag button/display in an a post attribution.
     // It will be either a simple HTML element with pubtag.
@@ -709,4 +716,6 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
     Marker.openPopup(await publishAlert({lat, lng}));
     Agent.current.persistPublicMetadata(P2PWebNetwork.regionCode(lat, lng));
   });
+  tooltip('.leaflet-control-zoom-in', Int`Zoom in to show more detail in the map.`);
+  tooltip('.leaflet-control-zoom-out', Int`Zoom out to show a larger area in the map.`);
 }

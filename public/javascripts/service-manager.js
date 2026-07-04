@@ -1,6 +1,6 @@
 const { Request, Response, URL, localStorage, BroadcastChannel } = globalThis;
 import { appVersion } from './versions.js';
-import { resetInactivityTimer } from './main.js';
+import { resetInactivityTimer, clickTip } from './main.js';
 import { openDisplay } from './display.js';
 import { go } from './map.js';
 import { Int } from './translations.js';
@@ -90,17 +90,18 @@ await navigator.serviceWorker
   .then(registration => {
     let serviceVersion;
     // No need to reset button/status on click, because we will be reloading.
-    downloadButton.onclick = () => installUpdate(serviceVersion);
-    downloadButton2.onclick = event => {
+    const installText = Int`Update to a new version of this app.`;
+    clickTip(downloadButton, installText, () => installUpdate(serviceVersion));
+    clickTip(downloadButton2, installText, () => event => {
       event.stopPropagation();
       installUpdate(serviceVersion);
-    };
-    checkButton.onclick = async event => {
+    });
+    clickTip(checkButton, Int`Check to see if a new version of the app is available.`, async event => {
       resetInactivityTimer();
       event.stopPropagation();
       await registration.update();
       updateText.textContent = `${Int`No update at`} ${new Date().toLocaleString()}.`;
-    };
+    });
     registration.onupdatefound = () => { // A new service worker has been installed because of a service worker script change.
       const newWorker = registration.installing;
       console.log('updatefound', newWorker.state, navigator.serviceWorker, navigator.serviceWorker.controller);

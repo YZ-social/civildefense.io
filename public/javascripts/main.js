@@ -31,11 +31,25 @@ export async function resetInactivityTimer(clearMessage = true) { // if !network
   // }, INACTIVITY_SECONDS * 1e3);
 }
 
+function asElement(elementOrQuerySelector) { // Return an element - treating a string arg as a query selector, or just return the arg.
+  if (typeof(elementOrQuerySelector) === 'string') return document.querySelector(elementOrQuerySelector);
+  return elementOrQuerySelector;
+}
+export function tooltip(elementOrQuerySelector, text) { // Add plain tooltip text to element.
+  const element = asElement(elementOrQuerySelector);
+  element.title = text; // TODO: try via aria-describedby pointing to separate role="tooltip" div
+}
+export function clickTip(elementOrQuerySelector, text, clickHandler) { // tooltip and onclick in one step.
+  const element = asElement(elementOrQuerySelector);
+  tooltip(element, text);
+  element.onclick = clickHandler;
+}
+
 function isWebView() { return /CriOS|(WebView|wv|(iPhone|iPod|iPad)(?!.*Safari))/.test(navigator.userAgent); }
 function isApple() { return navigator.platform.startsWith('Mac') || ['iPhone', 'iPad'].includes(navigator.platform); }
 function isMobile() { return navigator.userAgentData?.mobile || /iPhone|iPad|iPod|Mobile/.test(navigator.userAgent); }
 function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches; }
-function osName() { return navigator.userAgentData?.platform || navigator.userAgent.match(/Android/)?.[0] || navigator.platform; }
+export function osName() { return navigator.userAgentData?.platform || navigator.userAgent.match(/Android/)?.[0] || navigator.platform; }
 function mobilePlatformName() { return isMobile() && (isApple() ? 'iOS' : 'Android'); }
 function mobileVendorName() { return isMobile() && (isApple() ? 'Apple' : 'Android'); }
 function mobileBrowserName() { return isApple() ? 'Safari' : 'Chrome'; }
@@ -108,17 +122,17 @@ export function openAbout(event) {
   openDisplay('aboutContainer', event);
   noteNotificationPermission(window.Notification?.permission);
 }
-document.getElementById('aboutButton').onclick = event => { // open about
+clickTip('#aboutButton', Int`Information about this app, and options to change how you appear to others.`, event => { // open about
   Marker.closePopup();
   openAbout(event);
-};
-document.getElementById('wipe').onclick = async event => {
+});
+clickTip('#wipe', Int`Wipe from ${osName()} all personal data and source files for this app.`, async event => {
   await networkPromise?.then(contact => contact.disconnect());
   localStorage.clear();
   await caches.keys().then(keys => Promise.all(keys.map(key => caches.delete(key))));
   await navigator.serviceWorker.getRegistrations().then(registrations => Promise.all(registrations.map(r => r.unregister())));
   window.location.replace('about/index.html');
-};
+});
 document.getElementById('scriptChooser').onchange = event => { // Run a script module chosen by the user. e.g., for testing.
   const file = event.currentTarget.files[0];
   if (!file) return;
@@ -128,7 +142,7 @@ document.getElementById('scriptChooser').onchange = event => { // Run a script m
   document.body.appendChild(script);
 };
 
-document.getElementById('qrButton').onclick = event => { // generate (and display) qr code on-demand (in case url changes)
+clickTip('#qrButton', Int`Display QR code that can be scanned by a friend to show the same map on their device.`, event => { // generate (and display) qr code on-demand (in case url changes)
   const content = openDisplay('qrContainer', event, '');
   const qr = new QRCodeStyling({
     width: 300,
@@ -152,18 +166,18 @@ document.getElementById('qrButton').onclick = event => { // generate (and displa
     }
   });
   qr.append(content);
-};
+});
 document.querySelector('#correspondentContainer md-outlined-text-field').onclick = event => {
   resetInactivityTimer();
   event.stopPropagation();
 };
 
-document.getElementById('share').onclick = event => {
+clickTip('#share', Int`${osName()} share a link to this map and topics, with picture of map.`, event => {
   event.stopPropagation();
   share({text: "CivilDefense.io", url: getShareableURL().href });
-};
+});
 
-document.getElementById('recenterButton').onclick = recenterMap;
+clickTip('#recenterButton', Int`Recenter the map to where you are in the world.`, recenterMap);
 
 function checkOnline() { //true if online and visible, else cancel reconnectCountdown and inactivityTimeout, and show "offline"
   //console.log('checkOnline', navigator.onLine && !document.hidden);
@@ -370,6 +384,9 @@ initText('#describePublic');
 initText('#describeSystem');
 initText('#pickLabels');
 initText('#wipe');
+
+tooltip('#learnMore', Int`Click to see more information in another tab about what you can do with this app and how it is resistant to tracking, censorship, and takedown.`);
+tooltip('#aboutAnyone2', Int`Click to see the source code and documentation for serving copies of this app in another tab.`);
 
 initialize(false);
 document.querySelector('head > title').innerHTML = `CivilDefense @${location.hostname}`;

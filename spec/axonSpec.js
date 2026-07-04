@@ -148,10 +148,10 @@ describe("CivilDefense", function () {
   // These two are not acceptance criteria for how long the operation should take, but are instead
   // how long we are willing to wait in in the test before assuming it is never going to happen.
   const connectAllowanceMS = 20e3;
-  const deliveryAllowanceMS = 20e3;
+  const deliveryAllowanceMS = 60e3;
 
-  const location = regionCenter('uscentlw');
-  //const location = regionCenter('uswest');  // TODO: pick one
+  //const location = regionCenter('uscentlw');
+  const location = regionCenter('uswest');  // TODO: pick one
   
   let alice, bob, carol, david, emma;
   let aliceKillTag, currentOperation;
