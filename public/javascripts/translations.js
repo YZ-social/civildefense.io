@@ -122,6 +122,17 @@ const translations = {
   [' the text and attachments of this reply, with a link to open this alert.']: {es: " el texto y los archivos adjuntos de esta respuesta, junto con un enlace para abrir esta alerta."},
   ['Share through ']: {es: "Comparte un enlace a través de "},
   [' a link to open this alert.']: {es: " para abrir esta alerta."},
+  ['Control how others see me.']: {es: "Controla cómo me ven los demás."},
+  ['Control how this person is labeled on my device.']: {es: "Controla cómo se etiqueta a esta persona en mi dispositivo."},
+  ['Choose the label you want to appear for alerts and replies by this user.']: {es: "Selecciona la etiqueta que quieras que aparezca para las alertas y respuestas de este usuario."},
+  ["Capture this unique text so that even if the user changes what they share, you'll still see this text for alerts and replies by this user."]: {es: "Captura este texto único para que, aunque el usuario cambie lo que comparte, sigas viendo este texto en las alertas y respuestas de dicho usuario."},
+  ["Capture this name they are currently sharing, so that even if the user changes what they share, you'll still see this text for alerts and replies by this user."]: {es: "Guarda el nombre que están compartiendo actualmente, de modo que, aunque el usuario cambie lo que comparte, sigas viendo este texto en las alertas y respuestas de dicho usuario."},
+  ["Capture this unique image so that even if the user changes what they share, they will still be shown to you with this picture for alerts and replies by this user."]: {es: "Captura esta imagen única para que, aunque el usuario cambie lo que comparte, se te siga mostrando con esta foto en las alertas y respuestas de dicho usuario."},
+  ["Capture this image they are currently sharing, so that even if the user changes what they share, you'll still see this image for alerts and replies by this user."]: {es: "Guarda esta imagen que están compartiendo actualmente, de modo que, aunque el usuario cambie lo que comparte, sigas viendo esta imagen en las alertas y respuestas de dicho usuario."},
+  ['Choose the picture you want to appear for alerts and replies by this user.']: {es: "Elige la imagen que quieras que aparezca para las alertas y respuestas de este usuario."},
+  ['Enable local ']: {es: "Habilita notificaciones locales de "},
+  [' notifcations for map alerts, without going through any servers. Requires that the app be running.']: {es: " para alertas del mapa, sin pasar por ningún servidor. Requiere que la aplicación esté en ejecución."},  
+
 
   ['Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.']: {es: "Demasiadas publicaciones. (Se permiten 5 cada 5 minutos). Eliminando las más antiguas de este período."},
   ['#wipe']: {en: "Wipe all CivilDefense.io data.", es: "Eliminar todos los datos de CivilDefense.io."}
