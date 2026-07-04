@@ -609,11 +609,11 @@ export function updateLocation(lat, lng, zoom, positionLabel) { // initMap if ne
     tagsArray.forEach(tag => Hashtags.add(decodeURIComponent(tag)));
     Hashtags.onchange({resetSubscriptions: false}); // Too early to subscribe, but will be done during initialization.
     go({lat: params.get('lat'), lng: params.get('lng'), zoom: params.get('z'), subject: params.get('sub')});
-    // We don't need the query parameters now. Get rid of them. They're annoying. But preserve dht, if any.
+    // We don't need the query parameters now. Get rid of them. They're annoying.
     const copy = new URL(location);
     const dht = copy.searchParams.get('dht');
-    if (copy.searchParams.size > (dht ? 1 : 0)) {
-      copy.search = dht ? `?dht=${dht}` : '';
+    if (copy.searchParams.size > 0) {
+      copy.search = '';
       history.replaceState(null, '', copy);
     }
 

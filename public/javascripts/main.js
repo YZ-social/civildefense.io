@@ -355,7 +355,10 @@ async function initialize(event) { // Ensure there is a network promise and map,
 document.addEventListener('visibilitychange', initialize);
 window.addEventListener('online', initialize);
 
-document.querySelector('#aboutContainer h1').textContent += ` @${location.hostname}`;
+const titleElement = document.querySelector('#aboutContainer h1');
+titleElement.textContent = Int([titleElement.textContent]);
+titleElement.textContent += ` @${location.hostname}`;
+document.querySelector('head > title').innerHTML = titleElement.textContent;
 // Set up text for the browser language.
 function initText(selector, content = selector) {
   const element = document.querySelector(selector);
@@ -389,4 +392,3 @@ tooltip('#learnMore', Int`Click to see more information in another tab about wha
 tooltip('#aboutAnyone2', Int`Click to see the source code and documentation for serving copies of this app in another tab.`);
 
 initialize(false);
-document.querySelector('head > title').innerHTML = `CivilDefense @${location.hostname}`;
