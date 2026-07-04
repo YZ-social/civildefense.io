@@ -5,7 +5,7 @@ import { createAuthorIdentity }  from '@axona/protocol';
 import { agentTopic } from './versions.js';
 import { Int } from './translations.js';
 import { consume, openDisplay } from './display.js';
-import { networkPromise, resetInactivityTimer, clickTip } from './main.js';
+import { networkPromise, resetInactivityTimer, clickTip, tooltip } from './main.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 
 export class Agent {
@@ -208,29 +208,29 @@ export class Agent {
     this.addElement(avatarSpan, 'mixed', 'avatar');    
 
     content.onclick = consume; // Normally set by openDisplay to close the display, but we don't want that here.
-    systemHandle.onclick = event => {
+    clickTip(systemHandle, Int`Capture this unique text so that even if the user changes what they share, you'll still see this text for alerts and replies by this user.`, event => {
       consume(event);
       this.updateValue('', 'private', 'handle');
-    };
-    publicHandle.onclick = event => {
+    });
+    clickTip(publicHandle, Int`Capture this name they are currently sharing, so that even if the user changes what they share, you'll still see this text for alerts and replies by this user.`, event => {
       consume(event);
       this.updateValue(publicHandle.getAttribute('value') || '', 'private', 'handle');
-    };
+    });
     privateHandle.oninput = event => {
       resetInactivityTimer();
       this.updateValue(privateHandle.value || null, 'private', 'handle');
     };
-
-    systemAvatar.onclick = event => {
+    clickTip(systemAvatar, Int`Capture this unique image so that even if the user changes what they share, they will still be shown to you with this picture for alerts and replies by this user.`, event => {
       consume(event);
       this.updateValue('', 'private', 'avatar');
-    };
-    publicAvatar.onclick = event => {
+    });
+    clickTip(publicAvatar, Int`Capture this image they are currently sharing, so that even if the user changes what they share, you'll still see this image for alerts and replies by this user.`, event => {
       consume(event);
       const dataURL = publicAvatar.firstElementChild?.getAttribute('src');
       this.updateValue(dataURL || '', 'private', 'avatar');
-    };
-    privateAvatar.onclick = event => {
+    });
+    tooltip(privateHandle, Int`Choose the label you want to appear for alerts and replies by this user.`);
+    clickTip(privateAvatar, Int`Choose the picture you want to appear for alerts and replies by this user.`, event => {
       consume(event);
       fileChooser.oncancel = event => {
 	consume(event);
@@ -244,7 +244,7 @@ export class Agent {
 	console.log('clearing avatar selection');
       };
       fileChooser.click();
-    };
+    });
 
     cancel.onclick = () => {
       this.updateValue(oldPrivateHandle, 'private', 'handle');

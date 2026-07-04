@@ -103,10 +103,10 @@ function noteNotificationPermission(permission) {
     break;
   }
 }
-showNotifications.parentElement.onclick = event => {
+clickTip(showNotifications.parentElement, Int`Enable local ${osName()} notifcations for map alerts, without going through any servers. Requires that the app be running.`, event => {
   resetInactivityTimer();
   event.stopPropagation();
-}
+});
 showNotifications.onchange = () => {
   if (window.Notification?.permission === 'granted') {
     disableNotifications(!showNotifications.checked);

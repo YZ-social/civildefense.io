@@ -336,10 +336,14 @@ export class Marker { // A wrapper around L.marker
       const agent = Agent.ensure({tag, region: this.region});
       const isAvatar = correspondent.classList.contains('avatar');
       if (agent.addElement(correspondent, 'mixed', isAvatar ? 'avatar' : 'handle')) {
-	correspondent.onclick = event => {
-	  if (tag === Agent.tag) openAbout(event);
-	  else agent.describe(event);
-	};
+	const isMine = Agent.isMine(tag);
+	clickTip(correspondent, isMine ?
+		 Int`Control how others see me.` :
+		 Int`Control how this person is labeled on my device.`,
+		 event => {
+		   if (isMine) openAbout(event);
+		   else agent.describe(event);
+		 });
       }
     }
     for (const deleter of popupElement.querySelectorAll('.reply .attribution > div:last-child md-outlined-icon-button')) {
