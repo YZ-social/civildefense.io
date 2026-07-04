@@ -192,7 +192,7 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     display: none;
     height: 40px;
     border-radius: 20px;
-    background-image: radial-gradient(transparent 30%, var(--md-sys-color-secondary));
+    background-image: radial-gradient(transparent 30%, var(--md-sys-color-secondary), transparent 70%);
     animation: pulse ease 0.8s 1;
 }
 .alert-pin {
