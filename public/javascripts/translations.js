@@ -1,4 +1,5 @@
-const lang = navigator.language.split('-')[0].toLowerCase(); // Get the language the the user has their browser to.
+const language = new URL(location).searchParams.get('lang') || navigator.language;
+const lang = language.split('-')[0].toLowerCase(); // Get the language the the user has their browser to.
 
 export function Int(strings, ...values) { // A tagged template function that converts to lang.
   // E.g., if the browser lang is 'es', Int`Your Location` => "Tu Ubicación", and Int`#version` => "Versión"
@@ -12,6 +13,7 @@ export function Int(strings, ...values) { // A tagged template function that con
 }
 
 const translations = {
+  ['Civil Defense']: {es: "Defensa Civil"},
   ['Your Location']: {es: "Tu Ubicación"},
   ['Default location. Geolocation unavailable.']: {es: "Ubicación predeterminada. Geoubicación no disponible."},
   ['Tap anywhere to mark a concern. Markers fade after 24 hours.']: {es: "Toca cualquier punto para marcar una preocupación. Los marcadores desaparecen después de 24 horas."},
