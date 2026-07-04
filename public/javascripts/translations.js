@@ -14,6 +14,7 @@ export function Int(strings, ...values) { // A tagged template function that con
 
 const translations = {
   ['Civil Defense']: {es: "Defensa Civil"},
+  ['Anonymous']: {es: "sin nombre"},
   ['Your Location']: {es: "Tu Ubicación"},
   ['Default location. Geolocation unavailable.']: {es: "Ubicación predeterminada. Geoubicación no disponible."},
   ['Tap anywhere to mark a concern. Markers fade after 24 hours.']: {es: "Toca cualquier punto para marcar una preocupación. Los marcadores desaparecen después de 24 horas."},

@@ -112,7 +112,7 @@ export class Agent {
     // Otherwise is the first non-empty value private, public, and a version of system.
     const vprivate = this.values[type].private;
     const vpublic = this.values[type].public;
-    const vsystem = type === 'avatar' ? this.values[type].system : 'anonymous';
+    const vsystem = type === 'avatar' ? this.values[type].system : Int`Anonymous`;
     const vmixed = vprivate === '' ? vsystem : (vprivate || vpublic || vsystem);
     return this.updateValue(vmixed, 'mixed', type);
   }
