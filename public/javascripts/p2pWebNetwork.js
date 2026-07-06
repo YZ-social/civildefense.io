@@ -210,6 +210,9 @@ export class P2PWebNetwork {
   static regionCode(lat, lng) { // Answer containing region code.
     return geoCellId(lat, lng);
   }
+  static regionCenter(regionCode) {
+    return geoCellCenter(regionCode);
+  }
   static delay(ms, result) { // Promise result after ms milliseconds.
     return new Promise(resolve => setTimeout(resolve, ms, result));
   }
@@ -223,7 +226,7 @@ export class P2PWebNetwork {
   static canonicalizeRegion(lat, lng) {
     // Answer a {lat, lng} that is the center of a top-level Axona region containing the given {lat, lng}.
     // E.g., a precise location gets anonymized to containing top-level cell center.
-    return geoCellCenter(geoCellId(lat, lng));
+    return this.regionCenter(this.regionCode(lat, lng));
   }
   get synaptomeSize() { // Safely answer the number of connections.
     return this.node.synaptome?.size ?? 0;
