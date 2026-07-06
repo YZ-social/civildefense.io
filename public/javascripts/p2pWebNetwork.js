@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { AxonaPeer, AxonaDomain, NeuronNode, createNodeIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from '@axona/protocol';
+import { AxonaPeer, AxonaDomain, NeuronNode, createNodeIdentity, createAuthorIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from '@axona/protocol';
 import { stringToBytes, bytesToString, publishChunkedBytes, receiveChunkedBytes } from '@axona/protocol/std';
 import { webTransport } from '@axona/protocol/transport/web/index.js';
 globalThis.RTCPeerConnection ||= await import('node-datachannel/polyfill').then(ndc => ndc.RTCPeerConnection);
@@ -16,6 +16,7 @@ const {promise:sessionRegionPromise, resolve:resolveSessionRegion} = Promise.wit
 export class P2PWebNetwork {
   static wireVersion = WIRE_VERSION;
   static kernelVersion = KERNEL_VERSION;
+  static createAuthorIdentity = createAuthorIdentity;
   static setSessionRegion = resolveSessionRegion;
   static sessionRegion = sessionRegionPromise;
   static async create({infoLogger = console.log, debugLogger,
@@ -37,7 +38,7 @@ export class P2PWebNetwork {
     const network = new this();
     Object.assign(network, {infoLogger, debugLogger, identity, transport, node, peer});
     network.resetStatePromises();
-    network.info('Created network node for kernel', this.kernelVersion);
+    network.info(`Created network node for kernel ${this.kernelVersion} region 0x${this.regionCode(region.lat, region.lng).toString(16)}.`);
     await network.connect({synapseCount, timeoutMs});
     return network;
   }
@@ -64,7 +65,7 @@ export class P2PWebNetwork {
   async disconnect() { // Politely close network connection.
     const health = this.health();
     await this.leave();
-    this.info(`disconnected with ${health.peers.length} connections and ${health.axonRoles.length} ${health.axonRoles.length} axons.`);
+    this.info(`disconnected with ${health.peers.length} connections and ${health.axonRoles.length} axons.`);
     await this.stop();
     this.resetStatePromises();
   }
@@ -158,9 +159,8 @@ export class P2PWebNetwork {
     const topic = {name: uuidv4(), region, owner};
     const buffer = await blob.arrayBuffer();
     const u8 = new Uint8Array(buffer);
-    console.log('blob', blob.size, u8.length);
-    const data = await publishChunkedBytes(this.peer, u8, {topic, signWith, mime, name, ...rest});
-    return data.topic;
+    //console.log('blob', blob.size, u8.length);
+    return await publishChunkedBytes(this.peer, u8, {topic, signWith, mime, name, ...rest});
   }
   async assembleChunkedDataURL(topic) { // Promise {bytes, mime, name, dataURL} that was chunkified to topic.
     const data = await receiveChunkedBytes(this.peer, topic, {/*, onProgress: console.log*/});

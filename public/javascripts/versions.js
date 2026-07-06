@@ -9,11 +9,14 @@ export function stripLeadingEmoji(string) { // Return string without any leading
     return string.replace(/^\p{Emoji}*\uFE0F?\s*/u, '') || string;
 };
 export function canonicalTag(tag) { // A string representing tag, without the (leading) emoji if any.
-  return stripLeadingEmoji(tag).toLocaleLowerCase();
+  return stripLeadingEmoji(tag).toLowerCase();
 }
 
-export function agentTopic(string) { // Return topic name for public info about agent specified by tag.
-  return `public:${dataVersion}:${string}`;
+export function agentPersistKey(metadataType, agentTag) { // A label for looking up metadataType for agentTag.
+  return `${metadataType}-${agentTag}`;
+}
+export function agentTopic(metadataType, agentTag) { // Return topic name for public info about agent specified by tag.
+  return `public:${dataVersion}:${agentPersistKey(metadataType, agentTag)}`;
 }
 export function alertTopic(cellid, tag) { // Return topic name for public info about specified tag in cellid.
   return `civildefense.io:${dataVersion}:${cellid}:${canonicalTag(tag)}`;

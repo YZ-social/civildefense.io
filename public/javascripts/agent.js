@@ -2,7 +2,7 @@ const { localStorage } = globalThis;
 import { v4 as uuidv4 } from 'uuid';
 import { minidenticonSvg } from 'minidenticons';
 import { createAuthorIdentity }  from '@axona/protocol';
-import { agentTopic } from './versions.js';
+import { agentTopic, agentPersistKey } from './versions.js';
 import { Int } from './translations.js';
 import { consume, openDisplay } from './display.js';
 import { networkPromise, resetInactivityTimer, clickTip, tooltip } from './main.js';
@@ -45,10 +45,10 @@ export class Agent {
     return this.values.handle.system;
   }
   localPersistKey(type, tag = this.tag) { // for localStorage of our private data about this Agent.
-    return `${type}-${tag}`;
+    return agentPersistKey(type, tag);
   }
   networkPersistKey(type, tag = this.tag) {
-    return agentTopic(this.localPersistKey(type, tag));
+    return agentTopic(type, tag);
   }
   updateFromLocal(scope, type, tag = this.tag) { // get value locally, and then update (which may have side-effect)
     const value = localStorage.getItem(this.localPersistKey(type, tag));
@@ -136,7 +136,7 @@ export class Agent {
       // Our downsampling is such that we do not need to chunkify.
       // if (type === 'avatar') {
       // 	const blob = await P2PWebNetwork.dataURL2blob(value);
-      // 	payload = await contact.chunkifyBlob({blob, region});
+      // 	payload = (await contact.chunkifyBlob({blob, region})).topic;
       // }
       return contact.publish({eventName, region, owner, payload});
     }

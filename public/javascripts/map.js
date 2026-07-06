@@ -486,7 +486,7 @@ export class Marker { // A wrapper around L.marker
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     const contact = await networkPromise;
     if (files.length) {
-      const file = await contact.chunkifyBlob({blob: files[0], region});
+      const {topic:file} = await contact.chunkifyBlob({blob: files[0], region});
       payload = {message: payload, file};
     }
     await contact.publish({eventName: subject, region, payload}); // Publish the new reply.
