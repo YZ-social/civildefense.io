@@ -41,6 +41,7 @@ export function tooltip(elementOrQuerySelector, text) { // Add plain tooltip tex
 }
 export function clickTip(elementOrQuerySelector, text, clickHandler) { // tooltip and onclick in one step.
   const element = asElement(elementOrQuerySelector);
+  if (element.id === 'downloadUpdates2') console.log('assigning title', text, 'and', clickHandler, 'to', element);
   tooltip(element, text);
   element.onclick = clickHandler;
 }
@@ -363,6 +364,7 @@ document.querySelector('head > title').innerHTML = titleElement.textContent;
 function initText(selector, content = selector) {
   const element = document.querySelector(selector);
   const text = Int([content]);
+  if (element.id === 'downloadUpdates2') console.log('assigning', text, 'to', element);
   element.textContent = text;
 }
 initText('#aboutReport');
