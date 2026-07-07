@@ -67,6 +67,7 @@ export class P2PWebNetwork {
     await this.leave();
     this.info(`disconnected with ${health.peers.length} connections and ${health.axonRoles.length} axons.`);
     await this.stop();
+    await this.transport.stop();
     this.resetStatePromises();
   }
   async replicateStorage() { // Let the network know that we might go away without further notice.
