@@ -89,7 +89,7 @@ export class P2PWebNetwork {
     return bytesToString(data.bytes);
   }
 
-  static getCanvas(file) { // Promise a Canvas from a File of type image/*.
+  static getCanvas(file) { // Promise a Canvas from a File of type image/*. ONLY IN BROWSERS!
     return new Promise((resolve, reject) => {
       const img = new Image();
       const canvas = document.createElement('canvas');
@@ -105,7 +105,7 @@ export class P2PWebNetwork {
       img.src = URL.createObjectURL(file);
     });
   }
-  static  async downsampledBlob({blob, outputType = 'image/jpeg', maxDimension = 1024}) {
+  static  async downsampledBlob({blob, outputType = 'image/jpeg', maxDimension = 1024}) { // ONLY IN BROWSERS!
     // Promise a reasonably sized Blob (or File) for a given Blob of type image/*, else blob unchanged.
     if (!blob.type.startsWith('image/')) return blob;
 
@@ -153,7 +153,7 @@ export class P2PWebNetwork {
     return new File([blob], filename, {type: blob.type});
   }
   async chunkifyBlob({blob, region, signWith = this.constructor.currentPublishIdentity, owner = signWith.authorId, maxDimension = 1024, ...rest}) {
-    // Publish Blob (or File) and answer an identifier that can be used to re-assemble.
+    // Publish Blob (or File) and answer an identifier that can be used to re-assemble. Truthy maxDimension works only in browsers!
     if (!blob.size) throw new Error(`Cannot chunkify empty Blob.`);
     if (maxDimension) blob = await this.constructor.downsampledBlob({blob, maxDimension});
     const {type:mime, name} = blob;
