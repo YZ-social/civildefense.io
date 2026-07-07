@@ -71,7 +71,10 @@ function newVersionAvailable(newVersion) {
   updateText.textContent = `${Int`Version`} ${newVersion} ${Int`available`}.`;
   openDisplay('updateContainer');
 }
-async function installUpdate(newVersion) {
+async function installUpdate(event, newVersion) {
+  event.stopPropagation();
+  event.target.textContent = "Installing..."; // In case there is some delay, tell the user what we're trying to do. Will be cleared with reload.
+  event.target.disabled = true;
   await caches.delete(appVersion); // Must be before cacheSource, or we'll just recache the same files!
   await cacheSource(newVersion);
   // Reload, but convince all browsers to re-"fetch" (through the new service worker that is now running).
@@ -91,11 +94,9 @@ await navigator.serviceWorker
     let serviceVersion;
     // No need to reset button/status on click, because we will be reloading.
     const installText = Int`Update to a new version of this app.`;
-    clickTip(downloadButton, installText, () => installUpdate(serviceVersion));
-    clickTip(downloadButton2, installText, () => event => {
-      event.stopPropagation();
-      installUpdate(serviceVersion);
-    });
+    const installHandler = event => installUpdate(event, serviceVersion);
+    clickTip(downloadButton, installText, installHandler);
+    clickTip(downloadButton2, installText, installHandler);
     clickTip(checkButton, Int`Check to see if a new version of the app is available.`, async event => {
       resetInactivityTimer();
       event.stopPropagation();

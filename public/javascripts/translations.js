@@ -71,7 +71,7 @@ const translations = {
   ['#newVersionHeader']: {en: "New version available", es: "Nueva versión disponible"},
   ['#updateNowQuestion']: {en: "Would you like to update now?", es: "¿Le gustaría actualizar ahora?"},
   ['#updateReload']: {en: "All CivilDefense.io tabs will reload.", es: "Todas las pestañas de CivilDefense.io se recargarán."},
-  ['#updateDefer']: {en: "Alternatively, you can update later through the button in About.", es: "Alternativamente, puede actualizar más tarde a través del botón en «Acerca de»."},
+  ['#updateDefer']: {en: 'Alternatively, you can update later through the "CD" button again.', es: 'Alternativamente, puede actualizar más tarde utilizando nuevamente el botón "CD".'},
   ['#downloadUpdates2']: {en: "yes, update", es: "Sí, actualizar."},
   ['#downloadDefer']: {en: "no, not yet", es: "No, todavía no."},
   ['No update at']: {es: "No hay actualizaciones a las"},
