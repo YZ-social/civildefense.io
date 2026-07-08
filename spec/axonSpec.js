@@ -10,12 +10,13 @@
   It is worth running this several times. It sometimes works once, and then fails or has enormous connect times on another run.
 
   The logging tells the story.
-  Alice, Bob, and Carol are Node instances. (Defined below, followed by the Jasmine test suite.)
+  Alice, Bob, Carol, David, and Emma are Node instances. (Defined below, followed by the Jasmine test suite.)
   Alice and Bob will subscribe and publish to an open/since:'all' topic.
   Carol will join and subscribe between the previous subscriptions and their publications.
   After publications, Bob will politely disconnect, and then restart and subscribe again to get same results.
   Carol will restart without an explicit disconnect, and subscribe again after publications.
   David will join and subscribe after publications.
+  Alice kills her publication and Emma joins.
 */
 const { describe, it, expect, beforeAll, afterAll, BigInt } = globalThis;
 import { createAuthorIdentity, regionCenter, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION, deriveTopicId, metricTopic } from '@axona/protocol';
