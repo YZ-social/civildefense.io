@@ -136,13 +136,16 @@ export class P2PWebNetwork {
     const buffer = await blob.arrayBuffer();
     const u8 = new Uint8Array(buffer);
     //console.log('blob', blob.size, u8.length);
-    return await publishChunkedBytes(this.peer, u8, {topic, signWith, mime, name, ...rest});
+    const data = await publishChunkedBytes(this.peer, u8, {topic, signWith, mime, name, ...rest});
+    this.debug('chunked', data);
+    return data;
   }
   async assembleChunkedDataURL(topic) { // Promise {bytes, mime, name, dataURL} that was chunkified to topic.
     const data = await receiveChunkedBytes(this.peer, topic, {/*, onProgress: console.log*/});
     // Using dataURL is not terribly efficient, but it is convenient, because formatReplies can return HTML strings with all the data in them,
     // instead of, e.g., needing javascript to later set properties of elements to createObjectURL of a Blob.
     data.dataURL = this.constructor.u82dataURL(data.bytes, data.mime);
+    this.debug('assembled', topic);
     return data;
   }
 
@@ -156,7 +159,7 @@ export class P2PWebNetwork {
     if (handler) {
       const callback = async envelope => {
 	const {message, deleted, msgId, signerPubkey, topic, ts} = envelope;
-	//console.log('fired', {msgId, topic, ts, signerPubkey, deleted, message});
+	this.debug('received', {msgId, topic, ts, signerPubkey, deleted, message});
 	if (deleted) {
 	  handler({subject: msgId, payload: null, agent: signerPubkey, topic, ts}); // fixme remove topic, ts here and below.
 	  return;
@@ -175,7 +178,7 @@ export class P2PWebNetwork {
     const topic = {region, name: eventName};
     if (owner) topic.owner = owner;
     const options = {signWith};
-    //console.log({topic, subject, payload, issuedTime, rest, signWith});
+    this.debug('published', {topic, subject, payload, issuedTime, rest, signWith});
     if (payload) return await this.peer.pub(topic, {issuedTime, payload, ...rest}, options);
     // The next would not normally happen, but until since:'latest' works, we need a way to send a null payload and have the handler delete the entry.
     if (!subject) return await this.peer.pub(topic, {issuedTime, payload, ...rest}, options);
