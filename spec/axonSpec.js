@@ -21,10 +21,8 @@
   David will join and subscribe after publications.
 */
 const { describe, it, expect, beforeAll, afterAll, BigInt } = globalThis;
-import { /*AxonaPeer, AxonaDomain, NeuronNode, createNodeIdentity,*/ createAuthorIdentity, regionCenter, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION, deriveTopicId, metricTopic } from '@axona/protocol';
+import { createAuthorIdentity, regionCenter, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION, deriveTopicId, metricTopic } from '@axona/protocol';
 import { connect } from '@axona/protocol/connect.js';
-// TODO: What is the right way to use Axona web transport. It doesn't seem to provide either a functioning export nor declare its dependencies.
-//import { webTransport } from '@axona/protocol/transport/web/index.js';
 globalThis.RTCPeerConnection ||= await import('node-datachannel/polyfill').then(ndc => ndc.RTCPeerConnection);
 
 class Node {  // Stuff we have to do every time. TODO: build something like this into Axona.
@@ -34,7 +32,6 @@ class Node {  // Stuff we have to do every time. TODO: build something like this
   }
   static async create({location, bridgeUrl = 'wss://testnet.axona.net',
 		       label = 'network', authorIdentity, store,
-		       //transportIdentity, synapseCount = 4, timeoutMs = 10e3,
 		       ...rest} = {}) {
     // Promise a ready-to-use network peer.
     if (typeof(authorIdentity) === 'string') // TODO: this is pretty awkward.
@@ -48,59 +45,19 @@ class Node {  // Stuff we have to do every time. TODO: build something like this
       author: authorIdentity
     });
 
-
-    // const start = Date.now();
-    // // Complex location/identity behavior: Must pass either identity or location {lat/lng} (either can be a promise).
-    // if (!transportIdentity) location ||= this.canonicalizeRegion(await location);
-    // transportIdentity ||= createNodeIdentity(location);
-    // transportIdentity = await transportIdentity;
-    // location ||= transportIdentity.region; // TODO: don't use the same term 'region' in different ways.
-
-    // // FIXME: sometimes fails with "UpgradeRequiredError: bridge closed socket before handshake completed"
-    // const transport = webTransport({bridgeUrl, identity: transportIdentity});
-    // const node = new NeuronNode({lat: location.lat, lng: location.lng, id: BigInt('0x' + transportIdentity.id)});
-    // node.transport = transport; // TODO: pass in to constructor?
-    // const domain   = new AxonaDomain({ k: 20 }); // TODO: can't this be defaulted in AxonaPeer?
-    // const peer = new  AxonaPeer({domain, node, identity: transportIdentity, transport});
-
     const self = new this();
-    Object.assign(self, {/*transportIdentity, transport, node, */peer, label, authorIdentity, nodeIdentity, disconnector: disconnect, ...rest});
-    self.log(`created with kernel version ${this.version}.`);// in ${(Date.now() - start).toLocaleString()} ms.`);
+    Object.assign(self, {peer, label, authorIdentity, nodeIdentity, disconnector: disconnect, ...rest});
+    self.log(`created with kernel version ${this.version}.`);
     const { peers, ms } = status;
     self.log(`connected ${peers} connections in ${ms.toLocaleString()} ms.`);
-    //await self.connect({synapseCount, timeoutMs});
+
     return self;
   }
-  // async connect({synapseCount = 4, timeoutMs = 10e3} = {}) {
-  //   // Returned promise resolves when ready for use.
-  //   // TODO: Currently, one cannot disconnect() and then later connect() - one is likely to get TransportError: bridge socket closed before open.
-  //   // So as it stands there's not really any point in this being a separate method from create().
-  //   const start = Date.now();
-  //   await this.transport.start(this.transportIdentity.id);
-  //   await this.peer.join();
-  //   if (parseInt(this.constructor.version) < 4) {
-  //     const t0 = Date.now();
-  //     while (Date.now() - t0 < timeoutMs) {
-  // 	const size = this.synaptomeSize;
-  // 	if (size >= synapseCount) break;
-  // 	await this.constructor.delay(200);
-  //     }
-  //   } else {
-  //     await this.peer.ready({ minPeers: synapseCount, timeoutMs });
-  //   }
-  //   const elapsed = Date.now() - start;
-  //   // FIXME: most of the time, this completes in under two seconds. But not infrequently, it is much more.
-  //   // I've see it take 30 seconds -- even when there are nearby nodes standing by.
-  //   this.log(`connected to ${this.synaptomeSize} nodes in ${elapsed.toLocaleString()} ms${elapsed < 2e3 ? '.' : '!!!!!!!!!!!!!!!!'}`);
-  //   return this;
-  // }
   async disconnect() { // Politely close network connection.
     const start = Date.now();
     const health = this.peer.health();
-    //await this.peer.leave();
     await this.disconnector();
     this.log(`disconnected with ${health.peers.length} connections and ${health.axonRoles.length} axons in ${(Date.now() - start).toLocaleString()} ms.`);
-    //await this.peer.stop();
   }
   async subscribe({eventName, region, owner, since = 'all', handler}) { // Assign handler for eventName, or remove any handler if falsy.
     const topic = {region, name: eventName};
@@ -143,12 +100,6 @@ class Node {  // Stuff we have to do every time. TODO: build something like this
   static delay(ms, result) { // Promise result after ms milliseconds.
     return new Promise(resolve => setTimeout(resolve, ms, result));
   }
-  // get synaptomeSize() { // Safely answer the number of connections.
-  //   return this.node.synaptome?.size ?? 0;
-  // }
-  // health() { // from peer
-  //   return this.peer.health();
-  // }
   host() { // through peer
     return this.peer.host();
   }
