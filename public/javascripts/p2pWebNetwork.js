@@ -1,7 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
-import { AxonaPeer, AxonaDomain, NeuronNode, createNodeIdentity, createAuthorIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from '@axona/protocol';
+import { createNodeIdentity, createAuthorIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from '@axona/protocol';
 import { stringToBytes, bytesToString, publishChunkedBytes, receiveChunkedBytes } from '@axona/protocol/std';
-import { webTransport } from '@axona/protocol/transport/web/index.js';
+import { connect } from '@axona/protocol/connect.js';
+// import { webTransport } from '@axona/protocol/transport/web/index.js';
 globalThis.RTCPeerConnection ||= await import('node-datachannel/polyfill').then(ndc => ndc.RTCPeerConnection);
 const { BigInt, URL, File, pica } = globalThis;
 
@@ -20,61 +21,72 @@ export class P2PWebNetwork {
   static setSessionRegion = resolveSessionRegion;
   static sessionRegion = sessionRegionPromise;
   static async create({infoLogger = console.log, debugLogger,
-		       region, identity, bridgeUrl = 'wss://bridge.axona.net',
-		       synapseCount = 4, timeoutMs = 10e3} = {}) {
+		       region = this.sessionRegion, bridgeUrl = 'wss://bridge.axona.net',
+		       //identity, synapseCount = 4, timeoutMs = 10e3
+		      } = {}) {
     // Promise a ready-to-use network peer.
-    // Complex region/identity behavior: Must pass either identity or region (either can be a promise), or will wait for setSessionRegion() to be called.
-    if (!identity) region ||= this.canonicalizeRegion(await (region || this.sessionRegion));
-    identity ||= createNodeIdentity(region);
-    identity = await identity;
-    region ||= identity.region;
+    const { peer, nodeIdentity, status, disconnect } = await connect({
+      bridge: bridgeUrl,
+      location: await region,
+      author: false
+    });
 
-    const transport = webTransport({bridgeUrl, identity});
-    const node = new NeuronNode({lat: region.lat, lng: region.lng, id: BigInt('0x' + identity.id)});
-    node.transport = transport; // FIXME: pass in to constructor?
-    const domain   = new AxonaDomain({ k: 20 }); // FIXME: can't this be defaulted in AxonaPeer?
-    const peer = new  AxonaPeer({domain, node, identity, transport});
+    // // Complex region/identity behavior: Must pass either identity or region (either can be a promise), or will wait for setSessionRegion() to be called.
+    // if (!identity) region ||= this.canonicalizeRegion(await (region || this.sessionRegion));
+    // identity ||= createNodeIdentity(region);
+    // identity = await identity;
+    // region ||= identity.region;
+
+    // const transport = webTransport({bridgeUrl, identity});
+    // const node = new NeuronNode({lat: region.lat, lng: region.lng, id: BigInt('0x' + identity.id)});
+    // node.transport = transport; // FIXME: pass in to constructor?
+    // const domain   = new AxonaDomain({ k: 20 }); // FIXME: can't this be defaulted in AxonaPeer?
+    // const peer = new  AxonaPeer({domain, node, identity, transport});
 
     const network = new this();
-    Object.assign(network, {infoLogger, debugLogger, identity, transport, node, peer});
+    Object.assign(network, {infoLogger, debugLogger, /*identity, transport, node,*/ disconnector: disconnect, identity: nodeIdentity, peer});
     network.resetStatePromises();
     network.info(`Created network node for kernel ${this.kernelVersion} region 0x${this.regionCode(region.lat, region.lng).toString(16)}.`);
-    await network.connect({synapseCount, timeoutMs});
+    // await network.connect({synapseCount, timeoutMs});
+    const { peers, ms } = status;
+    network.info(`Connected ${peers} connections in ${ms.toLocaleString()} ms.`);
+    network.attached(network);
     return network;
   }
   
-  async connect({synapseCount = 4, timeoutMs = 10e3} = {}) {
-    // Returned promise resolves when ready for use. Can be cycled through disconnect()/connect().
-    await this.transport.start(this.identity.id);
-    await this.join();
-    this.debug('Joined', this.health().synaptomeSize, 'connections.');
-    if (parseInt(this.constructor.kernelVersion) < 4) {
-      const t0 = Date.now();
-      while (Date.now() - t0 < timeoutMs) {
-	const size = this.synaptomeSize;
-	if (size >= synapseCount) break;
-	await this.constructor.delay(200);
-      }
-    } else {
-      await this.peer.ready({ minPeers: synapseCount, timeoutMs });
-    }
-    this.info('Connected', this.health().synaptomeSize, 'connections.');
-    this.attached(this);
-    return this;
-  }
+  // async connect({synapseCount = 4, timeoutMs = 10e3} = {}) {
+  //   // Returned promise resolves when ready for use. Can be cycled through disconnect()/connect().
+  //   await this.transport.start(this.identity.id);
+  //   await this.join();
+  //   this.debug('Joined', this.health().synaptomeSize, 'connections.');
+  //   if (parseInt(this.constructor.kernelVersion) < 4) {
+  //     const t0 = Date.now();
+  //     while (Date.now() - t0 < timeoutMs) {
+  // 	const size = this.synaptomeSize;
+  // 	if (size >= synapseCount) break;
+  // 	await this.constructor.delay(200);
+  //     }
+  //   } else {
+  //     await this.peer.ready({ minPeers: synapseCount, timeoutMs });
+  //   }
+  //   this.info('Connected', this.health().synaptomeSize, 'connections.');
+  //   this.attached(this);
+  //   return this;
+  // }
   async disconnect() { // Politely close network connection.
-    const health = this.health();
-    await this.leave();
+    const health = this.peer.health();
+    await this.disconnector();
+    //await this.leave();
     this.info(`disconnected with ${health.peers.length} connections and ${health.axonRoles.length} axons.`);
-    await this.stop();
-    await this.transport.stop();
+    // await this.stop();
+    // await this.transport.stop();
     this.resetStatePromises();
   }
   async replicateStorage() { // Let the network know that we might go away without further notice.
     // FIXME. It would be great if we could remove ourselves from any non-leaf positions in the Axon, but stay subscribed.
   }
   fastDisconnect() { // Synchronous attempt to be polite to those connected.
-    this.leave(); // Execution is asynchronous. Will not finish -- or perhaps even really start -- within the call.
+    this.peer.leave(); // Execution is asynchronous. Will not finish -- or perhaps even really start -- within the call.
   }
 
   async chunkifyString({string, region, signWith = this.constructor.currentPublishIdentity, owner = signWith.authorId}) {
@@ -229,9 +241,9 @@ export class P2PWebNetwork {
     // E.g., a precise location gets anonymized to containing top-level cell center.
     return this.regionCenter(this.regionCode(lat, lng));
   }
-  get synaptomeSize() { // Safely answer the number of connections.
-    return this.node.synaptome?.size ?? 0;
-  }
+  // get synaptomeSize() { // Safely answer the number of connections.
+  //   return this.node.synaptome?.size ?? 0;
+  // }
   // TODO: Integrate with AxonaPeer's complex logging.
   debug(...rest) { // Add debug logspam.
     this.debugLogger?.(this.identity.id, ...rest);
@@ -244,5 +256,5 @@ export default P2PWebNetwork;
 
 // For now, we want to override publish and subscribe, but that conflicts with internal messages on AxonaPeer.
 // Thus P2PWebNetwork has an AxonaPeer, instead of inheriting from it. And thus we need forwarding messages.
-['join', 'leave', 'stop', 'health', 'host', 'unhost']
+[/*'join', 'leave', 'stop', 'health',*/ 'host', 'unhost']
   .forEach(methodName => P2PWebNetwork.prototype[methodName] = function (...rest) {return this.peer[methodName](...rest);});
