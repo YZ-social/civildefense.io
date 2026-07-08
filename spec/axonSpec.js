@@ -1,13 +1,10 @@
 /*
   FIXME: Things that either don't pass, or require undocumented workarounds.
   TODO: Things that ought to be dealt with at some point, but can be deferred until later.
-  CURRENTLY:
-  - This passes (with the FIXMEs in place) in main/3.8.0
-  - This usually fails to receive some of the expected subscription callbacks in testnet/4.3.2, and thus hangs.
 
   To RUN, e.g., in NodeJS:
   - You may need to adjust the path to webTransport. See the first TODO entry.
-  - To switch between them, don't forget to change the wss url a few lines down from hehre.
+  - To switch between them, don't forget to change the wss url a few lines down from here.
   - Have jasmine or the like installed and initialized, and then e.g., npx jasmine spec/axonSpec.js.
 
   It is worth running this several times. It sometimes works once, and then fails or has enormous connect times on another run.
@@ -25,7 +22,7 @@ import { createAuthorIdentity, regionCenter, geoCellId, geoCellCenter, WIRE_VERS
 import { connect } from '@axona/protocol/connect.js';
 globalThis.RTCPeerConnection ||= await import('node-datachannel/polyfill').then(ndc => ndc.RTCPeerConnection);
 
-class Node {  // Stuff we have to do every time. TODO: build something like this into Axona.
+class Node {  // Stuff we have to do every time.
   static version = KERNEL_VERSION;
   log(...rest) {
     console.log(new Date(), this.label, this.nodeIdentity.id.slice(0, 10), ...rest);
@@ -132,10 +129,6 @@ describe("CivilDefense", function () {
       return this.ready = new Promise(resolve => {
 	const handlerTime = Date.now();
 	this.handler = ({message, receiver, ts:pubTime}) => { // Ensure that the receiver's events[currentOperation] is a list, and push message on to it.
-	  // FIXME: ts is undefined for a kill, which is weird:
-	  // 1. I would think that Axona needs the time in order to dedupe and order properly?
-	  // 2. The app may need the time, especially since we are not reliably getting events in ts order. (See "wrong order" comment, below.)
-	  pubTime ||= 0;
 	  const start = Math.max(pubTime, handlerTime);
 	  const elapsed = Date.now() - start;
 	  const data = receiver.events[currentOperation] ||= [];
@@ -175,8 +168,8 @@ describe("CivilDefense", function () {
     currentOperation = 'initial';
     // 'alice pub' starts and completes before 'bob pub' starts.
     aliceKillTag = await alice.publish({message: 'alice pub'});
-    await TestNode.delay(500); // FIXME: without this delay, subscription handlers are called in the wrong order.
     console.log('alice published');
+    await TestNode.delay(500); // FIXME: without this delay, subscription handlers are called in the wrong order.
     await   bob.publish({message: '  bob pub'});
     console.log('bob published');
     //alice.subscribeOpenMetrics({eventName, region:regionCode, handler: envelope => console.log('*** fixme got metrics', envelope)});
