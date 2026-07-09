@@ -1,12 +1,14 @@
 import * as L from 'leaflet';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { Int } from './translations.js';
-import { map, trackMap, showMessage, publishAlert } from './map.js';
+import { map, trackMap, showMessage } from './map.js';
 import { networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, clickTip, openAbout, delay, osName } from './main.js';
 import { consume } from './display.js';
 import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
-const { getComputedStyle, URL, URLSearchParams, domtoimage } = globalThis;
+import { alertTopic } from './versions.js';
+import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
+const { localStorage, getComputedStyle, URL, URLSearchParams, domtoimage } = globalThis;
 
 export function getShareableURL(subject = null, tags = Hashtags.getSubscribe()) { // Answer a url that reflects application state.
   const params = new URLSearchParams(location.search);
@@ -68,7 +70,117 @@ export function go({lat = null, lng = null, zoom = null, subject = null}) { // G
   }
 }
 
+let subscriptions = []; // array of stringy keys <mumble>:<cellID>:<hashtag>
+let subscriptionsRegion;
+// We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
+let lastLevel9Cell; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
+
+let last = []; // Last published lat, lng, subject
+const maxPublish = 5;
+// Publish an alert to all applicable eventNames, canceling as required. Promises subject (msgId).
+let publishing = false;
+
 export class Alert { // A wrapper around L.marker
+  static updateSubscriptions(oldKeys = subscriptions, newKeys) { // Update current subscriptions to the new map bounds.
+    // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
+    if (!networkPromise) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
+    let region;
+    if (!newKeys) { // None specified. Compute them.
+      const center = map.getCenter();
+      const bounds = map.getBounds();
+      const northEast = bounds.getNorthEast();
+      const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
+      region = P2PWebNetwork.regionCode(center.lat, center.lng);
+      newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => alertTopic(cell, hash)));
+      Agent.current.trackPublicChanges(region);
+      // Record a zoomed-out cell id in case next session does not have geolocation services.
+      let level9Cell = getContainingCells(center.lat, center.lng)[9];
+      if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
+    }
+
+    const subscribe = (key, region, handler) =>
+	  networkPromise.then(async contact => contact.subscribe({eventName: key, region, handler}));
+
+    // For each entry in the new subscription set that was not previously subscribed, subscribe now.
+    for (const key of newKeys) oldKeys.includes(key) || subscribe(key, region, data => Alert.ensure(data));
+
+    // For each existing subscription, if it does not appear in the new set then unsubscribe.
+    for (const key of oldKeys) newKeys.includes(key) || subscribe(key, subscriptionsRegion, null);
+    console.log('Subscribed', {newKeys, region, length: newKeys.length, oldKeys, subscriptionsRegion});
+
+    subscriptions = newKeys;
+    subscriptionsRegion = region;
+  }
+  static async publish({lat, lng,
+			originalPosting = undefined,
+			hashtag = Hashtags.getPublish(),
+			payload = {lat, lng, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
+			cancel = undefined, // First unpublish the specified data, if any. Complicated default.
+			issuedTime = Date.now(), subject,
+			throttleMS = 0,
+			...rest
+		       }) {
+    // We call all the publishing at once and return subject, without waiting for each to occur.
+    // However, the 'unpublishing' (if any) is invoked first.
+    // To do this, we must hash the eventName ourselves.
+    //console.log('publish', {lat, lng, hashtag, payload, cancel, subject, issuedTime, rest});
+    if (publishing) { console.log('skiping overlappying publish'); return; } // do not stack them up.
+    try {
+      publishing = true;
+
+      const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
+      let oldCells = null, oldHash, oldSubject = null; // Recorded for logging, below.
+      let lastFillIn;
+      if (payload) {
+	lastFillIn = {lat, lng, hashtag, issuedTime};
+	last.push(lastFillIn); // Capture the added data.
+	const periodStart = Date.now() - (maxPublish * 60e3); // maxPublish minutes ago.
+	last = last.filter(past => past.issuedTime >= periodStart);
+	if (cancel === undefined && last.length > maxPublish) { // Unless specified otherwise, cancel oldest over maxPublish.
+	  showMessage(Int`Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.`);
+	  cancel = last.shift();
+	}
+      }
+      if (cancel) {
+	const {lat, lng, hashtag, subject} = cancel;
+	oldCells = getContainingCells(lat, lng);
+	oldHash = hashtag; oldSubject = subject;
+	const region = P2PWebNetwork.regionCode(lat, lng);
+	for (const cell of oldCells) {
+	  const eventName = alertTopic(cell, hashtag);
+	  // Note: we cannot unpublish replies by others, but they expire after a while anyway.
+	  await contact.publish({eventName, region, subject, payload: null});
+	  throttleMS && await P2PWebNetwork.delay(throttleMS);
+	}
+      }
+
+      const cells = getContainingCells(lat, lng);
+      const region = P2PWebNetwork.regionCode(lat, lng);
+      for (const cell of cells) {
+	const eventName = alertTopic(cell, hashtag);
+	if (payload) {
+	  const msgId = await contact.publish({eventName, region, payload, issuedTime, hashtag, ...rest});
+	  if (subject && subject !== msgId) throw new Error(`msgId is drifting: ${subject} => ${msgId}`);
+	  subject = msgId;
+	  if (lastFillIn) {
+	    lastFillIn.subject = subject;
+	    lastFillIn = null;
+	  }
+	} else {
+	  await contact.publish({eventName, region, subject, payload: null});
+	  throttleMS && await P2PWebNetwork.delay(throttleMS);
+	}
+      }
+      if (!payload) {
+	const index = last.findIndex(past => past.subject === subject);
+	if (index >= 0) last.splice(index, 1);
+      }
+      console.log('Published', {cells, n: cells.length, region, hashtag, subject, payload, oldCells, oldHash, oldSubject});
+      return subject;
+    } finally {
+      publishing = false;
+    }
+  }
   // When we resubscribe to different cells covering the same place, we will get the same
   // sticky data. We don't want to change the marker. Fortunately, the publication to each
   // of the cells (at different scales) are all published with the same data.
@@ -290,12 +402,12 @@ export class Alert { // A wrapper around L.marker
   updatePost(tag) { // Republish under a different hashtag, or cancel altogether if no tag (which is not allowed as a hashtag).
     resetInactivityTimer();
     const {lat, lng, hashtag, subject, issuedTime, originalPosting = issuedTime} = this;
-    if (!tag) return publishAlert({lat, lng, subject, originalPosting, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
+    if (!tag) return Alert.publish({lat, lng, subject, originalPosting, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
     if (tag === hashtag) return this.needsRedisplay = true;
     const cancel = {lat, lng, subject, hashtag}; // Cancel old hashtag as we publish new tag, below.
     Hashtags.setPublish(tag);
     Hashtags.onchange({redisplaySubscribers: false, resetSubscriptions: false});
-    return publishAlert({lat, lng, hashtag: tag, originalPosting, cancel}); // Publish new alert w/cancellation.
+    return Alert.publish({lat, lng, hashtag: tag, originalPosting, cancel}); // Publish new alert w/cancellation.
   }
 
   // Each reply is separately published by its author, and only they can modify/unpublish it.

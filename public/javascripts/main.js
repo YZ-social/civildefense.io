@@ -6,8 +6,8 @@ import { Agent} from './agent.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { getPointInCell } from './s2.js';
 import { Alert, getShareableURL, share } from './alert.js';
-import { map, showMessage, updateLocation, updateSubscriptions, recenterMap } from './map.js';
-import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
+import { map, showMessage, updateLocation, recenterMap } from './map.js';
+//import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
 
 document.getElementById('appVersion').textContent = appVersion;
 document.getElementById('kernelVersion').textContent = P2PWebNetwork.kernelVersion;
@@ -244,7 +244,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
     if (!subscribeOneShot) return;
     subscribeOneShot = false;
     resetInactivityTimer(false);
-    updateSubscriptions([]); // This was for a new node, so supply an empty oldSubscriptions.
+    Alert.updateSubscriptions([]); // This was for a new node, so supply an empty oldSubscriptions.
   };
   if (!geolocation) {
     showMessage(Int`Geolocation not supported. Using default location.`, 'error', 'fail');
