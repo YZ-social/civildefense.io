@@ -5,7 +5,7 @@ import { consume, openDisplay } from './display.js';
 import { alertTopic } from './versions.js';
 import { Agent } from './agent.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
-import { Marker, go } from './alert.js';
+import { Alert, go } from './alert.js';
 import { networkPromise, resetInactivityTimer, delay, notificationsAllowed, openAbout, clickTip, tooltip, osName } from './main.js';
 import { Hashtags } from './hashtags.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
@@ -63,7 +63,7 @@ export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Updat
 	networkPromise.then(async contact => contact.subscribe({eventName: key, region, handler}));
 
   // For each entry in the new subscription set that was not previously subscribed, subscribe now.
-  for (const key of newKeys) oldKeys.includes(key) || subscribe(key, region, data => Marker.ensure(data));
+  for (const key of newKeys) oldKeys.includes(key) || subscribe(key, region, data => Alert.ensure(data));
 
   // For each existing subscription, if it does not appear in the new set then unsubscribe.
   for (const key of oldKeys) newKeys.includes(key) || subscribe(key, subscriptionsRegion, null);
@@ -191,7 +191,7 @@ export function updateLocation(lat, lng, zoom, positionLabel) { // initMap if ne
 
 export function recenterMap(event) {
   consume(event);
-  Marker.closePopup();
+  Alert.closePopup();
   const latLng = [lastLatitude, lastLongitude];
   map.flyTo(latLng);
 }
@@ -270,7 +270,7 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
     resetInactivityTimer();
     if (document.getElementById('map').querySelector('.leaflet-popup')) return; // Ignore clicks with popup open.
     const { lat, lng } = e.latlng;
-    Marker.openPopup(await publishAlert({lat, lng}));
+    Alert.openPopup(await publishAlert({lat, lng}));
     Agent.current.persistPublicMetadata(P2PWebNetwork.regionCode(lat, lng));
   });
   tooltip('.leaflet-control-zoom-in', Int`Zoom in to show more detail in the map.`);
