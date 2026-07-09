@@ -1,14 +1,12 @@
-const { localStorage, URL, File, URLSearchParams } = globalThis;
+const { localStorage, URL, URLSearchParams } = globalThis;
 import * as L from 'leaflet';
 import { Int } from './translations.js';
-import { consume, openDisplay } from './display.js';
-import { alertTopic } from './versions.js';
+import { consume } from './display.js';
 import { Agent } from './agent.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { Alert, go } from './alert.js';
-import { networkPromise, resetInactivityTimer, delay, notificationsAllowed, openAbout, clickTip, tooltip, osName } from './main.js';
+import { resetInactivityTimer, tooltip } from './main.js';
 import { Hashtags } from './hashtags.js';
-import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 
 export let map; // Leaflet map object.
 
@@ -30,121 +28,6 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   if (type === 'instructions') {
     clearTimeout(messageTimeout);
     messageTimeout = setTimeout(() => infoBanner.style.display = 'none', 5e3);
-  }
-}
-
-export function makeEventName(cell, hash) { // Include the outgoing hashtag (first of hashtags) in the pubsub eventName
-  return `civildefense.io:${Agent.networkVersion}:${cell}:${Hashtags.canonicalTag(hash)}`;
-}
-
-
-let subscriptions = []; // array of stringy keys <mumble>:<cellID>:<hashtag>
-let subscriptionsRegion;
-// We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
-let lastLevel9Cell; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
-export function updateSubscriptions(oldKeys = subscriptions, newKeys) { // Update current subscriptions to the new map bounds.
-  // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
-  if (!networkPromise) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
-  let region;
-  if (!newKeys) { // None specified. Compute them.
-    const center = map.getCenter();
-    const bounds = map.getBounds();
-    const northEast = bounds.getNorthEast();
-    const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
-    region = P2PWebNetwork.regionCode(center.lat, center.lng);
-    newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => alertTopic(cell, hash)));
-    Agent.current.trackPublicChanges(region);
-    // Record a zoomed-out cell id in case next session does not have geolocation services.
-    let level9Cell = getContainingCells(center.lat, center.lng)[9];
-    if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
-  }
-
-  const subscribe = (key, region, handler) =>
-	networkPromise.then(async contact => contact.subscribe({eventName: key, region, handler}));
-
-  // For each entry in the new subscription set that was not previously subscribed, subscribe now.
-  for (const key of newKeys) oldKeys.includes(key) || subscribe(key, region, data => Alert.ensure(data));
-
-  // For each existing subscription, if it does not appear in the new set then unsubscribe.
-  for (const key of oldKeys) newKeys.includes(key) || subscribe(key, subscriptionsRegion, null);
-  console.log('Subscribed', {newKeys, region, length: newKeys.length, oldKeys, subscriptionsRegion});
-
-  subscriptions = newKeys;
-  subscriptionsRegion = region;
-}
-
-let last = []; // Last published lat, lng, subject
-const maxPublish = 5;
-// Publish an alert to all applicable eventNames, canceling as required. Promises subject (msgId).
-let publishing = false;
-export async function publishAlert({lat, lng,
-			     originalPosting = undefined,
-			     hashtag = Hashtags.getPublish(),
-			     payload = {lat, lng, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
-			     cancel = undefined, // First unpublish the specified data, if any. Complicated default.
-			     issuedTime = Date.now(), subject,
-			     throttleMS = 0,
-			     ...rest
-			    }) {
-  // We call all the publishing at once and return subject, without waiting for each to occur.
-  // However, the 'unpublishing' (if any) is invoked first.
-  // To do this, we must hash the eventName ourselves.
-  //console.log('publishAlert', {lat, lng, hashtag, payload, cancel, subject, issuedTime, rest});
-  if (publishing) { console.log('skiping overlappying publish'); return; } // do not stack them up.
-  try {
-    publishing = true;
-
-    const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
-    let oldCells = null, oldHash, oldSubject = null; // Recorded for logging, below.
-    let lastFillIn;
-    if (payload) {
-      lastFillIn = {lat, lng, hashtag, issuedTime};
-      last.push(lastFillIn); // Capture the added data.
-      const periodStart = Date.now() - (maxPublish * 60e3); // maxPublish minutes ago.
-      last = last.filter(past => past.issuedTime >= periodStart);
-      if (cancel === undefined && last.length > maxPublish) { // Unless specified otherwise, cancel oldest over maxPublish.
-	showMessage(Int`Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.`);
-	cancel = last.shift();
-      }
-    }
-    if (cancel) {
-      const {lat, lng, hashtag, subject} = cancel;
-      oldCells = getContainingCells(lat, lng);
-      oldHash = hashtag; oldSubject = subject;
-      const region = P2PWebNetwork.regionCode(lat, lng);
-      for (const cell of oldCells) {
-	const eventName = alertTopic(cell, hashtag);
-	// Note: we cannot unpublish replies by others, but they expire after a while anyway.
-	await contact.publish({eventName, region, subject, payload: null});
-	throttleMS && await P2PWebNetwork.delay(throttleMS);
-      }
-    }
-
-    const cells = getContainingCells(lat, lng);
-    const region = P2PWebNetwork.regionCode(lat, lng);
-    for (const cell of cells) {
-      const eventName = alertTopic(cell, hashtag);
-      if (payload) {
-	const msgId = await contact.publish({eventName, region, payload, issuedTime, hashtag, ...rest});
-	if (subject && subject !== msgId) throw new Error(`msgId is drifting: ${subject} => ${msgId}`);
-	subject = msgId;
-	if (lastFillIn) {
-	  lastFillIn.subject = subject;
-	  lastFillIn = null;
-	}
-      } else {
-	await contact.publish({eventName, region, subject, payload: null});
-	throttleMS && await P2PWebNetwork.delay(throttleMS);
-      }
-    }
-    if (!payload) {
-      const index = last.findIndex(past => past.subject === subject);
-      if (index >= 0) last.splice(index, 1);
-    }
-    console.log('Published', {cells, n: cells.length, region, hashtag, subject, payload, oldCells, oldHash, oldSubject});
-    return subject;
-  } finally {
-    publishing = false;
   }
 }
 
@@ -261,7 +144,7 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
     map.closePopup(yourLocation.getPopup());
   });
   map.on('moveend', () => {
-    updateSubscriptions();
+    Alert.updateSubscriptions();
     updateLocation(lastLatitude, lastLongitude); // Might now be within map.
   });
 
@@ -270,7 +153,7 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
     resetInactivityTimer();
     if (document.getElementById('map').querySelector('.leaflet-popup')) return; // Ignore clicks with popup open.
     const { lat, lng } = e.latlng;
-    Alert.openPopup(await publishAlert({lat, lng}));
+    Alert.openPopup(await Alert.publish({lat, lng}));
     Agent.current.persistPublicMetadata(P2PWebNetwork.regionCode(lat, lng));
   });
   tooltip('.leaflet-control-zoom-in', Int`Zoom in to show more detail in the map.`);

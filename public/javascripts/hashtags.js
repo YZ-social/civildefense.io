@@ -1,7 +1,7 @@
 const { localStorage } = globalThis; // For linters.
 import { stripLeadingEmoji, canonicalTag } from './versions.js';
 import { Int } from './translations.js';
-import { updateSubscriptions, showMessage } from './map.js';
+import { showMessage } from './map.js';
 import { Alert } from './alert.js';
 import { resetInactivityTimer, clickTip } from './main.js';
 
@@ -83,7 +83,7 @@ export const Hashtags = {
     if (redisplaySubscribers) this.resetSubscriberDisplay();
     localStorage.setItem('hashtags', JSON.stringify(this.hashtags));
     if (resetSubscriptions) {
-      updateSubscriptions();
+      Alert.updateSubscriptions();
       Object.values(Alert.markers).forEach(wrapper => this.hashtags[wrapper.hashtag] || wrapper.destroy());
     }
   },
