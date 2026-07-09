@@ -2,7 +2,7 @@ const { Request, Response, URL, localStorage, BroadcastChannel } = globalThis;
 import { appVersion } from './versions.js';
 import { resetInactivityTimer, clickTip } from './main.js';
 import { openDisplay } from './display.js';
-import { go } from './map.js';
+import { go } from './alert.js';
 import { Int } from './translations.js';
 
 /*
