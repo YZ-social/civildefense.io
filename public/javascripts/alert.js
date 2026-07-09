@@ -36,7 +36,7 @@ export async function share(properties) {  // Invoke platform share API on prope
     }
   }
   if (!properties.files) {
-    Marker.closePopup();
+    Alert.closePopup();
     await delay(500); // Allow popup time to close. It doesn't render well because of the web component style sheets.
     const target = document.getElementById('mapCapture');
     const icon = target.lastElementChild;
@@ -64,15 +64,15 @@ export function go({lat = null, lng = null, zoom = null, subject = null}) { // G
   }
   openOnReceive = null;
   if (subject) {
-    Marker.openPopup(subject) || (openOnReceive = subject);
+    Alert.openPopup(subject) || (openOnReceive = subject);
   }
 }
 
-export class Marker { // A wrapper around L.marker
+export class Alert { // A wrapper around L.marker
   // When we resubscribe to different cells covering the same place, we will get the same
   // sticky data. We don't want to change the marker. Fortunately, the publication to each
   // of the cells (at different scales) are all published with the same data.
-  static markers = {}; // subject => Marker
+  static markers = {}; // subject => Alert
   static noMessage = Int`No additional information.`;
   static closePopup() { // Close any open popup.
     map.closePopup();
@@ -92,13 +92,13 @@ export class Marker { // A wrapper around L.marker
   }
   static makeIcon(hashtag) { // Return a Leaflet icon
     return L.divIcon({
-      html: `<div class="alert-commented"></div><div class="alert-pin">${Hashtags.formatMarker(hashtag)}</div>`,
+      html: `<div class="alert-commented"></div><div class="alert-pin">${Hashtags.formatAlert(hashtag)}</div>`,
       iconSize: [40, 40],
       popupAnchor: [0, 0],
       className: 'alert-marker'
     });
   }
-  static updateMarkers(canonicalHashtag, extendedHashtag) { // Update markers becase we have discovered an extendedHashtag that we have only had as canonical.
+  static updateAlerts(canonicalHashtag, extendedHashtag) { // Update markers becase we have discovered an extendedHashtag that we have only had as canonical.
     for (const wrapper of Object.values(this.markers)) {
       const { hashtag, marker, agent } = wrapper;
       if (hashtag !== canonicalHashtag) continue;
@@ -443,7 +443,7 @@ export class Marker { // A wrapper around L.marker
     }, interval);
     return element;
   }
-  destroy() { // Remove this Marker pin entirely.
+  destroy() { // Remove this Alert pin entirely.
     clearInterval(this['.alert-pin']);
     clearInterval(this['.alert-commented']);
     clearInterval(this.destroyer);

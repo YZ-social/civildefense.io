@@ -5,7 +5,7 @@ import { openDisplay } from './display.js';
 import { Agent} from './agent.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { getPointInCell } from './s2.js';
-import { Marker, getShareableURL, share } from './alert.js';
+import { Alert, getShareableURL, share } from './alert.js';
 import { map, showMessage, updateLocation, updateSubscriptions, recenterMap } from './map.js';
 import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
 
@@ -125,7 +125,7 @@ export function openAbout(event) {
   noteNotificationPermission(window.Notification?.permission);
 }
 clickTip('#aboutButton', Int`Information about this app, and options to change how you appear to others.`, event => { // open about
-  Marker.closePopup();
+  Alert.closePopup();
   openAbout(event);
 });
 clickTip('#wipe', Int`Wipe from ${osName()} all personal data and source files for this app.`, async event => {

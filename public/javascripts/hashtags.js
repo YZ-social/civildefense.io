@@ -2,7 +2,7 @@ const { localStorage } = globalThis; // For linters.
 import { stripLeadingEmoji, canonicalTag } from './versions.js';
 import { Int } from './translations.js';
 import { updateSubscriptions, showMessage } from './map.js';
-import { Marker } from './alert.js';
+import { Alert } from './alert.js';
 import { resetInactivityTimer, clickTip } from './main.js';
 
 // We subscribe to the cartesian product of the list of non-overlapping cells and all hashes.
@@ -27,7 +27,7 @@ export const Hashtags = {
   //    were using the same emoji as each other.
   hashtags: {},
   canonical2extended: {},
-  add(label, active = true, updateMarkers = true) { // Ensure label is a hashtag, initialized to active, and if existing, forcing it active.
+  add(label, active = true, updateAlerts = true) { // Ensure label is a hashtag, initialized to active, and if existing, forcing it active.
     // Return our (possibly new) understanding of the extended hashtag.
     // Note that only startup-population of tags from persistence would ever specify active=false.
     // Here we accept a canonical or extended label, updating our records keyed by the canonical part,
@@ -45,7 +45,7 @@ export const Hashtags = {
     this.canonical2extended[canonical] = extended;
     if (!oursHasEmoji) {
       this.onchange({resetSubscriptions: false});
-      if (updateMarkers) Marker.updateMarkers(canonical, extended);
+      if (updateAlerts) Alert.updateAlerts(canonical, extended);
     }
     return extended;
   },
@@ -71,7 +71,7 @@ export const Hashtags = {
     // Unneeded and not necessarilly meaningful if tag has emoji.
     return `<minidenticon-svg ${slot ? `slot="${slot}"` : ''} username="${tag}"></minidenticon-svg>`;
   },
-  formatMarker(tag) { // HTML (possibly text) to represent tag as a marker on map.
+  formatAlert(tag) { // HTML (possibly text) to represent tag as a marker on map.
     return this.firstEmoji(tag) || this.identicon(tag);
   },
   formatPubtag(tag) { // HTML (possibly text) to represent tag with defaulted icon.
@@ -84,7 +84,7 @@ export const Hashtags = {
     localStorage.setItem('hashtags', JSON.stringify(this.hashtags));
     if (resetSubscriptions) {
       updateSubscriptions();
-      Object.values(Marker.markers).forEach(wrapper => this.hashtags[wrapper.hashtag] || wrapper.destroy());
+      Object.values(Alert.markers).forEach(wrapper => this.hashtags[wrapper.hashtag] || wrapper.destroy());
     }
   },
   chipset: document.body.querySelector('.watching-hashtags'), // Element containing the user's chips.
@@ -133,7 +133,7 @@ export const Hashtags = {
 	if (chip.selected) showMessage(Int`Turning "${chip.label}" alerts back on in the map.`, 'instructions');
 	else showMessage(Int`Turning off "${chip.label}" alerts in the map. You can delete the topic altogether with the X.`, 'instructions');
 	this.toggleChip(chip);
-	Marker.closePopup();
+	Alert.closePopup();
 	if (chip.selected) this.setPublish(chip.label);
 	this.onchange({redisplaySubscribers: false});
       });
@@ -142,7 +142,7 @@ export const Hashtags = {
 				    `<md-filled-text-field class="newtag" placeholder="➕${Int`add topic`}"></md-filled-text-field>`);
     clickTip(this.chipset.firstChild, Int`Add a new topic for which the map should show any alerts.`, event => { // Focusing "add topic".
       event.stopPropagation();
-      Marker.closePopup();
+      Alert.closePopup();
       showMessage(Int`Type a new topic name to see any alerts on the map with this topic.`, 'instructions');
     });
     this.chipset.firstChild.onchange = event => { // Add the new hashtag.
@@ -152,7 +152,7 @@ export const Hashtags = {
 	  .replace(/\s+/g, ' ')    // Replace multiple spaces with a single space
 	  .normalize('NFD');        // Standardize different ways of making accents into decomposed form - but do not remove them.
       if (!tag) return;
-      Marker.closePopup();
+      Alert.closePopup();
       tag = this.add(tag); // Might exist, in which case tag might now be extended.
       this.setPublish(tag);
       this.onchange({highlightPublish: true});
