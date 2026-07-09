@@ -5,7 +5,8 @@ import { openDisplay } from './display.js';
 import { Agent} from './agent.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { getPointInCell } from './s2.js';
-import { Marker, map, getShareableURL, showMessage, updateLocation, updateSubscriptions, recenterMap, share } from './map.js';
+import { Marker, getShareableURL, share } from './alert.js';
+import { map, showMessage, updateLocation, updateSubscriptions, recenterMap } from './map.js';
 import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
 
 document.getElementById('appVersion').textContent = appVersion;

@@ -1,7 +1,8 @@
 const { localStorage } = globalThis; // For linters.
 import { stripLeadingEmoji, canonicalTag } from './versions.js';
 import { Int } from './translations.js';
-import { updateSubscriptions, Marker, showMessage } from './map.js';
+import { updateSubscriptions, showMessage } from './map.js';
+import { Marker } from './alert.js';
 import { resetInactivityTimer, clickTip } from './main.js';
 
 // We subscribe to the cartesian product of the list of non-overlapping cells and all hashes.
