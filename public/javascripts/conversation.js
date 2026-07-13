@@ -1,12 +1,22 @@
 export class Conversation { // Maintains name, agent, replies around a given tag.
-  static conversations = {}; // Maps tag => conversation
+
+  // Multiton pattern, with each subclass getting its own dictionary.
+  static _conversations = {}; // Maps tag => conversation
+  static get conversations() {
+    if (!Object.hasOwn(this, '_conversations')) this._conversations = {};
+    return this._conversations;
+  }
+  static removeConversation(tag) {
+    delete this._conversations[tag];
+  }
   static getConversation(tag) {
     return this.conversations[tag];
   }
+
   destroy() { // Uncaches and returns falsy.
-    delete this.constructor.conversations[this.tag];
+    this.constructor.removeConversation(this.tag);
   }
-  static eachConversation(callback) {
+  static eachConversation(callback) { // Apply callback to each cached conversation.
     Object.values(this.conversation).forEach(callback);
   }
   static ensure({tag, ...rest}) { // update() or initialize() conversation and remember what those answer. (Falsy is deleted).
@@ -15,10 +25,10 @@ export class Conversation { // Maintains name, agent, replies around a given tag
     if (conversation) conversation = conversation.update(rest);
     else conversation = new this().initialize({tag, ...rest});
 
-    if (!conversation) return delete this.conversations[tag] && null;
+    if (!conversation) return this.removeConversation(tag);
     return this.conversations[tag] = conversation;
   }
-  initialize({...properties} = {}) { // First initialization of a new object. (Includes tag.) Must return this or null (to not cache).
+  initialize({...properties} = {}) { // Initialization of a new object. (Includes tag.) Must return this, or null to not cache.
     Object.assign(this, properties);
     return this;
   }
