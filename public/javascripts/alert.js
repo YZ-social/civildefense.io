@@ -230,48 +230,45 @@ export class Alert extends Conversation { // A wrapper around L.marker
       wrapper.initChangeHashtag(popupAttribution);
     });
   }
-  static ensure(data) { // Add marker at position with appropriate fade if not already present.
-    let { payload, subject, issuedTime, agent, hashtag} = data;
-    let wrapper = this.getConversation(subject); // We are relying on the "same" data hashing in the same way as a property indicator.
-    console.log('Handling event', {wrapper, hashtag, subject, payload, agent, usertag: Agent.tag, data});
-
-    if (!payload) return wrapper?.destroy();
+  static ensure({subject, issuedTime, ...rest}) { // Add marker at position with appropriate fade if not already present.
+    const alert = super.ensure({tag: subject, subject, issuedTime, ...rest}); // fixme: get rid of subject
+    if (!alert) return null;
+    // Regardless of initialize vs update, reset fader.
     const now = Date.now(),
 	  expiration = issuedTime + ttl,
           remaining = expiration - now;
-    if (remaining < 0) return wrapper?.destroy();  // Expired.
-
-    hashtag = Hashtags.add(hashtag); // We already have it and are subscribing, but this updates our extended form if needed.
-    wrapper ||= this.conversations[subject] = new this();
-    wrapper.tag = subject;
-    const {lat, lng, originalPosting} = payload;
-    // TODO: Now that msgId is the same at each level, there's no reason for a separate GUID subject.
-    const region = P2PWebNetwork.regionCode(lat, lng);
-    Object.assign(wrapper, {lat, lng, subject, originalPosting, issuedTime, hashtag, agent, region});
-    let {marker} = wrapper;
-    if (!marker) {
-      const icon = this.makeIcon(hashtag);
-      marker = wrapper.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
-      marker.bindPopup('', {className: 'alert'})
-	.on('popupopen', event => wrapper.ensureContent(event.popup));
-      // Subscribe to replies to this subject, now that we're set up to receive them.
-      networkPromise.then(async contact => {
-	contact.subscribe({eventName: subject, region, handler: data => wrapper.handleReply(data)});
-      });
-      console.log('marker', marker, marker.getElement());
-      tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
-      if (subject === openOnReceive) {
-	openOnReceive = false;
-	wrapper.openPopup();
-      }
-      wrapper.showNotification({tag: subject, agent, issuedTime});
-    } else {
-      wrapper.needsRedisplay = true;
-    }
-    wrapper.startFader('.alert-pin', remaining); // From the new value of remaining, after marker is set in wrapper, regardless of popup/dirty state.
-    wrapper.destroyer = setTimeout(() => wrapper.destroy(), remaining);
-    return wrapper;
+    if (remaining < 0) return alert?.destroy();  // Expired.
+    alert.startFader('.alert-pin', remaining); // From the new value of remaining, after marker is set in wrapper, regardless of popup/dirty state.
+    alert.destroyer = setTimeout(() => alert.destroy(), remaining);
+    return alert;
   }
+  initialize({payload, hashtag, subject, agent, issuedTime, ...rest}) { // Set up the marker.
+    if (!payload) return null; // Do not cache. E.g., Received a delete event without the initial creation.
+    const icon = this.constructor.makeIcon(hashtag);
+    const {lat, lng, originalPosting} = payload;
+    const marker = this.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
+    const region = P2PWebNetwork.regionCode(lat, lng);
+    hashtag = Hashtags.add(hashtag); // We already have it and are subscribing, but this updates our extended form if needed.
+    super.initialize({payload, hashtag, subject, agent, lat, lng, issuedTime, originalPosting, ...rest});
+
+    marker.bindPopup('', {className: 'alert'}).on('popupopen', event => this.ensureContent(event.popup));
+    tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
+    if (subject === openOnReceive) {
+      openOnReceive = false;
+      this.openPopup();
+    }
+    // Subscribe to replies to this subject, now that we're set up to receive them.
+    networkPromise.then(async contact => {
+      contact.subscribe({eventName: subject, region, handler: data => this.handleReply(data)});
+    });
+    this.showNotification({tag: subject, agent, issuedTime});
+    return this;
+  }
+  update({payload, ...rest}) { // Delete existing if no payload.
+    if (!payload) return this.destroy();
+    return this;
+  }
+
   needsRedisplay = true;
   ensureContent(popup = this.marker.getPopup()) { // Set content and handlers in popup if/as needed.
     if (!popup.isOpen()) return;
@@ -405,6 +402,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   updatePost(tag) { // Republish under a different hashtag, or cancel altogether if no tag (which is not allowed as a hashtag).
     resetInactivityTimer();
     const {lat, lng, hashtag, subject, issuedTime, originalPosting = issuedTime} = this;
+    console.log("updatePost", {tag, lat, lng, hashtag, subject, issuedTime, originalPosting, self:this});
     if (!tag) return Alert.publish({lat, lng, subject, originalPosting, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
     if (tag === hashtag) return this.needsRedisplay = true;
     const cancel = {lat, lng, subject, hashtag}; // Cancel old hashtag as we publish new tag, below.
