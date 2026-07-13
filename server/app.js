@@ -18,7 +18,7 @@ const argv = yargs(hideBin(process.argv))
       .option('nPortals', {
 	alias: 'p',
 	type: 'number',
-	default: logicalCores,
+	default: 5, //fixme logicalCores,
 	description: "The number of steady nodes that handle initial connections."
       })
       .option('baseURL', {
@@ -82,7 +82,6 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   // expressWs(app);
   // const Yz = await import('./routes/index.js');
 
-  //console.log(`${cpus()[0].model}, ${logicalCores} logical cores. Starting ${argv.nPortals}.`);
   app.use(express.json());
 
   app.use('/images', express.static(resolve('../public/images'), {
@@ -96,13 +95,15 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
 
   app.listen(port);
   console.log('Listening on', port, 'and starting', argv.nPortals, 'nodes.');
-  for (let i = 0; i < argv.nPortals; i++) cluster.fork();
+  for (let i = 0; i < argv.nPortals; i++) {
+    cluster.fork();
+    await new Promise(resolve => setTimeout(resolve, 1e3));
+  }
 } else {
   process.title = 'axona-starting';
   const { P2PWebNetwork, location } = await import('../index.js');
-  await P2PWebNetwork.delay(cluster.worker?.id * 1e3); // One second between startups.
   const network = await P2PWebNetwork.create({region: location});
-  process.title = 'axona-' + network.identity.id;
+  process.title = 'axona-' + network.nodeIdentity.id;
   let update = null//setInterval(() => network.info(network.health().axonRoles.map(role => role.topic)), 5e3);
   process.on('SIGINT', async () => { // Leave the network politely.
     console.log(process.title, 'Shutdown for Ctrl+C');
