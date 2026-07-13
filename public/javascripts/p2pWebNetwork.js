@@ -23,14 +23,14 @@ export class P2PWebNetwork {
 		       region = this.sessionRegion, bridgeUrl = 'wss://bridge.axona.net',
 		      } = {}) {
     // Promise a ready-to-use network peer.
-    const { peer, nodeIdentity, status, disconnect } = await connect({
+    const { peer, nodeIdentity, transport, status, disconnect } = await connect({
       bridge: bridgeUrl,
       location: await region,
       author: false
     });
 
     const network = new this();
-    Object.assign(network, {infoLogger, debugLogger, /*identity, transport, node,*/ disconnector: disconnect, identity: nodeIdentity, peer});
+    Object.assign(network, {infoLogger, debugLogger, disconnector: disconnect, transport, nodeIdentity, peer});
     network.resetStatePromises();
     network.info(`Created network node for kernel ${this.kernelVersion} region 0x${this.regionCode(region.lat, region.lng).toString(16)}.`);
     const { peers, ms } = status;
@@ -215,10 +215,10 @@ export class P2PWebNetwork {
   }
   // Todo: Integrate with AxonaPeer's complex logging.
   debug(...rest) { // Add debug logspam.
-    this.debugLogger?.(this.identity.id, ...rest);
+    this.debugLogger?.(this.nodeIdentity.id, ...rest);
   }
   info(...rest) { // Add debug logspam.
-    (this.infoLogger || this.debugLogger)?.(this.identity.id, ...rest);
+    (this.infoLogger || this.debugLogger)?.(this.nodeIdentity.id, ...rest);
   }
 }
 export default P2PWebNetwork;
