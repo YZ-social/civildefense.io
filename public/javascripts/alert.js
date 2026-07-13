@@ -6,9 +6,11 @@ import { networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, cl
 import { consume } from './display.js';
 import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
+import { Conversation } from './conversation.js';
 import { alertTopic } from './versions.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 const { localStorage, getComputedStyle, URL, URLSearchParams, domtoimage } = globalThis;
+
 
 export function getShareableURL(subject = null, tags = Hashtags.getSubscribe()) { // Answer a url that reflects application state.
   const params = new URLSearchParams(location.search);
@@ -80,7 +82,10 @@ const maxPublish = 5;
 // Publish an alert to all applicable eventNames, canceling as required. Promises subject (msgId).
 let publishing = false;
 
-export class Alert { // A wrapper around L.marker
+export class Alert extends Conversation { // A wrapper around L.marker
+  // When we resubscribe to different cells covering the same place, we will get the same
+  // sticky data. We don't want to change the marker. Fortunately, the publication to each
+  // of the cells (at different scales) are all published with the same data.
   static updateSubscriptions(oldKeys = subscriptions, newKeys) { // Update current subscriptions to the new map bounds.
     // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
     if (!networkPromise) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
@@ -181,16 +186,13 @@ export class Alert { // A wrapper around L.marker
       publishing = false;
     }
   }
-  // When we resubscribe to different cells covering the same place, we will get the same
-  // sticky data. We don't want to change the marker. Fortunately, the publication to each
-  // of the cells (at different scales) are all published with the same data.
-  static markers = {}; // subject => Alert
+  
   static noMessage = Int`No additional information.`;
   static closePopup() { // Close any open popup.
     map.closePopup();
   }
   static openPopup(subject) { // Open the marker specified by subject.
-    const wrapper = this.markers[subject];
+    const wrapper = this.getConversation(subject);
     wrapper?.openPopup();
   }
   async openPopup() { // Open this wrapper's popup, and resolve any waiting promise.
@@ -211,26 +213,26 @@ export class Alert { // A wrapper around L.marker
     });
   }
   static updateAlerts(canonicalHashtag, extendedHashtag) { // Update markers becase we have discovered an extendedHashtag that we have only had as canonical.
-    for (const wrapper of Object.values(this.markers)) {
+    this.eachConversation(wrapper => {
       const { hashtag, marker, agent } = wrapper;
-      if (hashtag !== canonicalHashtag) continue;
+      if (hashtag !== canonicalHashtag) return;
       const newIcon = this.makeIcon(extendedHashtag);
       const popup = marker.getPopup();
       marker.setIcon(newIcon);
       wrapper.hashtag = extendedHashtag;
       wrapper.needsRedisplay = true; // See comment for initializeHandlers. We need to clear and rebuild content on re-open.
-      if (!popup.isOpen()) continue;
+      if (!popup.isOpen()) return;
       // Fix what's showing now without flashing everything. Make sure menu works.
       const popupAttribution = popup.getElement().querySelector('.attribution');
       const attributionActions = popupAttribution.lastElementChild;
       attributionActions.lastElementChild.remove();
       attributionActions.insertAdjacentHTML('beforeend', this.formatAttributionHashtag(agent, extendedHashtag));
       wrapper.initChangeHashtag(popupAttribution);
-    }
+    });
   }
   static ensure(data) { // Add marker at position with appropriate fade if not already present.
     let { payload, subject, issuedTime, agent, hashtag} = data;
-    let wrapper = this.markers[subject]; // We are relying on the "same" data hashing in the same way as a property indicator.
+    let wrapper = this.getConversation(subject); // We are relying on the "same" data hashing in the same way as a property indicator.
     console.log('Handling event', {wrapper, hashtag, subject, payload, agent, usertag: Agent.tag, data});
 
     if (!payload) return wrapper?.destroy();
@@ -240,7 +242,8 @@ export class Alert { // A wrapper around L.marker
     if (remaining < 0) return wrapper?.destroy();  // Expired.
 
     hashtag = Hashtags.add(hashtag); // We already have it and are subscribing, but this updates our extended form if needed.
-    wrapper ||= this.markers[subject] = new this();
+    wrapper ||= this.conversations[subject] = new this();
+    wrapper.tag = subject;
     const {lat, lng, originalPosting} = payload;
     // TODO: Now that msgId is the same at each level, there's no reason for a separate GUID subject.
     const region = P2PWebNetwork.regionCode(lat, lng);
@@ -563,6 +566,6 @@ export class Alert { // A wrapper around L.marker
     // Unsubscribe from replies.
     networkPromise?.then(async contact => contact.subscribe({eventName: this.subject, region: this.region, handler: null}));
     this.marker.removeFrom(map);
-    delete this.constructor.markers[this.subject];
+    super.destroy();
   }
 }
