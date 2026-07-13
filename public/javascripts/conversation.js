@@ -3,18 +3,22 @@ export class Conversation { // Maintains name, agent, replies around a given tag
   static getConversation(tag) {
     return this.conversations[tag];
   }
-  destroy() {
+  destroy() { // Uncaches and returns falsy.
     delete this.constructor.conversations[this.tag];
   }
   static eachConversation(callback) {
     Object.values(this.conversation).forEach(callback);
   }
-  static ensure({tag, ...rest}) { // update conversation if it exists, else construct and remember it.
-    let conversation = this.conversations[tag];
-    if (conversation) return conversation.update(rest);
-    return this.conversations[tag] = new this().initialize({tag, ...rest});
+  static ensure({tag, ...rest}) { // update() or initialize() conversation and remember what those answer. (Falsy is deleted).
+    let conversation = this.getConversation(tag);
+
+    if (conversation) conversation = conversation.update(rest);
+    else conversation = new this().initialize({tag, ...rest});
+
+    if (!conversation) return delete this.conversations[tag] && null;
+    return this.conversations[tag] = conversation;
   }
-  initialize({...properties} = {}) { // First initialization of a new object. (Includes tag.)
+  initialize({...properties} = {}) { // First initialization of a new object. (Includes tag.) Must return this or null (to not cache).
     Object.assign(this, properties);
     return this;
   }
