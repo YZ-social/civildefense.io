@@ -266,6 +266,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
   update({payload, ...rest}) { // Delete existing if no payload.
     if (!payload) return this.destroy();
+    super.update({payload, ...rest});
     return this;
   }
 
