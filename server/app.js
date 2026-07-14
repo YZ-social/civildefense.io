@@ -104,10 +104,10 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   const { P2PWebNetwork, location } = await import('../index.js');
   const network = await P2PWebNetwork.create({region: location});
   process.title = 'axona-' + network.nodeIdentity.id;
-  let update = null//setInterval(() => network.info(network.health().axonRoles.map(role => role.topic)), 5e3);
+  //let update = setInterval(() => network.info(network.peer.health().axonRoles.length, 'axons'), 10e3);
   process.on('SIGINT', async () => { // Leave the network politely.
     console.log(process.title, 'Shutdown for Ctrl+C');
-    clearInterval(update)
+    //clearInterval(update)
     await network.disconnect();
     process.exit(0);
 });
