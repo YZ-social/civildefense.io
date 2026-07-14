@@ -14,6 +14,6 @@ export const data = await import(filename, {with: { type: 'json' }})
     await fs.writeFile(resolve(filename), string, 'utf8');
     return {default: JSON.parse(string)};
   });
-export const [lat, lng] = data.default.loc.split(',').map(parseFloat);
+export const [lat, lng] = (globalThis.process?.env.LAT_LNG || data.default.loc).split(',').map(parseFloat);
 export const location = {lat, lng};
 

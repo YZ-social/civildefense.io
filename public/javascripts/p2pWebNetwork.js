@@ -20,7 +20,8 @@ export class P2PWebNetwork {
   static setSessionRegion = resolveSessionRegion;
   static sessionRegion = sessionRegionPromise;
   static async create({infoLogger = console.log, debugLogger,
-		       region = this.sessionRegion, bridgeUrl = 'wss://bridge.axona.net',
+		       region = this.sessionRegion,
+		       bridgeUrl = globalThis.process?.env.BRIDGE_URL || 'wss://bridge.axona.net',
 		      } = {}) {
     // Promise a ready-to-use network peer.
     const { peer, nodeIdentity, transport, status, disconnect } = await connect({
@@ -34,7 +35,7 @@ export class P2PWebNetwork {
     network.resetStatePromises();
     network.info(`Created network node for kernel ${this.kernelVersion} region 0x${this.regionCode(region.lat, region.lng).toString(16)}.`);
     const { peers, ms } = status;
-    network.info(`Connected ${peers} connections in ${ms.toLocaleString()} ms.`);
+    network.info(`Connected ${peers} connections through ${bridgeUrl} in ${ms.toLocaleString()} ms.`);
     network.attached(network);
     return network;
   }
