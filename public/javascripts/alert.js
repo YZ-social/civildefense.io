@@ -12,7 +12,7 @@ import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 const { localStorage, getComputedStyle, URL, URLSearchParams, domtoimage } = globalThis;
 
 
-export function getShareableURL(subject = null, tags = Hashtags.getSubscribe()) { // Answer a url that reflects application state.
+export function getShareableURL(tag = null, tags = Hashtags.getSubscribe()) { // Answer a url that reflects application state.
   const params = new URLSearchParams(location.search);
   const zoom = map.getZoom();
   const { lat, lng } = map.getCenter();
@@ -21,7 +21,7 @@ export function getShareableURL(subject = null, tags = Hashtags.getSubscribe()) 
   if (lat !== null) params.set('lat', lat);
   if (lng !== null) params.set('lng', lng);
   if (zoom !== null) params.set('z', zoom);
-  if (subject !== null) params.set('sub', subject);
+  if (tag !== null) params.set('alert', tag);
   return new URL(`?${params.toString()}`, location);
 }
 export async function share(properties) {  // Invoke platform share API on properties.
@@ -61,14 +61,14 @@ export async function share(properties) {  // Invoke platform share API on prope
 
 const ttl = 24 * 60 * 60e3; // 24 hours
 let openOnReceive = null;
-export function go({lat = null, lng = null, zoom = null, subject = null}) { // Go to specified location (if any) and open marker (if any).
+export function go({lat = null, lng = null, zoom = null, alert = null}) { // Go to specified location (if any) and open marker (if any).
   if (lat !== null && lng !== null) {
     if (zoom) map.flyTo({lat, lng}, zoom);
     else map.flyTo({lat, lng});
   }
   openOnReceive = null;
-  if (subject) {
-    Alert.openPopup(subject) || (openOnReceive = subject);
+  if (alert) {
+    Alert.openPopup(alert) || (openOnReceive = alert);
   }
 }
 
@@ -191,8 +191,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
   static closePopup() { // Close any open popup.
     map.closePopup();
   }
-  static openPopup(subject) { // Open the marker specified by subject.
-    const wrapper = this.getItem(subject);
+  static openPopup(alertTag) { // Open the marker specified by subject.
+    const wrapper = this.getItem(alertTag);
     wrapper?.openPopup();
   }
   async openPopup() { // Open this wrapper's popup, and resolve any waiting promise.
@@ -242,7 +242,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     alert.destroyer = setTimeout(() => alert.destroy(), remaining);
     return alert;
   }
-  initialize({payload, hashtag, subject, agent, issuedTime, ...rest}) { // Set up the marker.
+  initialize({payload, hashtag, subject, agent, issuedTime, ...rest}) { // Set up the marker for a newly received alert.
     if (!payload) return null; // Do not cache. E.g., Received a delete event without the initial creation.
     const icon = this.constructor.makeIcon(hashtag);
     const {lat, lng, originalPosting} = payload;
@@ -261,7 +261,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     networkPromise.then(async contact => {
       contact.subscribe({eventName: subject, region, handler: data => this.ensure(data)});
     });
-    this.showNotification({tag: subject, agent, issuedTime});
+    this.showNotification({agent, issuedTime});
     return this;
   }
 
@@ -411,7 +411,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   async ensure(data) { // Add or update reply for this marker.
     data.tag = data.subject; //fixme
     const reply = super.ensure(data);
-    if (reply) {
+    if (reply) { // TODO? Move to AlertReply.initialize()?
       const {agent, issuedTime, payload} = data;
       const {file} = payload;
       if (file) {
@@ -455,15 +455,16 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const {region} = this;
     networkPromise.then(async contact => contact.publish({eventName: this.subject, region, subject: replyElement.dataset.subject, payload: null}));
   }
-  showNotification({issuedTime = this.issuedTime, body = '', agent = this.agent, tag = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
+  showNotification({issuedTime = this.issuedTime, body = '', agent = this.agent, alert = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
     // Give OS notification that comes back to here, unless act is us.
-    if (agent == Agent.tag || !notificationsAllowed()) return;
+    // All notifications on the same alert (e.g., the post and each reply) have the same tag, so OS can collapse them.
+    if (agent === Agent.tag || !notificationsAllowed()) return;
     navigator.serviceWorker.ready.then(registration => {
       const timestamp = issuedTime;
       const icon = new URL('./images/civil-defense-192.png', location.href).href;
-      const url = getShareableURL(tag, [hashtag]).href; // For opening page when it has been closed.
+      const url = getShareableURL(alert, [hashtag]).href; // For opening page when it has been closed.
       const data = {lat, lng, url};
-      const options = {icon, timestamp, tag, body, data};
+      const options = {icon, timestamp, tag: alert, body, data};
       console.log('showNotification', hashtag, options);
       registration.showNotification(hashtag, options);
     });

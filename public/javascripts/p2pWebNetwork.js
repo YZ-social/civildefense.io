@@ -176,6 +176,7 @@ export class P2PWebNetwork {
   static currentPublishIdentity = null;
   async publish({eventName, region, owner, signWith = this.constructor.currentPublishIdentity, issuedTime = Date.now(), subject, payload, ...rest}) {
     // Publish data to subscribers of eventName.
+    if (subject && payload) throw new Error(`Specify subject (${subject}) or payload ($(JSON.stringify(payload)}), but not both.`);
     await this.attachment; // Get connected.
     const topic = {region, name: eventName};
     if (owner) topic.owner = owner;

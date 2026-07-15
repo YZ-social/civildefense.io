@@ -70,7 +70,7 @@ export class Agent {
     });
   }
   async setPublicData(data) { // Subscription to public data has fired. Update value, but do not not re-publish.
-    let {payload, subject, type, topic, ts} = data; // fixme remove topic and ts
+    let {payload, tag, type, topic, ts} = data; // fixme remove topic and ts
     // WARNING: IF we chunkify avatars, and we use since:'all', then we need lock out asynchronous
     // decoding of later timestamps, or of null payloads.
     // if (payload && (type === 'avatar')) {
@@ -79,7 +79,7 @@ export class Agent {
     //   payload = dataURL;
     // }
     this.updateValue(payload, 'public', type, false);
-    if (subject) this.publicMsgId[type] = subject;
+    if (tag) this.publicMsgId[type] = tag;
   }
   
   static agents = {}; // tag => Agent

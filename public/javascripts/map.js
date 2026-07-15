@@ -48,7 +48,7 @@ export function updateLocation(lat, lng, zoom, positionLabel) { // initMap if ne
     const tagsArray = tags?.split(',') || [];
     tagsArray.forEach(tag => Hashtags.add(decodeURIComponent(tag)));
     Hashtags.onchange({resetSubscriptions: false}); // Too early to subscribe, but will be done during initialization.
-    go({lat: params.get('lat'), lng: params.get('lng'), zoom: params.get('z'), subject: params.get('sub')});
+    go({lat: params.get('lat'), lng: params.get('lng'), zoom: params.get('z'), alert: params.get('alert')});
     // We don't need the query parameters now. Get rid of them. They're annoying.
     const copy = new URL(location);
     const dht = copy.searchParams.get('dht');
