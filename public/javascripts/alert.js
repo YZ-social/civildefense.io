@@ -77,9 +77,8 @@ let subscriptionsRegion;
 // We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
 let lastLevel9Cell; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
 
-let last = []; // Last published lat, lng, subject
+let last = []; // Last published lat, lng, tag
 const maxPublish = 5;
-// Publish an alert to all applicable eventNames, canceling as required. Promises subject (msgId).
 let publishing = false;
 
 export class Alert extends Conversation { // A wrapper around L.marker
@@ -116,6 +115,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     subscriptions = newKeys;
     subscriptionsRegion = region;
   }
+  // Publish an alert to all applicable eventNames, canceling as required. Promises tag (msgId).
   static async publish({lat, lng,
 			originalPosting = undefined,
 			hashtag = Hashtags.getPublish(),
@@ -129,7 +129,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     // However, the 'unpublishing' (if any) is invoked first.
     // To do this, we must hash the eventName ourselves.
     //console.log('publish', {lat, lng, hashtag, payload, cancel, subject, issuedTime, rest});
-    if (publishing) { console.log('skiping overlappying publish'); return; } // do not stack them up.
+    if (publishing) { console.log('skiping overlappying publish'); return null; } // do not stack them up.
     try {
       publishing = true;
 
@@ -154,7 +154,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	for (const cell of oldCells) {
 	  const eventName = alertTopic(cell, hashtag);
 	  // Note: we cannot unpublish replies by others, but they expire after a while anyway.
-	  await contact.publish({eventName, region, subject, payload: null});
+	  await contact.publish({eventName, region, killTag: subject, payload: null});
 	  throttleMS && await P2PWebNetwork.delay(throttleMS);
 	}
       }
@@ -172,7 +172,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	    lastFillIn = null;
 	  }
 	} else {
-	  await contact.publish({eventName, region, subject, payload: null});
+	  await contact.publish({eventName, region, killTag: subject, payload: null});
 	  throttleMS && await P2PWebNetwork.delay(throttleMS);
 	}
       }
@@ -230,8 +230,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
       wrapper.initChangeHashtag(popupAttribution);
     });
   }
-  static ensure({subject, topic, ts, issuedTime, ...rest}) { // Add marker at position with appropriate fade if not already present.
-    const alert = super.ensure({tag: subject, subject, issuedTime, ...rest}); // Does not include topic or ts. fixme: get rid of subject. fixme: why is ts different?
+  static ensure({tag, topic, ts, issuedTime, ...rest}) { // Add marker at position with appropriate fade if not already present.
+    const alert = super.ensure({tag, subject: tag, issuedTime, ...rest}); // Does not include topic or ts. fixme: get rid of subject. fixme: why is ts different?
     if (!alert) return null;
     // Regardless of initialize vs update, reset fader.
     const now = Date.now(),
@@ -409,7 +409,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 
   // Each reply is separately published by its author, and only they can modify/unpublish it.
   async ensure(data) { // Add or update reply for this marker.
-    data.tag = data.subject; //fixme
+    data.subject = data.tag; //fixme
     const reply = super.ensure(data);
     if (reply) { // TODO? Move to AlertReply.initialize()?
       const {agent, issuedTime, payload} = data;
@@ -453,7 +453,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   deleteReply(replyElement) {
     resetInactivityTimer();
     const {region} = this;
-    networkPromise.then(async contact => contact.publish({eventName: this.subject, region, subject: replyElement.dataset.subject, payload: null}));
+    networkPromise.then(async contact => contact.publish({eventName: this.subject, region, killTag: replyElement.dataset.subject, payload: null}));
   }
   showNotification({issuedTime = this.issuedTime, body = '', agent = this.agent, alert = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
     // Give OS notification that comes back to here, unless act is us.
