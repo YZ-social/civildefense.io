@@ -208,10 +208,10 @@ self.addEventListener('notificationclick', event => {
     clients
       .matchAll({type: 'window', includeUncontrolled: true})
       .then(async clientList => {
-	console.log('notification', {title, body, data, clientList});
+	console.log('notification', {title, body, tag, data, clientList});
         for (const client of clientList) {
 	  console.log('notification click found client');
-	  return client.focus().then(() => client.postMessage({method: 'go', params: {subject: tag, ...data}}));
+	  return client.focus().then(() => client.postMessage({method: 'go', params: {alert: tag, ...data}}));
         }
 	// Client has been closed. Open one.
 	console.log('notification click opening client', data.url);

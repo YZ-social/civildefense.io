@@ -1,5 +1,4 @@
 // TODO:
-// - clarify common lifecycle management, including existing reply to not get re-initialized
 // - In Alert, get rid of subject (just use tag)
 // - key off 'deleted' instead of payload:null, and bring handling here
 // - Bring pub/sub here, customized for SpatialConversation subclass
@@ -20,7 +19,7 @@ export class Tagged { // Maintains cached existence within a (possibly instance-
     for (const key in properties) {
       const existing = this[key];
       const proposed = properties[key];
-      if (JSON.stringify(existing) !== JSON.stringify(proposed)) throw new Error(`Cannot update ${key} ${existing} to ${proposed}.`);
+      if (JSON.stringify(existing) !== JSON.stringify(proposed)) throw new Error(`Cannot update '${key}' from ${existing} to ${proposed}.`);
     }
     return this;
   }

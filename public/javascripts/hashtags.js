@@ -84,7 +84,7 @@ export const Hashtags = {
     localStorage.setItem('hashtags', JSON.stringify(this.hashtags));
     if (resetSubscriptions) {
       Alert.updateSubscriptions();
-      Alert.items.forEach(wrapper => this.hashtags[wrapper.hashtag] || wrapper.destroy());
+      Object.values(Alert.items).forEach(wrapper => this.hashtags[wrapper.hashtag] || wrapper.destroy());
     }
   },
   chipset: document.body.querySelector('.watching-hashtags'), // Element containing the user's chips.
