@@ -24,9 +24,10 @@ export class P2PWebNetwork {
 		       bridgeUrl = globalThis.process?.env.BRIDGE_URL || 'wss://bridge.axona.net',
 		      } = {}) {
     // Promise a ready-to-use network peer.
+    region = await region;
     const { peer, nodeIdentity, transport, status, disconnect } = await connect({
       bridge: bridgeUrl,
-      location: await region,
+      location: region,
       author: false
     });
 
