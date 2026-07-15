@@ -163,10 +163,10 @@ export class P2PWebNetwork {
 	const {message, deleted, msgId, signerPubkey, topic, ts} = envelope;
 	this.debug('received', {msgId, topic, ts, signerPubkey, deleted, message});
 	if (deleted) {
-	  handler({subject: msgId, payload: null, agent: signerPubkey, topic, ts}); // fixme remove topic, ts here and below.
+	  handler({tag: msgId, payload: null, agent: signerPubkey, topic, ts}); // fixme remove topic, ts here and below.
 	  return;
 	}
-	handler({...message, agent: signerPubkey, subject: msgId, topic, ts});
+	handler({...message, agent: signerPubkey, tag: msgId, topic, ts});
       };
       await this.peer.sub(topic, callback, {since});
     } else {
@@ -174,18 +174,18 @@ export class P2PWebNetwork {
     }
   }
   static currentPublishIdentity = null;
-  async publish({eventName, region, owner, signWith = this.constructor.currentPublishIdentity, issuedTime = Date.now(), subject, payload, ...rest}) {
+  async publish({eventName, region, owner, signWith = this.constructor.currentPublishIdentity, issuedTime = Date.now(), killTag, payload, ...rest}) {
     // Publish data to subscribers of eventName.
-    if (subject && payload) throw new Error(`Specify subject (${subject}) or payload ($(JSON.stringify(payload)}), but not both.`);
+    if (killTag && payload) throw new Error(`Specify killTag (${killTag}) or payload ($(JSON.stringify(payload)}), but not both.`);
     await this.attachment; // Get connected.
     const topic = {region, name: eventName};
     if (owner) topic.owner = owner;
     const options = {signWith};
-    this.debug('published', {topic, subject, payload, issuedTime, rest, signWith});
+    this.debug('published', {topic, killTag, payload, issuedTime, rest, signWith});
     if (payload) return await this.peer.pub(topic, {issuedTime, payload, ...rest}, options);
     // The next would not normally happen, but until since:'latest' works, we need a way to send a null payload and have the handler delete the entry.
-    if (!subject) return await this.peer.pub(topic, {issuedTime, payload, ...rest}, options);
-    return await this.peer.kill(topic, subject, options);
+    if (!killTag) return await this.peer.pub(topic, {issuedTime, payload, ...rest}, options);
+    return await this.peer.kill(topic, killTag, options);
   }
 
   host() {
