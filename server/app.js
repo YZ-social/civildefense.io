@@ -18,7 +18,7 @@ const argv = yargs(hideBin(process.argv))
       .option('nPortals', {
 	alias: 'p',
 	type: 'number',
-	default: 5, //fixme logicalCores,
+	default: Math.min(logicalCores, 5),
 	description: "The number of steady nodes that handle initial connections."
       })
       .option('baseURL', {
