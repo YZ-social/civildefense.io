@@ -1,6 +1,6 @@
 const { Request, Response, URL, clients} = self;
 // Little point in trying to automatically pull this through package.json, as we need a byte change in THIS file to trigger a new worker.
-const serviceVersion = '4.4.4';
+const serviceVersion = '4.5.4';
 
 async function cacheFirst({request, event}) {
   // Handle request from any cache, else fetch and store it in serviceCache.
@@ -165,6 +165,7 @@ async function cacheSource(version, event) { // Cache source in the given versio
 
     // TODO: the libraries
   ].map(name => new Request(name, {cache: 'no-store'}))); // Might not be necessary, but if any browsers insist on their own caching...
+
   await Promise.all([
     // These are referenced within material web, but missing. Turns out we don't need them,
     // but let's cache empty responses to keep the console cleaner.
