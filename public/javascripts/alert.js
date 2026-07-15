@@ -192,7 +192,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     map.closePopup();
   }
   static openPopup(subject) { // Open the marker specified by subject.
-    const wrapper = this.getConversation(subject);
+    const wrapper = this.getItem(subject);
     wrapper?.openPopup();
   }
   async openPopup() { // Open this wrapper's popup, and resolve any waiting promise.
@@ -213,7 +213,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     });
   }
   static updateAlerts(canonicalHashtag, extendedHashtag) { // Update markers becase we have discovered an extendedHashtag that we have only had as canonical.
-    this.eachConversation(wrapper => {
+    this.items.forEach(wrapper => {
       const { hashtag, marker, agent } = wrapper;
       if (hashtag !== canonicalHashtag) return;
       const newIcon = this.makeIcon(extendedHashtag);
@@ -230,8 +230,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
       wrapper.initChangeHashtag(popupAttribution);
     });
   }
-  static ensure({subject, issuedTime, ...rest}) { // Add marker at position with appropriate fade if not already present.
-    const alert = super.ensure({tag: subject, subject, issuedTime, ...rest}); // fixme: get rid of subject
+  static ensure({subject, topic, ts, issuedTime, ...rest}) { // Add marker at position with appropriate fade if not already present.
+    const alert = super.ensure({tag: subject, subject, issuedTime, ...rest}); // Does not include topic or ts. fixme: get rid of subject. fixme: why is ts different?
     if (!alert) return null;
     // Regardless of initialize vs update, reset fader.
     const now = Date.now(),
@@ -259,14 +259,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
     }
     // Subscribe to replies to this subject, now that we're set up to receive them.
     networkPromise.then(async contact => {
-      contact.subscribe({eventName: subject, region, handler: data => this.handleReply(data)});
+      contact.subscribe({eventName: subject, region, handler: data => this.ensure(data)});
     });
     this.showNotification({tag: subject, agent, issuedTime});
-    return this;
-  }
-  update({payload, ...rest}) { // Delete existing if no payload.
-    if (!payload) return this.destroy();
-    super.update({payload, ...rest});
     return this;
   }
 
@@ -381,7 +376,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const isOurs = agent === Agent.tag;
     const deleter = !hashtag && isOurs ? `<md-outlined-icon-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-icon-button>` : '';
     const pubtag = hashtag ? this.constructor.formatAttributionHashtag(agent, hashtag) : '';
-    if (isOurs && !this.replies.length) showMessage(Int`Change the topic or remove the alert with the topic button in the upper right of the conversation dialog.`, 'instructions');
+    if (isOurs && !this.items.length) showMessage(Int`Change the topic or remove the alert with the topic button in the upper right of the conversation dialog.`, 'instructions');
     return `<div>${deleter} ${pubtag}</div>`;
   }
   formatAttribution({agent, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/[deleter]+sharer+[hashtag]
@@ -400,27 +395,23 @@ export class Alert extends Conversation { // A wrapper around L.marker
   ${actions}
 </div>`;
   }
-  updatePost(tag) { // Republish under a different hashtag, or cancel altogether if no tag (which is not allowed as a hashtag).
+  updatePost(newTag) { // Republish under a different hashtag, or cancel altogether if no newTag (which is not allowed as a hashtag).
     resetInactivityTimer();
     const {lat, lng, hashtag, subject, issuedTime, originalPosting = issuedTime} = this;
-    console.log("updatePost", {tag, lat, lng, hashtag, subject, issuedTime, originalPosting, self:this});
-    if (!tag) return Alert.publish({lat, lng, subject, originalPosting, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
-    if (tag === hashtag) return this.needsRedisplay = true;
-    const cancel = {lat, lng, subject, hashtag}; // Cancel old hashtag as we publish new tag, below.
-    Hashtags.setPublish(tag);
+    console.log("updatePost", {newTag, lat, lng, hashtag, subject, issuedTime, originalPosting, self:this});
+    if (!newTag) return Alert.publish({lat, lng, subject, originalPosting, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
+    if (newTag === hashtag) return this.needsRedisplay = true;
+    const cancel = {lat, lng, subject, hashtag}; // Cancel old hashtag as we publish newTag, below.
+    Hashtags.setPublish(newTag);
     Hashtags.onchange({redisplaySubscribers: false, resetSubscriptions: false});
-    return Alert.publish({lat, lng, hashtag: tag, originalPosting, cancel}); // Publish new alert w/cancellation.
+    return Alert.publish({lat, lng, hashtag: newTag, originalPosting, cancel}); // Publish new alert w/cancellation.
   }
 
   // Each reply is separately published by its author, and only they can modify/unpublish it.
-  replies = [];
-  async handleReply(data) { // Add or update reply for this marker.
-    // TODO: handle update/removal.
-    const { replies, marker } = this;
-    if (data.payload) {
-      const existing = replies.find(reply => reply.subject === data.subject);
-      if (existing) return; // Until we do editing.
-
+  async ensure(data) { // Add or update reply for this marker.
+    data.tag = data.subject; //fixme
+    const reply = super.ensure(data);
+    if (reply) {
       const {agent, issuedTime, payload} = data;
       const {file} = payload;
       if (file) {
@@ -431,32 +422,14 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	payload.file = dataURL;
 	payload.name = name;
       }
-      replies.push(data); // TODO: when we implement edited replies, we'll have to find the existing
-      replies.sort((a, b) => a.issuedTime - b.issuedTime); // Could be slightly out of order.
       const element = this.startFader('.alert-commented', issuedTime + ttl - Date.now());
       element.style.display = 'block';
       // Restart the pulse animation by setting animationName to something it isn't.
       element.style.animationName = element.style.animationName === 'pulse2' ? 'pulse' : 'pulse2';
-      if (replies[replies.length - 1] !== data) return; // Replies could come out of order.
       this.showNotification({agent, issuedTime, body: payload.message || payload.name || payload});
-    } else {
-      replies.splice(replies.findIndex(reply => reply.subject === data.subject), 1);
     }
     this.needsRedisplay = true;
     this.ensureContent();
-  }
-  showNotification({issuedTime = this.issuedTime, body = '', agent = this.agent, tag = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
-    // Give OS notification that comes back to here, unless act is us.
-    if (agent == Agent.tag || !notificationsAllowed()) return;
-    navigator.serviceWorker.ready.then(registration => {
-      const timestamp = issuedTime;
-      const icon = new URL('./images/civil-defense-192.png', location.href).href;
-      const url = getShareableURL(tag, [hashtag]).href; // For opening page when it has been closed.
-      const data = {lat, lng, url};
-      const options = {icon, timestamp, tag, body, data};
-      console.log('showNotification', hashtag, options);
-      registration.showNotification(hashtag, options);
-    });
   }
   async postReply(event) { // Post a reply to this marker's subject, in response to a text-field change event.
     resetInactivityTimer();
@@ -482,8 +455,21 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const {region} = this;
     networkPromise.then(async contact => contact.publish({eventName: this.subject, region, subject: replyElement.dataset.subject, payload: null}));
   }
+  showNotification({issuedTime = this.issuedTime, body = '', agent = this.agent, tag = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
+    // Give OS notification that comes back to here, unless act is us.
+    if (agent == Agent.tag || !notificationsAllowed()) return;
+    navigator.serviceWorker.ready.then(registration => {
+      const timestamp = issuedTime;
+      const icon = new URL('./images/civil-defense-192.png', location.href).href;
+      const url = getShareableURL(tag, [hashtag]).href; // For opening page when it has been closed.
+      const data = {lat, lng, url};
+      const options = {icon, timestamp, tag, body, data};
+      console.log('showNotification', hashtag, options);
+      registration.showNotification(hashtag, options);
+    });
+  }
   formatReplies() { // Answer HTML for the replies and input box.
-    const { replies, agent, originalPosting } = this;
+    const { items, agent, originalPosting } = this;
     const formatReply = ({subject, payload, ...rest}) => {
       const {message = payload, file, name} = payload;
       let text = message
@@ -506,7 +492,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       if (file) dataAttributes += ` data-file="${file}" data-name="${name}"`;
       return `<div class="reply" ${dataAttributes}>${this.formatAttribution(rest)}${attachment}${messageDisplay}</div>`;
     };
-    const formattedReplies = replies.map(formatReply).join('');
+    const formattedReplies = items.map(formatReply).join('');
     return `
 <div class="replies">${formattedReplies}</div>
 <div class="attachment-preview"></div>
