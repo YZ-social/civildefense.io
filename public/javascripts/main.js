@@ -7,7 +7,7 @@ import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { getPointInCell } from './s2.js';
 import { Alert, getShareableURL, share } from './alert.js';
 import { map, showMessage, updateLocation, recenterMap } from './map.js';
-//import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
+import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
 
 document.getElementById('appVersion').textContent = appVersion;
 document.getElementById('kernelVersion').textContent = P2PWebNetwork.kernelVersion;
@@ -42,7 +42,6 @@ export function tooltip(elementOrQuerySelector, text) { // Add plain tooltip tex
 }
 export function clickTip(elementOrQuerySelector, text, clickHandler) { // tooltip and onclick in one step.
   const element = asElement(elementOrQuerySelector);
-  if (element.id === 'downloadUpdates2') console.log('assigning title', text, 'and', clickHandler, 'to', element);
   tooltip(element, text);
   element.onclick = clickHandler;
 }
@@ -365,7 +364,6 @@ document.querySelector('head > title').innerHTML = titleElement.textContent;
 function initText(selector, content = selector) {
   const element = document.querySelector(selector);
   const text = Int([content]);
-  if (element.id === 'downloadUpdates2') console.log('assigning', text, 'to', element);
   element.textContent = text;
 }
 initText('#aboutReport');
