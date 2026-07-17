@@ -2,6 +2,13 @@ import { v4 as uuidv4 } from 'uuid';
 import { createNodeIdentity, createAuthorIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from '@axona/protocol';
 import { stringToBytes, bytesToString, publishChunkedBytes, receiveChunkedBytes } from '@axona/protocol/std';
 import { connect } from '@axona/protocol/connect.js';
+globalThis.RTCPeerConnection ||= await import('node-datachannel/polyfill').then(ndc => ndc.RTCPeerConnection); // To support @axona/protocol < 4.26
+if (!Uint8Array.prototype.toBase64) { // NodeJS < 24
+  Object.defineProperty(Uint8Array.prototype, 'toBase64', {
+    value: function toBase64() { return Buffer.from(this.buffer, this.byteOffset, this.byteLength).toString('base64'); },
+    writable: true, configurable: true,
+  });
+}
 const { BigInt, URL, File, pica } = globalThis;
 
 /* Example:
