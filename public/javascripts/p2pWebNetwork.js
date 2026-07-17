@@ -27,7 +27,9 @@ export class P2PWebNetwork {
   static sessionRegion = sessionRegionPromise;
   static async create({infoLogger = console.log, debugLogger,
 		       region = this.sessionRegion,
-		       bridgeUrl = globalThis.process?.env.BRIDGE_URL || 'wss://bridge.axona.net',
+		       bridgeUrl = (globalThis.location && new URL(globalThis.location).searchParams.get('bridge')) ||
+		       globalThis.process?.env.BRIDGE_URL ||
+		       'wss://bridge.axona.net',
 		      } = {}) {
     // Promise a ready-to-use network peer.
     region = await region;
