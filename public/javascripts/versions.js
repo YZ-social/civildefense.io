@@ -1,6 +1,6 @@
 import pkg from '../package.json' with {type: 'json'};
 export const appVersion = pkg.version; // Overall semver of app. Used in display, and for comparison by service worker.
-export const dataVersion = appVersion.split('.')[0];  // Compatability differentiator used below.
+export const dataVersion = globalThis.process?.env.EVENT_VERSION || appVersion.split('.')[0];  // Compatability differentiator used below.
 
 export function stripLeadingEmoji(string) { // Return string without any leading emoji (which might be of varying
     // length) followed by an optional emoji break character and any whitespace.

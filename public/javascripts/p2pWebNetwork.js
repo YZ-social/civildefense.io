@@ -2,7 +2,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { createNodeIdentity, createAuthorIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from '@axona/protocol';
 import { stringToBytes, bytesToString, publishChunkedBytes, receiveChunkedBytes } from '@axona/protocol/std';
 import { connect } from '@axona/protocol/connect.js';
-globalThis.RTCPeerConnection ||= await import('node-datachannel/polyfill').then(ndc => ndc.RTCPeerConnection);
 const { BigInt, URL, File, pica } = globalThis;
 
 /* Example:
@@ -25,6 +24,7 @@ export class P2PWebNetwork {
 		      } = {}) {
     // Promise a ready-to-use network peer.
     region = await region;
+
     const { peer, nodeIdentity, transport, status, disconnect } = await connect({
       bridge: bridgeUrl,
       location: region,
