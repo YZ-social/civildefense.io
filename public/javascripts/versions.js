@@ -1,4 +1,4 @@
-import pkg from '../package.json' with {type: 'json'};
+import pkg from '../../package.json' with {type: 'json'};
 export const appVersion = pkg.version; // Overall semver of app. Used in display, and for comparison by service worker.
 export const dataVersion = globalThis.process?.env.EVENT_VERSION || appVersion.split('.')[0];  // Compatability differentiator used below.
 
