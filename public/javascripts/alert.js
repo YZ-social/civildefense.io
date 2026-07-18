@@ -312,7 +312,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
     this.initChangeHashtag(popupElement);
     for (const correspondent of popupElement.querySelectorAll('.correspondent')) {
       const tag = correspondent.dataset.tag;
-      const agent = Agent.ensure({tag, region: this.region});
+      const region = P2PWebNetwork.regionCode(this.lat, this.lng);
+      const agent = Agent.ensure({tag, region: region});
       const isAvatar = correspondent.classList.contains('avatar');
       if (agent.addElement(correspondent, 'mixed', isAvatar ? 'avatar' : 'handle')) {
 	const isMine = Agent.isMine(tag);
@@ -413,14 +414,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const reply = super.ensure(data);
     if (reply) { // TODO? Move to AlertReply.initialize()?
       const {agent, issuedTime, payload} = data;
-      const {file} = payload;
-      if (file) {
-	data.fileTopic = file;
+      const {file:attachmentTopic} = payload;
+      if (attachmentTopic) {
 	const contact = await networkPromise;
 	// Before pushing data on to replies.
-	const {dataURL, name} = await contact.assembleChunkedDataURL(file);
-	payload.file = dataURL;
-	payload.name = name;
+	const {dataURL:file, name, msgIds} = await contact.assembleChunkedDataURL(attachmentTopic);
+	Object.assign(payload, {file, name, attachmentTopic, msgIds});
       }
       const element = this.startFader('.alert-commented', issuedTime + ttl - Date.now());
       element.style.display = 'block';
@@ -437,14 +436,15 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const button = event.target;
     const inputElement = button.parentElement;
     let payload = inputElement.value.trim();
-    const {subject, hashtag, region} = this;
+    const {subject, hashtag, lat, lng} = this;
+    const region = P2PWebNetwork.regionCode(lat, lng);
     const files = inputElement.parentElement.querySelector('input[type="file"]').files;
     if (!payload && !files.length) return;
     inputElement.value = '';
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     const contact = await networkPromise;
     if (files.length) {
-      const {topic:file} = await contact.chunkifyBlob({blob: files[0], region});
+      const {topic:file, msgIds} = await contact.chunkifyBlob({blob: files[0], region});
       payload = {message: payload, file};
     }
     await contact.publish({eventName: subject, region, payload}); // Publish the new reply.
@@ -452,8 +452,22 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
   deleteReply(replyElement) {
     resetInactivityTimer();
-    const {region} = this;
-    networkPromise.then(async contact => contact.publish({eventName: this.subject, region, killTag: replyElement.dataset.subject, payload: null}));
+    const {lat, lng} = this;
+    const region = P2PWebNetwork.regionCode(lat, lng);
+    const killTag = replyElement.dataset.subject;
+    networkPromise.then(async contact => {
+      // We won't be here unless we are the signer.
+      await contact.publish({eventName: this.subject, region, killTag, payload: null});
+      // IFF there's an attachment AND we're given msgIds by receiveChunkedBytes, then delete the attachment.
+      const reply = this.getItem(killTag);
+      const {attachmentTopic, msgIds = []} = reply?.payload || {};
+      if (msgIds.length) {
+	const {name, owner, region} = attachmentTopic;
+	for (const killTag of msgIds) {
+	  await contact.publish({eventName: name, region, owner, killTag, payload: null});
+	}
+      }
+    });
   }
   showNotification({issuedTime = this.issuedTime, body = '', agent = this.agent, alert = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
     // Give OS notification that comes back to here, unless act is us.
