@@ -6,7 +6,7 @@ import { networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, cl
 import { consume } from './display.js';
 import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
-import { Conversation } from './conversation.js';
+import { Conversation, Reply } from './conversation.js';
 import { alertTopic } from './versions.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 const { localStorage, getComputedStyle, URL, URLSearchParams, domtoimage } = globalThis;
@@ -69,6 +69,37 @@ export function go({lat = null, lng = null, zoom = null, alert = null}) { // Go 
   openOnReceive = null;
   if (alert) {
     Alert.openPopup(alert) || (openOnReceive = alert);
+  }
+}
+
+class AlertReply extends Reply {
+  async initialize(properties) { // Set properties of this AlertReply.
+    // Currently, this waits for any attachment to be fetched. (Conversation.ensure() will wait as long as we need.)
+    // This means that the alert will not show up until we have the attachments, and then it shows up all at once with the text,
+    // attribution, and attachment. (There's no img or video "loading" period because the attachment comes through as a complete
+    // data url.)  This is convenient for the formatReply function, because until the chunked attachment is re-assembled, we won't
+    // know which kind of player to use, and we won't be able to assign the containing A[href].
+    //
+    // Alternatively, we could in the future choose to have the attributions and text appear right away, with a "spinner"
+    // placeholder that turns into the appropriate A/player when the attachment resolves. To do that, we would need to record here
+    // a promise to reassemble the attachment, have formatReply create a findable placeholder to later replace with the A element
+    // and contents, and then have ensureContent() arrange in its delayed followup to replace the placeholder when the promise
+    // resolves.
+    super.initialize(properties);
+    const {container, agent, issuedTime, payload} = properties;
+    const {file:attachmentTopic} = payload;
+    if (attachmentTopic) {
+      const contact = await networkPromise;
+      // Before pushing data on to replies.
+      const {dataURL:file, name, msgIds} = await contact.assembleChunkedDataURL(attachmentTopic);
+      Object.assign(payload, {file, name, attachmentTopic, msgIds});
+    }
+    const element = container.startFader('.alert-commented', issuedTime + ttl - Date.now());
+    element.style.display = 'block';
+    // Restart the pulse animation by setting animationName to something it isn't.
+    element.style.animationName = element.style.animationName === 'pulse2' ? 'pulse' : 'pulse2';
+    container.showNotification({agent, issuedTime, body: payload.message || payload.name || payload});
+    return this;
   }
 }
 
@@ -230,8 +261,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
       wrapper.initChangeHashtag(popupAttribution);
     });
   }
-  static ensure({tag, topic, ts, issuedTime, ...rest}) { // Add marker at position with appropriate fade if not already present.
-    const alert = super.ensure({tag, subject: tag, issuedTime, ...rest}); // Does not include topic or ts. fixme: get rid of subject. fixme: why is ts different?
+  static async ensure({tag, topic, ts, issuedTime, ...rest}) { // Add marker at position with appropriate fade if not already present.
+    const alert = await super.ensure({tag, subject: tag, issuedTime, ...rest}); // Does not include topic or ts. fixme: get rid of subject. fixme: why is ts different?
     if (!alert) return null;
     // Regardless of initialize vs update, reset fader.
     const now = Date.now(),
@@ -409,26 +440,16 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
 
   // Each reply is separately published by its author, and only they can modify/unpublish it.
+  get itemKind() { // Answer class of reply items.
+    return AlertReply;
+  }
   async ensure(data) { // Add or update reply for this marker.
     data.subject = data.tag; //fixme
-    const reply = super.ensure(data);
-    if (reply) { // TODO? Move to AlertReply.initialize()?
-      const {agent, issuedTime, payload} = data;
-      const {file:attachmentTopic} = payload;
-      if (attachmentTopic) {
-	const contact = await networkPromise;
-	// Before pushing data on to replies.
-	const {dataURL:file, name, msgIds} = await contact.assembleChunkedDataURL(attachmentTopic);
-	Object.assign(payload, {file, name, attachmentTopic, msgIds});
-      }
-      const element = this.startFader('.alert-commented', issuedTime + ttl - Date.now());
-      element.style.display = 'block';
-      // Restart the pulse animation by setting animationName to something it isn't.
-      element.style.animationName = element.style.animationName === 'pulse2' ? 'pulse' : 'pulse2';
-      this.showNotification({agent, issuedTime, body: payload.message || payload.name || payload});
-    }
+    const reply = await super.ensure(data);
+    console.log('ensure', {data, reply});
     this.needsRedisplay = true;
     this.ensureContent();
+    return reply;
   }
   async postReply(event) { // Post a reply to this marker's subject, in response to a text-field change event.
     resetInactivityTimer();
@@ -483,18 +504,22 @@ export class Alert extends Conversation { // A wrapper around L.marker
       registration.showNotification(hashtag, options);
     });
   }
+  // Each reply element is a DIV.reply with data-subject and data-text attributes that are used in sharing.
+  // It contains an attribution header with controls, zero or one attachments, and then the message text.
+  // If present the attachment will be an A element with download attribute, surrounding either an IMG, A/V player, or an attachment icon followed by the file name.
   formatReplies() { // Answer HTML for the replies and input box.
     const { items, agent, originalPosting } = this;
     const formatReply = ({subject, payload, ...rest}) => {
-      const {message = payload, file, name} = payload;
+      const {message = payload, file, name} = payload || {}; // Message text converts recognized urls to A/V players or links.
+      console.log('formatReply', {subject, payload, rest, message, file, name});
       let text = message
 	  .replace(/https?:\/\/\S+\.(mp3|aac|ogg|oga|opus|m4a|m3u8|m3u|mpu|mpd)$/ig, url => `<audio controls src="${url}"></audio>`) // show audio urls as players
 	  .replace(/https?:\/\/\S+\.(mp4|mov|webm)$/ig, url => `<video controls src="${url}"></video>`) // show video urls as players
 	  .replace(/(?<!")https?:\/\/\S+/g, url => `<a href="${url}" target="yz.sidebar">${url}</a>`); // show urls as links
       let attachment = '';
-      if (file?.startsWith('data:image')) attachment = `<a href="${file}" download="${name}"><img class="attachment" src="${file}"></img></a>`;
-      else if (file?.startsWith('data:audio')) attachment = `<a href="${file}" download="${name}"><audio controls class="attachment" src="${file}"></audio></a>`;
-      else if (file?.startsWith('data:video')) attachment = `<a href="${file}" download="${name}"><video controls class="attachment" src="${file}"></video></a>`;
+      if (file?.startsWith?.('data:image')) attachment = `<a href="${file}" download="${name}"><img class="attachment" src="${file}"></img></a>`;
+      else if (file?.startsWith?.('data:audio')) attachment = `<a href="${file}" download="${name}"><audio controls class="attachment" src="${file}"></audio></a>`;
+      else if (file?.startsWith?.('data:video')) attachment = `<a href="${file}" download="${name}"><video controls class="attachment" src="${file}"></video></a>`;
       else if (file) attachment = `
 <div class="attachment file">
   <a href="${file}" download="${name}">
