@@ -160,7 +160,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     // However, the 'unpublishing' (if any) is invoked first.
     // To do this, we must hash the eventName ourselves.
     //console.log('publish', {lat, lng, hashtag, payload, cancel, subject, issuedTime, rest});
-    if (publishing) { console.log('skiping overlappying publish'); return null; } // do not stack them up.
+    if (publishing) { console.log('skiping overlapping publish'); return null; } // do not stack them up.
     try {
       publishing = true;
 
@@ -446,7 +446,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
   async ensure(data) { // Add or update reply for this marker.
     data.subject = data.tag; //fixme
     const reply = await super.ensure(data);
-    console.log('ensure', {data, reply});
     this.needsRedisplay = true;
     this.ensureContent();
     return reply;
@@ -511,7 +510,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const { items, agent, originalPosting } = this;
     const formatReply = ({subject, payload, ...rest}) => {
       const {message = payload, file, name} = payload || {}; // Message text converts recognized urls to A/V players or links.
-      console.log('formatReply', {subject, payload, rest, message, file, name});
       let text = message
 	  .replace(/https?:\/\/\S+\.(mp3|aac|ogg|oga|opus|m4a|m3u8|m3u|mpu|mpd)$/ig, url => `<audio controls src="${url}"></audio>`) // show audio urls as players
 	  .replace(/https?:\/\/\S+\.(mp4|mov|webm)$/ig, url => `<video controls src="${url}"></video>`) // show video urls as players
