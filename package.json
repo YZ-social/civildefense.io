@@ -17,7 +17,7 @@
     ".": "./index.js"
   },
   "dependencies": {
-    "@axona/protocol": "github:axona-net/axona-protocol##semver:^4.29.0",
+    "@axona/protocol": "github:axona-net/axona-protocol#semver:^4.29.0",
     "cors": "^2.8.6",
     "express": "^4.22.1",
     "leaflet": "^1.9.4",
