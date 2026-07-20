@@ -106,7 +106,7 @@ const translations = {
   ['Change the image shown for you in the conversation for your alerts and replies.']: {es: "Cambia la imagen que se muestra en la conversación para tus alertas y respuestas."},
   ['Toggle whether alerts for this topic shown on the map. Separately, a radio button is shown when selected and sets this as the initial topic of the next alert you make, while an x button is shown when deselected and removes the topic.']: {es: "Alterna la visualización en el mapa de las alertas relacionadas con este tema. Por otro lado, al seleccionar el tema aparece un botón de opción que lo establece como el tema inicial de la próxima alerta que crees; al deseleccionarlo, aparece un botón con una «x» que elimina dicho tema."},
   ['Add a new topic for which the map should show any alerts.']: {es: "Añada un nuevo tema para el cual el mapa deba mostrar alertas."},
-  ['Information about this app, and options to change how you appear to others.']: {es: "Información sobre esta aplicación y opciones para cambiar cómo apareces ante los demás."},
+  ['Information about this app, and options to change notifications or how you appear to others.']: {es: "Información sobre esta aplicación y opciones para modificar las notificaciones o cómo apareces ante los demás."},
   ['Wipe from ']: {es: "Elimina de "},
   [' all personal data and source files for this app.']: {es: " todos los datos personales y archivos fuente de esta aplicación."},  
   ['Display QR code that can be scanned by a friend to show the same map on their device.']: {es: "Muestra un código QR que un amigo puede escanear para ver el mismo mapa en su dispositivo."},
