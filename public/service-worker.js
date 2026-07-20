@@ -166,8 +166,8 @@ self.addEventListener('fetch', event => {
 async function cacheSource(version, event) { // Cache source in the given version.
   console.log(`service-worker ${serviceVersion} is caching source in cache ${version}.`);
   const cache = await caches.open(version);
-  for (const file of cacheList) cache.add(new Request(file, {cache: 'no-store'})).catch(error => console.error(file + ' ' + error.message));
-  //await cache.addAll(cacheList.map(name => new Request(name, {cache: 'no-store'}))); // Might not be necessary, but if any browsers insist on their own caching...
+  // for (const file of cacheList) cache.add(new Request(file, {cache: 'no-store'})).catch(error => console.error(file + ' ' + error.message)); // dev testing for changed file tree
+  await cache.addAll(cacheList.map(name => new Request(name, {cache: 'no-store'}))); // Might not be necessary to specify no-store, but if any browsers insist on their own caching...
 
   await Promise.all([
     // These are referenced within material web, but missing. Turns out we don't need them,
