@@ -123,7 +123,7 @@ export function openAbout(event) {
   openDisplay('aboutContainer', event);
   noteNotificationPermission(window.Notification?.permission);
 }
-clickTip('#aboutButton', Int`Information about this app, and options to change how you appear to others.`, event => { // open about
+clickTip('#aboutButton', Int`Information about this app, and options to change notifications or how you appear to others.`, event => { // open about
   Alert.closePopup();
   openAbout(event);
 });
