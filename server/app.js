@@ -46,6 +46,12 @@ const argv = yargs(hideBin(process.argv))
 	default: 5,
 	description: "Additional variable seconds (+/- variableSpacing/2) to add to fixedSpacing between each portal."
       })
+      .option('info', {
+	alias: 'i',
+	type: 'boolean',
+	default: true,
+	description: "Run with info logging."
+      })
       .option('verbose', {
 	alias: 'v',
 	type: 'boolean',
@@ -102,12 +108,20 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
 } else {
   process.title = 'axona-starting';
   const { P2PWebNetwork, location } = await import('../index.js');
-  const network = await P2PWebNetwork.create({region: location});
+  const network = await P2PWebNetwork.create({
+    region: location,
+    infoLogger: (...rest) => argv.info && console.log(new Date(), ...rest),
+    debugLogger: (...rest) => argv.verbose && console.log(new Date(), ...rest)
+  });
   process.title = 'axona-' + network.nodeIdentity.id;
-  //let update = setInterval(() => network.info(network.peer.health().axonRoles.length, 'axons'), 10e3);
+  let update = setInterval(() => {
+    const roles = network.peer.health().axonRoles;
+    network.debug(roles.length, 'axons',
+		  roles.reduce((total, role) => total + (role.isRoot ? 1 : 0), 0), 'roots');
+  }, 10e3);
   process.on('SIGINT', async () => { // Leave the network politely.
     console.log(process.title, 'Shutdown for Ctrl+C');
-    //clearInterval(update)
+    clearInterval(update)
     await network.disconnect();
     process.exit(0);
 });
