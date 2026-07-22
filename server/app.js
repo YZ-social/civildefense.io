@@ -94,10 +94,10 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   }));
 
   app.listen(port);
-  console.log('Listening on', port, 'and starting', argv.nPortals, 'nodes.');
+  console.log(new Date(), `Listening on ${port} and starting ${argv.nPortals} nodes on ${logicalCores} ${cpus()[0].model} logical cores.`);
   for (let i = 0; i < argv.nPortals; i++) {
     cluster.fork();
-    await new Promise(resolve => setTimeout(resolve, 1e3));
+    await new Promise(resolve => setTimeout(resolve, 2e3)); // Number chosen to give an unspikey rise in packets/s.
   }
 } else {
   process.title = 'axona-starting';
