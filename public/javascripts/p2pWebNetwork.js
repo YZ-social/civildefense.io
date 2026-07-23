@@ -44,6 +44,14 @@ export class P2PWebNetwork {
     Object.assign(network, {infoLogger, debugLogger, disconnector: disconnect, transport, nodeIdentity, peer});
     network.resetStatePromises();
     network.info(`Created network node for kernel ${this.kernelVersion} region 0x${this.regionCode(region.lat, region.lng).toString(16)}.`);
+    peer.onError(error => {
+      network.info(`error: ${error.message || error}`);
+      throw error;
+    });
+    //peer.onLog('debug', (...rest) => network.debug('DEBUG', ...rest));
+    //peer.onLog('info', (...rest) => network.debug('INFO', ...rest));
+    peer.onLog('warn', (...rest) => network.info('WARNING', ...rest));
+    peer.onLog('error', (...rest) => network.info('ERROR', ...rest));
     const { peers, ms } = status;
     network.info(`Connected ${peers} connections through ${bridgeUrl} in ${ms.toLocaleString()} ms.`);
     network.attached(network);
