@@ -76,7 +76,7 @@ export class Conversation extends Tagged { // A conversation with replies.
     if (!Object.hasOwn(this, '_conversations')) this._conversations = {};
     return this._conversations;
   }
-  static items() {
+  static get items() {
     return Object.values(this.conversations);
   }
   static getItem(tag) { // Get conversation if known, else falsy.
