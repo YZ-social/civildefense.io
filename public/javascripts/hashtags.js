@@ -140,11 +140,13 @@ export const Hashtags = {
     });
     this.chipset.insertAdjacentHTML("afterbegin",  // Chip to add a new hashtag.
 				    `<md-filled-text-field class="newtag" placeholder="➕${Int`add topic`}"></md-filled-text-field>`);
-    clickTip(this.chipset.firstChild, Int`Add a new topic for which the map should show any alerts.`, event => { // Focusing "add topic".
-      event.stopPropagation();
-      Alert.closePopup();
-      showMessage(Int`Type a new topic name to see any alerts on the map with this topic.`, 'instructions');
-    });
+    if (navigator.maxTouchPoints <= 1) { // Only when no multi-touch. On-screen keyboard makes it shoot off the top.
+      clickTip(this.chipset.firstChild, Int`Add a new topic for which the map should show any alerts.`, event => { // Focusing "add topic".
+	event.stopPropagation();
+	Alert.closePopup();
+	showMessage(Int`Type a new topic name to see any alerts on the map with this topic.`, 'instructions');
+      });
+    }
     this.chipset.firstChild.onchange = event => { // Add the new hashtag.
       resetInactivityTimer();
       let tag = event.target.value.trim()  // Get into standard form, but do not strip emoji or case into canonical yet.
@@ -199,8 +201,23 @@ export const Hashtags = {
 
 // Populate hashtags data and display.
 // First the persisted/default data:
-const persisted = JSON.parse(localStorage.getItem('hashtags') ||
-			     `{"🍰 ${Int`cake`}": true, "🔥 ${Int`fire`}": true, "🌊 ${Int`flood`}": true, "🆘 ${Int`help`}": "pub", "🧊 ${Int`ice`}": true}`);
-			     //`{"🎙️ news":"pub", "🎸 classic rock":true, "🎷 jazz":true, "🎵 pop":true, "🎤 hiphop":true, "🎧 edm":true, "🤠 country":true, "🎼 classical":true}`);			     
-			     //`{"🍰 ${Int`cake`}": true, "🔥 ${Int`fire`}": true, "🌊 ${Int`flood`}": true, "🆘 ${Int`help`}": "pub", "🧊 ${Int`ice`}": true, "🎙️ news":true, "🎸 classic rock":true, "🎷 jazz":true, "🎵 pop":true, "🎤 hiphop":true, "🎧 edm":true, "🤠 country":true, "🎼 classical":true}`);
+const allKnownHashtags = JSON.parse(localStorage.getItem('allKnownHashtags') || `[
+  "🍰 cake",
+  "🎸 classic rock",
+  "🎼 classical",
+  "🩷 community support",
+  "🤠 country",
+  "🎧 edm",
+  "🔥 fire",
+  "🌊 flood",
+  "🆘 help",
+  "🎤 hiphop",
+  "🧊 ice",
+  "🎷 jazz",
+  "🎙️ news",
+  "👁️ observer corps",
+  "🎵 pop",
+  "🧰 utility repairs"
+]`);
+const persisted = JSON.parse(localStorage.getItem('hashtags') || `{"🍰 ${Int`cake`}": true, "🆘 ${Int`help`}": "pub"}`);
 Object.entries(persisted).forEach(([tag, active]) => Hashtags.add(tag, active, false));

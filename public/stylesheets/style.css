@@ -72,12 +72,30 @@ md-outlined-text-field {
     max-height: 80vh;
     overflow: auto;
 }
+/* Safari. Example dimensions are iPhone 17 pro max simulator */
+/* In landscape, regardless of compact/bottom/top setting: */
+/*   - There is a thick tabbed address bar above map. */
+/*   - Notch partially obscures logo in landscape-right, but that's ok */
+/*   - Height should be dvh (956 x 330), as lvh (440) extends below bottom of screen. */
+/* In portrait, regardless of compact/bottom/top setting: */
+/*   - There is a white space at top and bottom that is a little larger than the stuff controls displayed in it. */
+/*   - If height of map, etc, is dvh (440 x 796), everything works, including keyboard appearance and dismissal. */
+/*     Position .watching-hashtags box bottom:18px to leave space for map attribution. */
+/*   - If height of map is lvh (440 x 836) and #subPopoverControls remains dvh (.watching-hashtags bottom:0), */
+/*     then the map has a nice-ish fade under the bottom controls, without losing so much to whitespace. */
+/*     BUT: */
+/*       - It still has a hard edge to start of white, that is now directly under controls, which is ugly. */
+/*       - The map attribution is under the controls, which isn't fair. */
+/*       - I don't know how to make the keyboard work without covering the input box. */
 #map {
-    width: 100vw;
-    height: 100vh;
+    width: 100dvw;
+    height: 100dvh;
     position: absolute;
     top: 0;
     left: 0;
+}
+#mapCapture {
+    height: 100dvh;
 }
 
 .info-banner {
@@ -115,9 +133,6 @@ md-outlined-text-field {
     transition: opacity 2s;
 }
 
-#mapCapture {
-    height: 100vh;
-}
 #mapCapture > img {
     position: absolute;
     opacity: 0;
@@ -170,7 +185,8 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
 .watching-hashtags {
     position: absolute;
     width: calc(100% - 130px);
-    bottom: calc((sign(calc(100vh - 100dvh)) - 1) * -18px); /* 18px for attribution in desktop, none if iphone dynamic viewsize. */
+    /*bottom: calc((sign(calc(100vh - 100dvh)) - 1) * -18px); *//* 18px for attribution in desktop, none if iphone dynamic viewsize. */
+    bottom: 18px;
     right: 5px;
     flex-direction: row-reverse;
     flex-wrap: wrap-reverse;
