@@ -26,7 +26,7 @@
           "@material/web/": "https://esm.run/@material/web/",
           "s2js": "./s2js/s2js.esm.js",
 	  "bigfloat": "./bigfloat/esm/index.js",
-	  "leaflet": "./leaflet/leaflet-src.esm.js",
+      "leaflet": "./leaflet/leaflet-src.esm.js",
 	  "minidenticons": "./minidenticons/minidenticons.min.js",
 	  "@axona/protocol": "./axona-protocol/src/index.js",
           "@axona/protocol/std": "./axona-protocol/std/index.js",
@@ -45,123 +45,123 @@
   </head>
   <body>
     <section data-nosnippet>
-    <div id="mapCapture">
-      <div id="map"></div>
-      <img src="images/civil-defense-240.png" alt="civildefense" class="about-image">
-    </div>
-
-    <div id="subPopoverControls"> <!-- Our control, that appear within the map and the marker popups in stack order -->
-
-      <button id="aboutButton" class="about-button">
-        <img src="images/civil-defense-240.png" alt="civildefense" class="about-image"></img>
-      </button>
-
-      <div class="button-container">
-	<button id="qrButton">
-          <img src="images/qr-scan.svg" alt="qr code" class="button-image">
-	</button>
-	<button id="share">
-          <img src="images/share.svg" alt="share" class="button-image">
-	</button>
-	<button id="recenterButton">
-          <img src="images/recenter.svg" alt="recenter on position" class="button-image">
-	</button>
+      <div id="mapCapture">
+	<div id="map"></div>
+	<img src="images/civil-defense-240.png" alt="civildefense" class="about-image">
       </div>
 
-      <md-chip-set class="watching-hashtags"></md-chip-set>
-    </div>
+      <div id="subPopoverControls"> <!-- Our control, that appear within the map and the marker popups in stack order -->
 
-    <div id="info" class="info-banner loading"></div>
+	<button id="aboutButton" class="about-button">
+          <img src="images/civil-defense-240.png" alt="civildefense" class="about-image"></img>
+	</button>
 
-    <div id="qrContainer" class="hidden">
-      <div class="display-content"></div>
-    </div>
-
-    <div id="aboutContainer" class="hidden">
-      <div class="display-content">
-        <h1>Civil Defense</h1>
-        <ul>
-          <li id="aboutReport"></li>
-          <li id="aboutShared"></li>
-          <li id="aboutFade"></li>
-        </ul>
-        <p> <a id="learnMore" href="about/index.html" target="yz.sidebar">Learn More</a> </p>
-        <p>
-          <span id="aboutAnyone1"></span>
-          <a id="aboutAnyone2" href="https://github.com/YZ-social/Yz.social" target="yz.sidebar"></a>
-          <span id="aboutAnyone3"></span>
-        </p>
-	<hr>
-	<div>
-	  <label>
-	    <md-checkbox id="showNotifications" touch-target="wrapper"></md-checkbox>
-	    <span id="showNotificationsLabel"></span>
-	  </label>
+	<div class="button-container">
+	  <button id="qrButton">
+            <img src="images/qr-scan.svg" alt="qr code" class="button-image">
+	  </button>
+	  <button id="share">
+            <img src="images/share.svg" alt="share" class="button-image">
+	  </button>
+	  <button id="recenterButton">
+            <img src="images/recenter.svg" alt="recenter on position" class="button-image">
+	  </button>
 	</div>
-	<div class="handle-avatar">
-	  <md-outlined-text-field id="myHandle" placeholder="anonymous"></md-outlined-text-field>
-	  <md-outlined-icon-button id="myAvatar"></md-outlined-icon-button>
-	</div>
-	<hr>
-        <div class="source-updates">
-	  <md-elevated-button id="checkForUpdates"></md-elevated-button>
-          <md-elevated-button id="downloadUpdates" class="hidden"></md-elevated-button>
-          <span id="updateStatus"></span>
-        </div>
-	<p><small>
-	    <label for="scriptChooser"> <span id="version">Version</span></label>
-	    <span id="appVersion"></span>,
-	    kernel: <span id="kernelVersion"></span>.
-	  </small>
-	  <small><a id="wipe" href="#"></a></small></p>
-	<input id="scriptChooser" type="file" accept="text/javascript"></input>
+
+	<md-chip-set class="watching-hashtags"></md-chip-set>
       </div>
-    </div>
 
-    <div id="correspondentContainer" class="hidden">
-      <div class="display-content">
-	<div class="private-label">
-	  <div class="describe">
-	    <span id="describePrivate1"></span>
-	    <span class="handle"></span>
-	    <md-icon class="avatar"></md-icon>
-	    <span id="describePrivate2"></span>
+      <div id="info" class="info-banner loading"></div>
+
+      <div id="qrContainer" class="hidden">
+	<div class="display-content"></div>
+      </div>
+
+      <div id="aboutContainer" class="hidden">
+	<div class="display-content">
+          <h1>Civil Defense</h1>
+          <ul>
+            <li id="aboutReport"></li>
+            <li id="aboutShared"></li>
+            <li id="aboutFade"></li>
+          </ul>
+          <p> <a id="learnMore" href="about/index.html" target="yz.sidebar">Learn More</a> </p>
+          <p>
+            <span id="aboutAnyone1"></span>
+            <a id="aboutAnyone2" href="https://github.com/YZ-social/Yz.social" target="yz.sidebar"></a>
+            <span id="aboutAnyone3"></span>
+          </p>
+	  <hr>
+	  <div>
+	    <label>
+	      <md-checkbox id="showNotifications" touch-target="wrapper"></md-checkbox>
+	      <span id="showNotificationsLabel"></span>
+	    </label>
 	  </div>
-	  <md-outlined-text-field></md-outlined-text-field>
-	  <md-outlined-icon-button></md-outlined-icon-button>
-	</div>
-	<div id="pickLabels"></div>
-	<div class="public-label">
-	  <div id="describePublic" class="describe"></div>
-	  <md-outlined-button></md-outlined-button>
-	  <md-outlined-icon-button></md-outlined-icon-button>
-	</div>
-	<div class="system-label">
-	  <div id="describeSystem" class="describe"></div>
-	  <md-outlined-button></md-outlined-button>
-	  <md-outlined-icon-button></md-outlined-icon-button>
-	</div>
-	<input type="file" accept="image/*"></input>
-	<div>
-	  <md-text-button id="correspondentCancel">Cancel</md-text-button>
-	  <md-text-button id="correspondentOK">OK</md-text-button>
+	  <div class="handle-avatar">
+	    <md-outlined-text-field id="myHandle" placeholder="anonymous"></md-outlined-text-field>
+	    <md-outlined-icon-button id="myAvatar"></md-outlined-icon-button>
+	  </div>
+	  <hr>
+          <div class="source-updates">
+	    <md-elevated-button id="checkForUpdates"></md-elevated-button>
+            <md-elevated-button id="downloadUpdates" class="hidden"></md-elevated-button>
+            <span id="updateStatus"></span>
+          </div>
+	  <p><small>
+	      <label for="scriptChooser"> <span id="version">Version</span></label>
+	      <span id="appVersion"></span>,
+	      kernel: <span id="kernelVersion"></span>.
+	    </small>
+	    <small><a id="wipe" href="#"></a></small></p>
+	  <input id="scriptChooser" type="file" accept="text/javascript"></input>
 	</div>
       </div>
-    </div>
 
-    <div id="updateContainer" class="hidden">
-      <div class="display-content">
-        <h1 id="newVersionHeader">New version available</h1>
-	<p id="updateNowQuestion"></p>
-	<p id="updateReload"></p>
-	<p id="updateDefer"></p>
-	<md-elevated-button id="downloadUpdates2"></md-elevated-button>
-	<md-elevated-button id="downloadDefer"></md-elevated-button>
+      <div id="correspondentContainer" class="hidden">
+	<div class="display-content">
+	  <div class="private-label">
+	    <div class="describe">
+	      <span id="describePrivate1"></span>
+	      <span class="handle"></span>
+	      <md-icon class="avatar"></md-icon>
+	      <span id="describePrivate2"></span>
+	    </div>
+	    <md-outlined-text-field></md-outlined-text-field>
+	    <md-outlined-icon-button></md-outlined-icon-button>
+	  </div>
+	  <div id="pickLabels"></div>
+	  <div class="public-label">
+	    <div id="describePublic" class="describe"></div>
+	    <md-outlined-button></md-outlined-button>
+	    <md-outlined-icon-button></md-outlined-icon-button>
+	  </div>
+	  <div class="system-label">
+	    <div id="describeSystem" class="describe"></div>
+	    <md-outlined-button></md-outlined-button>
+	    <md-outlined-icon-button></md-outlined-icon-button>
+	  </div>
+	  <input type="file" accept="image/*"></input>
+	  <div>
+	    <md-text-button id="correspondentCancel">Cancel</md-text-button>
+	    <md-text-button id="correspondentOK">OK</md-text-button>
+	  </div>
+	</div>
       </div>
-    </div>
 
-    <md-menu positioning="popover" id="popoverMenu"></md-menu>
-    <script type="module" src="javascripts/main.js"></script>
+      <div id="updateContainer" class="hidden">
+	<div class="display-content">
+          <h1 id="newVersionHeader">New version available</h1>
+	  <p id="updateNowQuestion"></p>
+	  <p id="updateReload"></p>
+	  <p id="updateDefer"></p>
+	  <md-elevated-button id="downloadUpdates2"></md-elevated-button>
+	  <md-elevated-button id="downloadDefer"></md-elevated-button>
+	</div>
+      </div>
+
+      <md-menu positioning="popover" id="popoverMenu"></md-menu>
     </section>
+    <script type="module" src="javascripts/main.js"></script>
   </body>
 </html>
