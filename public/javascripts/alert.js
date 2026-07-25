@@ -42,7 +42,7 @@ export async function share(properties) {  // Invoke platform share API on prope
   if (!properties.files) {
     Alert.closePopup();
     await delay(500); // Allow popup time to close. It doesn't render well because of the web component style sheets.
-    const target = document.getElementById('mapCapture');
+    const target = document.getElementById('mapCapture'); // For capturing a screen shot.
     const icon = target.lastElementChild;
     const subPopoverControls = document.getElementById('subPopoverControls');
     const leafletControls = document.querySelector('.leaflet-control-container');
@@ -127,7 +127,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
       region = P2PWebNetwork.regionCode(center.lat, center.lng);
       newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => alertTopic(cell, hash)));
-      Agent.current.trackPublicChanges(region);
+      Agent.current?.trackPublicChanges(region);
       // Record a zoomed-out cell id in case next session does not have geolocation services.
       let level9Cell = getContainingCells(center.lat, center.lng)[9];
       if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
