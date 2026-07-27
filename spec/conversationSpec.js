@@ -31,8 +31,8 @@ describe("Conversation", function () {
       let keep = true;
       let tag = "caching";
       class CacheConversation extends Conversation {
-	update() { return keep && this; }
-	initialize() { return keep && this; }
+	update(properties) { return keep && super.update(properties); }
+	initialize(properties) { return keep && super.initialize(properties); }
       }
       it("ends with explicit removal.", async function () {
 	let initial = await Conversation.ensure({tag, agent, payload});
