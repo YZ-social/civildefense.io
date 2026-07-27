@@ -170,6 +170,7 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     height: 100dvh;
     position: fixed;
     filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
+    --mapAttributionHeight: 18px;
 }
 #subPopoverControls > * > * {
     pointer-events: auto;
@@ -186,19 +187,57 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     position: absolute;
     width: calc(100% - 130px);
     /*bottom: calc((sign(calc(100vh - 100dvh)) - 1) * -18px); *//* 18px for attribution in desktop, none if iphone dynamic viewsize. */
-    bottom: 18px;
+    bottom: var(--mapAttributionHeight);
     right: 5px;
     flex-direction: row-reverse;
     flex-wrap: wrap-reverse;
     align-items: flex-end;
+}
+.combobox {
+    position: relative;
+    --textFieldHeight: 34px;
+    --minWidth: 125px;
+}
+.combobox-listbox {
+    padding: 5px;
+    position: absolute;
+    bottom: calc(var(--textFieldHeight) + 2px);
+    left: 0;
+    max-height: 50dvh; /* leaving room for portrait keyboard. landscape keyboard has no room at all */
+    width: fit-content;
+    min-width: var(--minWidth);
+    overflow-y: auto;
+    z-index: 9999;
+    background: rgba(255, 255, 255, 0.95);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+.combobox-option {
+    font-size: 0.95rem;
+    color: var(--md-sys-color-primary);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.combobox-option mark {
+    background: none;
+    color: var(--md-sys-color-secondary);
+    font-weight: 900;
+}
+.combobox-empty {
+    font-style: italic;
+}
+.combobox-option:hover,
+.combobox-option.active {
+    background:  #B8C2D7;
 }
 .watching-hashtags md-filled-text-field.newtag {
     --md-filled-field-top-space: 0px;
     --md-filled-field-bottom-space: 0px;
     --md-filled-text-field-leading-space: 8px;
     --md-filled-text-field-trailing-space: 0px;
-    width: 125px;
-    height: 34px;
+    height: var(--textFieldHeight);
+    width: var(--minWidth);
 }
 .alert-marker {
     text-shadow: 8px -3px 10px rgb(0 0 0 / 60%);
