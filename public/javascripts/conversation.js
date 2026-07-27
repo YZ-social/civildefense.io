@@ -33,7 +33,7 @@ export class Tagged { // Maintains cached existence within a (possibly instance-
   static async ensureIn(data, container, kind = container.itemKind) { // update() or initialize() item and remember what those answer. (Falsy is deleted).
     const {tag, payload, ...rest} = data;
     let item = container.getItem(tag);
-    if (!payload) return item && container.removeItem(tag)?.destroy();
+    if (!payload) return item?.destroy();
     if (item) item = await item.update(data);
     else item = await (new kind().initialize({...data, container}));
 
