@@ -85,7 +85,7 @@ class AlertReply extends Reply {
     // a promise to reassemble the attachment, have formatReply create a findable placeholder to later replace with the A element
     // and contents, and then have ensureContent() arrange in its delayed followup to replace the placeholder when the promise
     // resolves.
-    super.initialize(properties);
+    await super.initialize(properties);
     const {container, agent, issuedTime, payload} = properties;
     const {file:attachmentTopic} = payload;
     if (attachmentTopic) {
@@ -235,7 +235,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     }
     this.marker.openPopup();
   }
-  static makeIcon(hashtag) { // Return a Leaflet icon
+  static makeIcon(hashtag) { // Return a Leaflet icon. TODO: are these cacheable and reusable?
     return L.divIcon({
       html: `<div class="alert-commented"></div><div class="alert-pin">${Hashtags.formatAlert(hashtag)}</div>`,
       iconSize: [40, 40],

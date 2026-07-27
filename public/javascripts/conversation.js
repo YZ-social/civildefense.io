@@ -26,7 +26,8 @@ export class Tagged { // Maintains cached existence within a (possibly instance-
   destroy() { // Subclasses extend to remove UI.
     // Subclass extensions of ensure may expect this answer falsy, indicating that an item was removed.
     // NOTE: Does not destroy replies, as these may have been published by others.
-    return null; 
+    this.container.removeItem(this.tag);
+    return null;
   }
 
   static async ensureIn(data, container, kind = container.itemKind) { // update() or initialize() item and remember what those answer. (Falsy is deleted).
@@ -59,8 +60,10 @@ export class Conversation extends Tagged { // A conversation with replies.
     return item;
   }
   removeItem(tag) { // Remove reply from cache.
-    const { items } = this;    
-    return items.splice(items.findIndex(reply => reply.tag === tag), 1)?.[0];
+    const { items } = this;
+    const index = items.findIndex(reply => reply.tag === tag);
+    if (index < 0) return null;
+    return items.splice(index, 1)?.[0];
   }
   get itemKind() { // Answer class of reply items.
     return Reply;
