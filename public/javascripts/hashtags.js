@@ -97,6 +97,107 @@ export const Hashtags = {
         <md-icon-button slot="remove-trailing-icon" title="fixme help"><md-icon class="material-icons"></md-icon></md-icon-button>
       </md-filter-chip>`;
   },
+  closeSelector() { // Close the autocomplete tag selector
+    const { listbox, newtag } = this;
+    listbox.classList.toggle('hidden', true);
+    newtag.setAttribute('aria-expanded', 'false');
+    newtag.removeAttribute('aria-activedescendant');
+    newtag.value = '';
+    this.activeIndex = -1;
+  },
+  openSelector() { // Open the autocomplete tag selector
+    const { listbox, newtag } = this;
+    listbox.classList.toggle('hidden', false);
+    newtag?.setAttribute('aria-expanded', 'true');
+  },
+  setActive(index) {
+    const { listbox, newtag } = this;
+    this.activeIndex = index;
+    listbox.querySelectorAll('.combobox-option').forEach((option, optionIndex) => {
+      const active = index === optionIndex;
+      option.classList.toggle('active', active);
+      if (active) {
+	option.scrollIntoView({ block: 'nearest' });
+	newtag.setAttribute('aria-activedescendant', option.id);
+      } else {
+	newtag.removeAttribute('aria-activedescendant');
+      }
+    });
+  },
+  selectValue(value) {
+    this.newtag.value = value;
+    this.acceptTag();
+  },
+  acceptTag() { // Add the new hashtag.
+    resetInactivityTimer();
+    let tag = this.newtag?.value.trim()  // Get into standard form, but do not strip emoji or case into canonical yet.
+	.replace(/^#/, '')       // No leading hash
+	.replace(/\s+/g, ' ')    // Replace multiple spaces with a single space
+	.normalize('NFD');        // Standardize different ways of making accents into decomposed form - but do not remove them.
+    Alert.closePopup();
+    if (!tag) return;
+    tag = this.add(tag); // Might exist, in which case tag might now be extended.
+    this.setPublish(tag);
+    this.onchange({highlightPublish: true});
+  },
+  activeIndex: -1,
+  selectors: [],
+  renderSelector(query) { // Render the autocompletion of query string.
+    const { listbox, newtag } = this;
+    function escapeRegExp(str) {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    function highlight(text, query) {
+      if (!query) return text;
+      const re = new RegExp(`(${escapeRegExp(query)})`, 'ig');
+      return text.replace(re, '<mark>$1</mark>');
+    }
+
+    // TODO: create the elements only when allKnownHashtags changes. Then hide/highlight here.
+    listbox.innerHTML = '';
+    this.selectors = allKnownHashtags.filter(item =>
+      item.toLowerCase().includes(query.toLowerCase())
+    );
+
+    if (this.selectors.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'combobox-empty';
+      li.textContent = `Create tag "${query}"`;
+      li.onpointerdown = event => {
+	event.preventDefault();
+	event.stopPropagation();
+	this.acceptTag();
+      };
+      listbox.appendChild(li);
+    } else {
+      this.selectors.forEach((item, i) => {
+	const li = document.createElement('li');
+	li.className = 'combobox-option';
+	li.id = `tag-option-${i}`;
+	li.setAttribute('role', 'option');
+	li.innerHTML = highlight(item, query);
+	li.onpointerdown = event => {
+          // pointerdown (not click) so it fires before the field's blur event
+          event.preventDefault();
+	  event.stopPropagation();
+          this.selectValue(item);
+	};
+	listbox.appendChild(li);
+      });
+      setTimeout(() => { // Needs a tick.
+	const width = listbox.clientWidth;
+	const max = Math.max(125, width);
+	newtag.style.width = max + 'px'; // Set newtag so that input box makes room for floating lis
+      }, 50);
+    }
+
+    this.openSelector();
+    if (this.selectors.length === 1) {
+	this.setActive(0);
+      } else {
+	this.setActive(-1);
+      }
+  },
   resetSubscriberDisplay() { // Lay out all the hashtag chips display, including the input for adding new ones.
     this.chipset.innerHTML = '';
     const tags = this.getAll();
@@ -139,26 +240,67 @@ export const Hashtags = {
       });
     });
     this.chipset.insertAdjacentHTML("afterbegin",  // Chip to add a new hashtag.
-				    `<md-filled-text-field class="newtag" placeholder="➕${Int`add topic`}"></md-filled-text-field>`);
-    if (navigator.maxTouchPoints <= 1) { // Only when no multi-touch. On-screen keyboard makes it shoot off the top.
-      clickTip(this.chipset.firstChild, Int`Add a new topic for which the map should show any alerts.`, event => { // Focusing "add topic".
-	event.stopPropagation();
-	Alert.closePopup();
-	showMessage(Int`Type a new topic name to see any alerts on the map with this topic.`, 'instructions');
-      });
-    }
-    this.chipset.firstChild.onchange = event => { // Add the new hashtag.
-      resetInactivityTimer();
-      let tag = event.target.value.trim()  // Get into standard form, but do not strip emoji or case into canonical yet.
-	  .replace(/^#/, '')       // No leading hash
-	  .replace(/\s+/g, ' ')    // Replace multiple spaces with a single space
-	  .normalize('NFD');        // Standardize different ways of making accents into decomposed form - but do not remove them.
-      if (!tag) return;
+				    `<div class="combobox">
+  <ul class="combobox-listbox hidden" id="knownTagsListbox" role="listbox"></ul>
+  <md-filled-text-field class="newtag"
+     aria-expanded="false"
+     aria-controls="knownTagsListbox"
+     aria-autocomplete="list"
+     autocomplete="off"
+     tabindex="0"
+     placeholder="➕${Int`add topic`}"></md-filled-text-field>
+</div>`);
+    // I've tried also supplying a datalist, e.g., to supply the mobile keyboard completions, but
+    // I have not been able to get it to work.
+    const newtag = this.newtag = this.chipset.querySelector('.newtag');
+    const listbox = this.listbox = this.chipset.querySelector('.combobox-listbox');
+    clickTip(newtag, Int`Add a new topic for which the map should show any alerts.`, event => { // Focusing "add topic".
+      event.stopPropagation();
       Alert.closePopup();
-      tag = this.add(tag); // Might exist, in which case tag might now be extended.
-      this.setPublish(tag);
-      this.onchange({highlightPublish: true});
+      this.renderSelector('');
+      if (navigator.maxTouchPoints <= 1) { // Only when no multi-touch. On-screen keyboard makes it shoot off the top.
+	showMessage(Int`Type a new topic name to see any alerts on the map with this topic.`, 'instructions');
+      }
+    });
+    newtag.onkeydown = event => {
+      if (listbox.classList.contains('hidden')) return;
+      const optionCount = listbox.querySelectorAll('.combobox-option').length;
+
+      switch (event.key) {
+      case 'ArrowDown':
+	event.preventDefault();
+        if (optionCount > 0) this.setActive((this.activeIndex + 1) % optionCount);
+        break;
+
+      case 'ArrowUp':
+	event.preventDefault();
+        if (optionCount > 0) this.setActive((this.activeIndex - 1 + optionCount) % optionCount);
+        break;
+
+      case 'Enter':
+	event.preventDefault();
+        if (this.activeIndex < 0) {
+	  this.acceptTag();
+        } else {
+          this.selectValue(this.selectors[this.activeIndex]);
+	}
+        break;
+
+      case 'Escape':
+	event.preventDefault();
+        this.closeSelector();
+        break;
+
+      case 'Tab':
+	event.preventDefault();
+	if (this.activeIndex < 0) this.setActive(0); // If nothing active, make the first line active.
+	else this.selectValue(this.selectors[this.activeIndex]); // Otherwise select what is active.
+        break;
+      }
     };
+    newtag.oninput = () => this.renderSelector(newtag.value);
+    newtag.onblur = () => this.closeSelector();
+    newtag.onchange = () => this.acceptTag();
   },
   remove(chip, redisplaySubscribers = false) { // Remove this topic, persistently.
     delete this.hashtags[chip.label];
