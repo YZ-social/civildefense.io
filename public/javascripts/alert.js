@@ -473,12 +473,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
   deleteReply(replyElement) {
     resetInactivityTimer();
-    const {lat, lng} = this;
+    const {lat, lng, subject} = this;
     const region = P2PWebNetwork.regionCode(lat, lng);
     const killTag = replyElement.dataset.subject;
     networkPromise.then(async contact => {
       // We won't be here unless we are the signer.
-      await contact.publish({eventName: this.subject, region, killTag, payload: null});
+      await contact.publish({eventName: subject, region, killTag, payload: null});
       // IFF there's an attachment AND we're given msgIds by receiveChunkedBytes, then delete the attachment.
       const reply = this.getItem(killTag);
       const {attachmentTopic, msgIds = []} = reply?.payload || {};
