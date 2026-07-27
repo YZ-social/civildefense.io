@@ -79,9 +79,9 @@ export const Hashtags = {
   formatAlert(tag) { // HTML (possibly text) to represent tag as a marker on map.
     return this.firstEmoji(tag) || this.identicon(tag);
   },
-  formatPubtag(tag) { // HTML (possibly text) to represent tag with defaulted icon.
+  formatPubtag(tag, identiconData = tag) { // HTML (possibly text) to represent tag with defaulted icon.
     const emoji = this.firstEmoji(tag);
-    return emoji ? tag : this.identicon(tag) + tag;
+    return emoji ? tag : this.identicon(identiconData) + tag;
   },
   onchange({redisplaySubscribers = true, highlightPublish = false, resetSubscriptions = true} = {}) { // Update and persist internal data, and update visuals.
     // If redisplaySubscribers, the presence/order may have changed.
@@ -180,7 +180,7 @@ export const Hashtags = {
 	li.className = 'combobox-option';
 	li.id = `tag-option-${i}`;
 	li.setAttribute('role', 'option');
-	li.innerHTML = highlight(item, query);
+	li.innerHTML = this.formatPubtag(highlight(item, query), item);
 	li.onpointerdown = event => {
           // pointerdown (not click) so it fires before the field's blur event
           event.preventDefault();
