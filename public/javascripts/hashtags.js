@@ -47,6 +47,11 @@ export const Hashtags = {
       this.onchange({resetSubscriptions: false});
       if (updateAlerts) Alert.updateAlerts(canonical, extended);
     }
+    if (!allKnownHashtags.includes(extended)) {
+      allKnownHashtags.push(extended);
+      this.sort(allKnownHashtags);
+      localStorage.setItem('allKnownHashtags', JSON.stringify(allKnownHashtags));
+    }
     return extended;
   },
   getAll() { // List of all the user's hashtags.
@@ -198,12 +203,15 @@ export const Hashtags = {
 	this.setActive(-1);
       }
   },
+  sort(tags) { // Sort list of tags in place without regard to leding emoji
+    tags.sort((a, b) => stripLeadingEmoji(a).localeCompare(stripLeadingEmoji(b)));
+  },
   resetSubscriberDisplay() { // Lay out all the hashtag chips display, including the input for adding new ones.
     this.chipset.innerHTML = '';
     const tags = this.getAll();
 
     // Sort alphabetically, ignoring any leading emoji, as these have unexpected orderings.
-    tags.sort((a, b) => stripLeadingEmoji(a).localeCompare(stripLeadingEmoji(b)));
+    this.sort(tags);
     const reordered = {};
     tags.forEach(tag => reordered[tag] = this.hashtags[tag]);
     this.hashtags = reordered;
