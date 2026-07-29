@@ -23,7 +23,7 @@ const argv = yargs(hideBin(process.argv))
       })
       .option('baseURL', {
 	type: 'string',
-	default: 'http://localhost:3000/kdht',
+	default: 'http://localhost:3000',
 	description: "The base URL of the portal server through which to bootstrap."
       })
       .option('externalBaseURL', {
@@ -115,10 +115,8 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   });
   process.title = 'axona-' + network.nodeIdentity.id;
   let update = setInterval(() => {
-    const roles = network.peer.health().axonRoles;
-    network.debug(roles.length, 'axons',
-		  roles.reduce((total, role) => total + (role.isRoot ? 1 : 0), 0), 'roots');
-  }, 10e3);
+    network.debug(network.peer.health());
+  }, 30e3);
   process.on('SIGINT', async () => { // Leave the network politely.
     console.log(process.title, 'Shutdown for Ctrl+C');
     clearInterval(update)
