@@ -1,7 +1,7 @@
 {
   "name": "@yz-social/civildefense.io",
   "description": "Browser app to safely share live sightings on a map.",
-  "version": "4.5.10",
+  "version": "4.5.11",
   "keywords": [
     "map",
     "browser",
@@ -10,7 +10,9 @@
   "scripts": {
     "start": "npm stop; node ./server/app.js",
     "stop": "pkill yz.social",
-    "postinstall": "touch server/location.json; chmod a+w server/location.json"
+    "postinstall": "touch server/location.json; chmod a+w server/location.json",
+    "prepack": "mv server/location.json server/location.save.json",
+    "postpack": "mv server/location.save.json server/location.json"
   },
   "type": "module",
   "exports": {

@@ -8,6 +8,7 @@ import { getPointInCell } from './s2.js';
 import { Alert, getShareableURL, share } from './alert.js';
 import { map, showMessage, updateLocation, recenterMap } from './map.js';
 import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
+window.P2PWebNetwork = P2PWebNetwork;
 
 document.getElementById('appVersion').textContent = appVersion;
 document.getElementById('kernelVersion').textContent = P2PWebNetwork.kernelVersion;
