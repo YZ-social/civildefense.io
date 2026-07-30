@@ -175,6 +175,7 @@ export class P2PWebNetwork {
     await this.attachment;
     const topic = {region, name: eventName};
     if (owner) topic.owner = owner;
+    this.debug('subscribed', {topic, handler:!!handler});
     if (handler) {
       const callback = async envelope => {
 	const {message, deleted, msgId, signerPubkey, topic, ts} = envelope;
@@ -191,14 +192,14 @@ export class P2PWebNetwork {
     }
   }
   static currentPublishIdentity = null;
-  async publish({eventName, region, owner, signWith = this.constructor.currentPublishIdentity, issuedTime = Date.now(), killTag, payload, ...rest}) {
+  async publish({eventName, region, owner, signWith = this.constructor.currentPublishIdentity, issuedTime = Date.now(), subject, killTag = subject, payload, ...rest}) {
     // Publish data to subscribers of eventName.
     if (killTag && payload) throw new Error(`Specify killTag (${killTag}) or payload ($(JSON.stringify(payload)}), but not both.`);
     await this.attachment; // Get connected.
     const topic = {region, name: eventName};
     if (owner) topic.owner = owner;
     const options = {signWith};
-    this.debug('published', {topic, killTag, payload, issuedTime, rest, signWith});
+    this.debug('published', {topic, killTag, payload, issuedTime, rest, signWith:signWith.authorId});
     if (payload) return await this.peer.pub(topic, {issuedTime, payload, ...rest}, options);
     // The next would not normally happen, but until since:'latest' works, we need a way to send a null payload and have the handler delete the entry.
     if (!killTag) return await this.peer.pub(topic, {issuedTime, payload, ...rest}, options);
