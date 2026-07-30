@@ -7,7 +7,7 @@ import { consume } from './display.js';
 import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
 import { Conversation, Reply } from './conversation.js';
-import { alertTopic } from './versions.js';
+import { alertTopic, topicRegion } from './versions.js';
 import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
 const { localStorage, getComputedStyle, URL, URLSearchParams, domtoimage } = globalThis;
 
@@ -104,7 +104,6 @@ class AlertReply extends Reply {
 }
 
 let subscriptions = []; // array of stringy keys <mumble>:<cellID>:<hashtag>
-let subscriptionsRegion;
 // We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
 let lastLevel9Cell; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
 
@@ -116,7 +115,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // When we resubscribe to different cells covering the same place, we will get the same
   // sticky data. We don't want to change the marker. Fortunately, the publication to each
   // of the cells (at different scales) are all published with the same data.
-  static updateSubscriptions(oldKeys = subscriptions, newKeys) { // Update current subscriptions to the new map bounds.
+  static async updateSubscriptions(oldKeys = subscriptions, newKeys, throttleMS = 20) { // Update current subscriptions to the new map bounds.
     // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
     if (!networkPromise) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
     let region;
@@ -133,18 +132,18 @@ export class Alert extends Conversation { // A wrapper around L.marker
       if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
     }
 
-    const subscribe = (key, region, handler) =>
-	  networkPromise.then(async contact => contact.subscribe({eventName: key, region, handler}));
+    const contact = await networkPromise;
+    const subscribe = (key, handler) =>
+	  contact.subscribe({eventName: key, region: topicRegion(key), handler}).then(() => throttleMS && P2PWebNetwork.delay(throttleMS));
 
     // For each entry in the new subscription set that was not previously subscribed, subscribe now.
-    for (const key of newKeys) oldKeys.includes(key) || subscribe(key, region, data => Alert.ensure(data));
-
+    for (const key of newKeys) oldKeys.includes(key) || await subscribe(key, data => Alert.ensure(data));
     // For each existing subscription, if it does not appear in the new set then unsubscribe.
-    for (const key of oldKeys) newKeys.includes(key) || subscribe(key, subscriptionsRegion, null);
-    console.log('Subscribed', {newKeys, region, length: newKeys.length, oldKeys, subscriptionsRegion});
+    for (const key of oldKeys) newKeys.includes(key) || await subscribe(key, null);
+
+    console.log('Subscribed', {newKeys, region, length: newKeys.length, oldKeys});
 
     subscriptions = newKeys;
-    subscriptionsRegion = region;
   }
   // Publish an alert to all applicable eventNames, canceling as required. Promises tag (msgId).
   static async publish({lat, lng,
