@@ -19,5 +19,5 @@ export function agentTopic(metadataType, agentTag) { // Return topic name for pu
   return `public:${dataVersion}:${agentPersistKey(metadataType, agentTag)}`;
 }
 export function alertTopic(cellid, tag) { // Return topic name for public info about specified tag in cellid.
-  return `civildefense.io:${dataVersion}:${cellid}:${canonicalTag(tag)}`;
+  return `civildefense.io:${dataVersion}:${cellid.toString(16)}:${canonicalTag(tag)}`;
 }
