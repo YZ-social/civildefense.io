@@ -19,9 +19,7 @@
   Alice kills her publication and Emma joins.
 */
 const { describe, it, expect, beforeAll, afterAll, BigInt } = globalThis;
-import { createAuthorIdentity, regionCenter, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION, deriveTopicId, metricTopic } from '@axona/protocol';
-import { connect } from '@axona/protocol/connect.js';
-globalThis.RTCPeerConnection ||= await import('node-datachannel/polyfill').then(ndc => ndc.RTCPeerConnection);
+import { connect, createAuthorIdentity, regionCenter, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION, deriveTopicId, metricTopic } from '@axona/protocol';
 
 class Node {  // Stuff we have to do every time.
   static version = KERNEL_VERSION;
@@ -110,6 +108,7 @@ describe("CivilDefense", function () {
   const deliveryAllowanceMS = 60e3;
 
   //const location = regionCenter('uscentlw');
+  //const location = regionCenter('0x52');
   const location = regionCenter('uswest');  // TODO: pick one
   
   let alice, bob, carol, david, emma;
@@ -226,10 +225,12 @@ describe("CivilDefense", function () {
     });
   });
   afterAll(async function () {
-    await alice.disconnect();
-    await bob.disconnect();
-    await carol?.disconnect();
-    await david?.disconnect();
-    await emma?.disconnect();
+    await Promise.all([
+      alice.disconnect(),
+      bob.disconnect(),
+      carol?.disconnect(),
+      david?.disconnect(),
+      emma?.disconnect(),
+    ]);
   });
 });
