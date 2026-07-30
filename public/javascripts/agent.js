@@ -1,7 +1,6 @@
 const { localStorage } = globalThis;
 import { v4 as uuidv4 } from 'uuid';
 import { minidenticonSvg } from 'minidenticons';
-import { createAuthorIdentity }  from '@axona/protocol';
 import { agentTopic, agentPersistKey } from './versions.js';
 import { Int } from './translations.js';
 import { consume, openDisplay } from './display.js';
@@ -275,7 +274,7 @@ export class Agent {
   static async initialize() { // Initialize what the agent needs from the about screen
     let tag = localStorage.getItem('usertag');
     const persistAs = tag || uuidv4(); // Give it SOMETHING to persistAs.
-    const myIdentity = await createAuthorIdentity({persistAs});
+    const myIdentity = await P2PWebNetwork.createAuthorIdentity({persistAs});
     if (tag !== persistAs) { // Fix up persistence by moving it to where it need to go.
       // WARNING: This relies on undocumented behavior of createAuthorIdentity().
       const realTag = myIdentity.authorId;

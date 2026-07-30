@@ -388,9 +388,9 @@ md-menu {
 md-outlined-button {
     padding: 10px;
 }
-.attribution > div:last-child > span {
-    text-wrap: nowrap;
-}
+/* .attribution > div:last-child > span { */
+/*     text-wrap: nowrap; */
+/* } */
 md-menu-item minidenticon-svg {
     display: inline-block;
     height: 20px;
@@ -424,7 +424,7 @@ md-menu-item minidenticon-svg {
 .attribution-metadata {
     display: flex;
     flex-direction: column;
-    align-items: end;
+    /* align-items: end; */
 }
 .alert {
     font-family: roboto;
