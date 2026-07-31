@@ -103,19 +103,14 @@ class AlertReply extends Reply {
   }
 }
 
-let subscriptions = []; // array of stringy keys <mumble>:<cellID>:<hashtag>
-// We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
-let lastLevel9Cell; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
-
-let last = []; // Last published lat, lng, tag
-const maxPublish = 5;
-let publishing = false;
-
 export class Alert extends Conversation { // A wrapper around L.marker
   // When we resubscribe to different cells covering the same place, we will get the same
   // sticky data. We don't want to change the marker. Fortunately, the publication to each
   // of the cells (at different scales) are all published with the same data.
-  static async updateSubscriptions(oldKeys = subscriptions, newKeys, throttleMS = 20) { // Update current subscriptions to the new map bounds.
+  static subscriptions = []; // array of stringy keys <mumble>:<cellID>:<hashtag>
+  // We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
+  static lastLevel9Cell = null; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
+  static async updateSubscriptions(oldKeys = this.subscriptions, newKeys, throttleMS = 20) { // Update current subscriptions to the new map bounds.
     // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
     if (!networkPromise) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
     let region;
@@ -129,7 +124,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       Agent.current?.trackPublicChanges(region);
       // Record a zoomed-out cell id in case next session does not have geolocation services.
       let level9Cell = getContainingCells(center.lat, center.lng)[9];
-      if (level9Cell !== lastLevel9Cell) localStorage.setItem('level9Cell', lastLevel9Cell = level9Cell);
+      if (level9Cell !== this.lastLevel9Cell) localStorage.setItem('level9Cell', this.lastLevel9Cell = level9Cell);
     }
 
     const contact = await networkPromise;
@@ -143,8 +138,11 @@ export class Alert extends Conversation { // A wrapper around L.marker
 
     console.log('Subscribed', {newKeys, region, length: newKeys.length, oldKeys});
 
-    subscriptions = newKeys;
+    this.subscriptions = newKeys;
   }
+  static maxPublish = 5;
+  static publishing = false;
+  static lastPublished = []; // Last published lat, lng, tag
   // Publish an alert to all applicable eventNames, canceling as required. Promises tag (msgId).
   static async publish({lat, lng,
 			originalPosting = undefined,
@@ -159,21 +157,21 @@ export class Alert extends Conversation { // A wrapper around L.marker
     // However, the 'unpublishing' (if any) is invoked first.
     // To do this, we must hash the eventName ourselves.
     //console.log('publish', {lat, lng, hashtag, payload, cancel, subject, issuedTime, rest});
-    if (publishing) { console.log('skiping overlapping publish'); return null; } // do not stack them up.
+    if (this.publishing) { console.log('skiping overlapping publish'); return null; } // do not stack them up.
     try {
-      publishing = true;
+      this.publishing = true;
 
       const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
       let oldCells = null, oldHash, oldSubject = null; // Recorded for logging, below.
       let lastFillIn;
       if (payload) {
 	lastFillIn = {lat, lng, hashtag, issuedTime};
-	last.push(lastFillIn); // Capture the added data.
-	const periodStart = Date.now() - (maxPublish * 60e3); // maxPublish minutes ago.
-	last = last.filter(past => past.issuedTime >= periodStart);
-	if (cancel === undefined && last.length > maxPublish) { // Unless specified otherwise, cancel oldest over maxPublish.
-	  showMessage(Int`Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.`);
-	  cancel = last.shift();
+	this.lastPublished.push(lastFillIn); // Capture the added data.
+	const periodStart = Date.now() - (this.maxPublish * 60e3); // maxPublish minutes ago.
+	this.lastPublished = this.lastPublished.filter(past => past.issuedTime >= periodStart);
+	if (cancel === undefined && this.lastPublished.length > this.maxPublish) { // Unless specified otherwise, cancel oldest over maxPublish.
+	  showMessage(Int`Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.`, 'instructions');
+	  cancel = this.lastPublished.shift();
 	}
       }
       if (cancel) {
@@ -207,13 +205,13 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	}
       }
       if (!payload) {
-	const index = last.findIndex(past => past.subject === subject);
-	if (index >= 0) last.splice(index, 1);
+	const index = this.lastPublished.findIndex(past => past.subject === subject);
+	if (index >= 0) this.lastPublished.splice(index, 1);
       }
       console.log('Published', {cells, n: cells.length, region, hashtag, subject, payload, oldCells, oldHash, oldSubject});
       return subject;
     } finally {
-      publishing = false;
+      this.publishing = false;
     }
   }
   
@@ -592,3 +590,4 @@ export class Alert extends Conversation { // A wrapper around L.marker
     super.destroy();
   }
 }
+globalThis.Alert = Alert; // for debugging
