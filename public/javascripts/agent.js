@@ -155,8 +155,9 @@ export class Agent {
     element.textContent = value || '(none)';
     element.value = value || ''; // Hack: handle input[type="text"] as well. Must be property assignment, not attribute.
   }
+  static spinner = 'images/loading.gif';
   static avatar(element, value) { // Update avatar element with value.
-    element.innerHTML = value === null ? '(none)' : (value.startsWith('data') ? this.makeImage(value) : Agent.makeIdenticon(value));
+    element.innerHTML = value === null ? '(none)' : (value === this.spinner || value.startsWith('data') ? this.makeImage(value) : Agent.makeIdenticon(value));
   }
   static downsampleResolution = 128; // max height or width
   static makeImage(url) {
@@ -236,11 +237,8 @@ export class Agent {
 	this.updateValue(null, 'private', 'avatar');
       };
       fileChooser.onchange = async event => {
-	consume(event);
-	if (!fileChooser.files.length) return;
-	const blob = await P2PWebNetwork.downsampledBlob({blob: fileChooser.files[0], maxDimension: Agent.downsampleResolution});
-	this.updateValue(await P2PWebNetwork.blob2dataURL(blob), 'private', 'avatar');
-	console.log('clearing avatar selection');
+	await this.fileEvent(fileChooser, event, 'private');
+	console.log('cleared avatar selection');
       };
       fileChooser.click();
     });
@@ -261,6 +259,16 @@ export class Agent {
       this.removeElement(avatarSpan, 'mixed', 'avatar');    
       content.parentElement.classList.toggle('hidden', true);
     };
+  }
+  async fileEvent(fileChooser, event, scope) { // Update value from fileChooser change event, return dataURL;
+    consume(event);
+    if (!fileChooser.files.length) return '';
+    const file = fileChooser.files[0];
+    const maxDimension = Agent.downsampleResolution;
+    const blob = await P2PWebNetwork.downsampledBlob({blob: file, maxDimension});
+    const dataURL = await P2PWebNetwork.blob2dataURL(blob);
+    await this.updateValue(dataURL, scope, 'avatar');
+    return dataURL;
   }
   static current = null;
   static tag = null;
@@ -303,17 +311,15 @@ export class Agent {
       fileChooser.oncancel = event => {
 	consume(event);
 	console.log('cancel my avatar');
+	myAgent.updateValue(this.spinner, 'public', 'avatar', false);
 	myAgent.updateValue(null, 'public', 'avatar');
 	myAgent.persistPrivate(null, 'avatar'); // So that we'll have it next session.
 	console.log('clearing avatar selection');
       };
       fileChooser.onchange = async event => {
-	consume(event);
-	if (!fileChooser.files.length) return;
-	const blob = await P2PWebNetwork.downsampledBlob({blob: fileChooser.files[0], maxDimension: Agent.downsampleResolution});
-	const url = await P2PWebNetwork.blob2dataURL(blob);
+	myAgent.updateValue(this.spinner, 'public', 'avatar', false);
+	const url = await myAgent.fileEvent(fileChooser, event, 'public');
 	console.log('set my avatar', url.slice(0, 50));
-	myAgent.updateValue(url, 'public', 'avatar');
 	myAgent.persistPrivate(url, 'avatar'); // So that we'll have it next session.
       };
       fileChooser.click();
