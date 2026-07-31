@@ -18,7 +18,7 @@ const argv = yargs(hideBin(process.argv))
       .option('nPortals', {
 	alias: 'p',
 	type: 'number',
-	default: Math.min(logicalCores, 5),
+	default: logicalCores - 3,
 	description: "The number of steady nodes that handle initial connections."
       })
       .option('baseURL', {
@@ -36,15 +36,10 @@ const argv = yargs(hideBin(process.argv))
 	default: false,
 	description: "Announce our availability on the DHT, so that other nodes can enter through us if their original portal goes down."
       })
-      .option('fixedSpacing', {
+      .option('spacing', {
 	type: 'number',
-	default: 2,
-	description: "Minimum seconds to add between each portal."
-      })
-      .options('variableSpacing', {
-	type: 'number',
-	default: 5,
-	description: "Additional variable seconds (+/- variableSpacing/2) to add to fixedSpacing between each portal."
+	default: 3,
+	description: "Minimum seconds to add between each portal on startup and shutdown."
       })
       .option('info', {
 	alias: 'i',
@@ -59,6 +54,10 @@ const argv = yargs(hideBin(process.argv))
 	description: "Run with verbose logging."
       })
       .parse();
+
+function log(...rest) { argv.info && console.log(new Date(), ...rest); }
+function debug(...rest) { argv.verbose && console.log(new Date(), ...rest); }
+function delay(ms = argv.spacing * 1e3) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 if (cluster.isPrimary) { // Parent process with portal webserver through which clienta can bootstrap
   const port = parseInt((new URL(argv.baseURL)).port || '80');
@@ -100,29 +99,39 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   }));
 
   app.listen(port);
-  console.log(new Date(), `Listening on ${port} and starting ${argv.nPortals} nodes on ${logicalCores} ${cpus()[0].model} logical cores.`);
+  log(`Listening on ${port} and starting ${argv.nPortals} nodes on ${logicalCores} ${cpus()[0].model} logical cores.`);
   for (let i = 0; i < argv.nPortals; i++) {
     cluster.fork();
-    await new Promise(resolve => setTimeout(resolve, 2e3)); // Number chosen to give an unspikey rise in packets/s.
+    await delay(); // Number chosen to give an unspikey rise in packets/s.
   }
+  log(process.title, 'RUNNING.');
+  process.on('SIGINT', async () => { // Leave the network politely.
+    const seconds = argv.nPortals * argv.spacing;
+    log(process.title, 'shutting down', argv.nPortals, 'nodes.');
+    await delay(seconds * 1e3);
+    log(process.title, 'done');
+    process.exit(0);
+  });
 } else {
   process.title = 'axona-starting';
   const { P2PWebNetwork, location } = await import('../index.js');
   const network = await P2PWebNetwork.create({
     region: location,
-    infoLogger: (...rest) => argv.info && console.log(new Date(), ...rest),
-    debugLogger: (...rest) => argv.verbose && console.log(new Date(), ...rest)
+    infoLogger: log,
+    debugLogger: debug
   });
   process.title = 'axona-' + network.nodeIdentity.id;
-  let update = setInterval(() => {
+  let update = argv.verbose && setInterval(() => {
     network.debug(network.peer.health());
   }, 30e3);
   process.on('SIGINT', async () => { // Leave the network politely.
-    console.log(process.title, 'Shutdown for Ctrl+C');
-    clearInterval(update)
+    const id = cluster.worker.id;
+    const seconds = (id - 1) * argv.spacing;
+    log(process.title, 'Shutdown for Ctrl+C in', seconds, 'seconds.');
+    clearInterval(update);
+    await delay(seconds * 1e3);
     await network.disconnect();
     process.exit(0);
-});
+  });
   await network.host();
-
 }
