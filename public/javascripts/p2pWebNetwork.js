@@ -98,7 +98,8 @@ export class P2PWebNetwork {
       img.src = URL.createObjectURL(file);
     });
   }
-  static  async downsampledBlob({blob, outputType = 'image/jpeg', maxDimension = 1024}) { // ONLY IN BROWSERS!
+  static  async downsampledBlob({blob, maxDimension = 1024, inputType = blob.type,
+				 outputType = inputType.startsWith('image/') ? 'image/jpeg' : inputType}) { // ONLY IN BROWSERS!
     // Promise a reasonably sized Blob (or File) for a given Blob of type image/*, else blob unchanged.
     if (!blob.type.startsWith('image/')) return blob;
 
