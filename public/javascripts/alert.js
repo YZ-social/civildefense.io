@@ -445,7 +445,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     data.subject = data.tag; //fixme
     const isFirstReply = !this.items.length;
     const reply = await super.ensure(data);
-    if (isFirstReply && reply && reply.payload && !reply.payload.file || reply.payload.message) tooltip(this.marker.getElement(), reply.payload);
+    if (isFirstReply && reply && reply.payload && (!reply.payload.file || reply.payload.message)) tooltip(this.marker.getElement(), reply.payload);
     this.needsRedisplay = true;
     this.ensureContent();
     return reply;
