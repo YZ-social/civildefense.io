@@ -94,13 +94,20 @@ class AlertReply extends Reply {
       const {dataURL:file, name, msgIds} = await contact.assembleChunkedDataURL(attachmentTopic);
       Object.assign(payload, {file, name, attachmentTopic, msgIds});
     }
-    const element = container.startFader('.alert-commented', issuedTime + ttl - Date.now());
+    let element;
+    if (this === container.items[container.items.length - 1]) { // If this is the last of the sorted replies (could come out of order)...
+      const remaining = issuedTime + ttl - Date.now();
+      element = container.startFader('.alert-commented', remaining);
+    } else {
+      element = container.marker.getElement().querySelector('.alert-commented');
+    }
     element.style.display = 'block';
     // Restart the pulse animation by setting animationName to something it isn't.
     element.style.animationName = element.style.animationName === 'pulse2' ? 'pulse' : 'pulse2';
     container.showNotification({agent, issuedTime, body: payload.message || payload.name || payload});
     return this;
   }
+  update() { } // TODO: are we really getting multiple reply events for the same data?
 }
 
 export class Alert extends Conversation { // A wrapper around L.marker
@@ -443,9 +450,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
   async ensure(data) { // Add or update reply for this marker.
     data.subject = data.tag; //fixme
-    const isFirstReply = !this.items.length;
     const reply = await super.ensure(data);
-    if (isFirstReply && reply && reply.payload && (!reply.payload.file || reply.payload.message)) tooltip(this.marker.getElement(), reply.payload);
+    if (reply && reply === this.items[0]) { // If first sorted reply, and there's a message, update the tooltip.
+      const element = this.marker.getElement();
+      const message = reply.payload?.message || (!reply.payload.file || reply.payload);
+      if (element && message) tooltip(element, message);
+    }
     this.needsRedisplay = true;
     this.ensureContent();
     return reply;
@@ -571,7 +581,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     element.style.opacity = opacity;
     // I'd like to let css transitions do the work, but as we zoom, we make different subscriptions and thus start
     // the "same" marker over again. This initial setup clashes with zooming if done with a next-tick step opacity+filter value.
-    const interval = 2e3; // Milliseconds / step
+    const interval = 10e3; // Milliseconds / step
     const opacityFade = (endOpacity - opacity) *  interval / remaining; // change / step
     const grayscaleFade = (endGrayscale - grayscale) * interval / remaining;
     clearInterval(this[selector]);
