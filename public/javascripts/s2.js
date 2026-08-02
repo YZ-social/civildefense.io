@@ -33,7 +33,6 @@ export function getContainingCells(lat, lng) {
   let cells = Array(MAX_S2_LEVEL);
   for (let level = 0; level <= MAX_S2_LEVEL; level++) { // This would be more efficient going backwards using immediateParent, but who cares.
     cells[level] = cellid.parent(userLocCellId, level);
-    console.log(level, cells[level].toString(16));
   }
   return cells.slice(MIN_LEVEL, MAX_MAP_LEVEL + 1); // We can only make use between Axona region size and the smallest region our maps subscribe to.
 }
