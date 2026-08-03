@@ -49,7 +49,7 @@ export class P2PWebNetwork {
     });
     //peer.onLog('debug', (...rest) => network.debug('DEBUG', ...rest));
     //peer.onLog('info', (...rest) => network.debug('INFO', ...rest));
-    peer.onLog('warn', (...rest) => network.info('WARNING', ...rest));
+    peer.onLog('warn', (string, data, ...rest) => (data?.why === 'not-seated') || network.info('WARNING', string, data, ...rest)); //peer.onLog('warn', (...rest) => network.info('WARNING', ...rest));
     peer.onLog('error', (...rest) => network.info('ERROR', ...rest));
     const { peers, ms } = status;
     network.info(`Connected ${peers} connections through ${bridgeUrl} in ${ms.toLocaleString()} ms.`);
@@ -57,10 +57,11 @@ export class P2PWebNetwork {
     return network;
   }
   
-  async disconnect() { // Politely close network connection.
+  async disconnect(debugLogger = this.debugLogger) { // Politely close network connection.
     const health = this.peer.health();
     await this.disconnector();
-    this.info(`disconnected with ${health.peers.length} connections and ${health.axonRoles.length} axons.`);
+    if (debugLogger) debugLogger(health);
+    else this.shortHealth(health);
     this.resetStatePromises();
   }
   async replicateStorage() { // Let the network know that we might go away without further notice.
@@ -234,12 +235,20 @@ export class P2PWebNetwork {
     // E.g., a precise location gets anonymized to containing top-level cell center.
     return this.regionCenter(this.regionCode(lat, lng));
   }
-  // Todo: Integrate with AxonaPeer's complex logging.
   debug(...rest) { // Add debug logspam.
     this.debugLogger?.(this.nodeIdentity.id, ...rest);
   }
   info(...rest) { // Add debug logspam.
     (this.infoLogger || this.debugLogger)?.(this.nodeIdentity.id, ...rest);
+  }
+  shortHealth(health = this.peer.health()) { // Info-report a short form of health.
+    const short = string => string.slice(0, 8);
+    this.info(`disconnected with connections ${health.peers.map(short)}\nand roots ${health.axonRoles.filter(r => r.isRoot).map(r => short(r.topic))}.`);
+  }
+  inRegionConnectivity() {
+    const health = this.peer.health();
+    const region = this.nodeIdentity.id.slice(0, 2);
+    return health.peers.reduce((total, tag) => total + (tag.startsWith(region) ? 1 : 0), 0);
   }
 }
 export default P2PWebNetwork;
