@@ -5,6 +5,26 @@ import { showMessage } from './map.js';
 import { Alert } from './alert.js';
 import { resetInactivityTimer, clickTip } from './main.js';
 
+
+let allKnownHashtags = JSON.parse(localStorage.getItem('allKnownHashtags') || `[
+  "🍰 cake",
+  "🎸 classic rock",
+  "🎼 classical",
+  "🩷 community support",
+  "🤠 country",
+  "🎧 edm",
+  "🔥 fire",
+  "🌊 flood",
+  "🆘 help",
+  "🎤 hiphop",
+  "🧊 ice",
+  "🎷 jazz",
+  "🎙️ news",
+  "👁️ observer corps",
+  "🎵 pop",
+  "🧰 utility repairs"
+]`);
+
 // We subscribe to the cartesian product of the list of non-overlapping cells and all hashes.
 // We publish to just the first of these.
 export const Hashtags = {
@@ -386,23 +406,5 @@ globalThis.Hashtags = Hashtags; // for debugging
 
 // Populate hashtags data and display.
 // First the persisted/default data:
-let allKnownHashtags = JSON.parse(localStorage.getItem('allKnownHashtags') || `[
-  "🍰 cake",
-  "🎸 classic rock",
-  "🎼 classical",
-  "🩷 community support",
-  "🤠 country",
-  "🎧 edm",
-  "🔥 fire",
-  "🌊 flood",
-  "🆘 help",
-  "🎤 hiphop",
-  "🧊 ice",
-  "🎷 jazz",
-  "🎙️ news",
-  "👁️ observer corps",
-  "🎵 pop",
-  "🧰 utility repairs"
-]`);
 const persisted = JSON.parse(localStorage.getItem('hashtags') || `{"🍰 ${Int`cake`}": true, "🆘 ${Int`help`}": "pub"}`);
 Object.entries(persisted).forEach(([tag, active]) => Hashtags.add(tag, active, false));
