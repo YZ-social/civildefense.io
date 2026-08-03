@@ -39,6 +39,7 @@ export const Hashtags = {
     const extended = replaceExisting ? label : ourExtended;      // full emoji form to use
     if (replaceExisting) {
       active = this.hashtags[canonical] || active;
+      allKnownHashtags = allKnownHashtags.filter(tag => canonicalTag(tag) !== canonical);
       delete this.hashtags[ourExtended];
     }
     this.hashtags[extended] ||= active; // If it's 'pub', let it remain so.
@@ -196,9 +197,9 @@ export const Hashtags = {
       item.toLowerCase().includes(matchString)
     );
 
-    if (this.selectors.length === 0) {
+    if (matchString) {
       const li = document.createElement('li');
-      li.className = 'combobox-empty';
+      li.className = 'combobox-empty combobox-option';
       li.textContent = `Create tag "${query}"`;
       li.onpointerdown = event => {
 	event.preventDefault();
@@ -206,27 +207,26 @@ export const Hashtags = {
 	this.acceptTag();
       };
       listbox.appendChild(li);
-    } else {
-      this.selectors.forEach((item, i) => {
-	const li = document.createElement('li');
-	li.className = 'combobox-option';
-	li.id = `tag-option-${i}`;
-	li.setAttribute('role', 'option');
-	li.innerHTML = this.formatPubtag(highlight(item, matchString), item);
-	li.onpointerdown = event => {
-          // pointerdown (not click) so it fires before the field's blur event
-          event.preventDefault();
-	  event.stopPropagation();
-          this.selectValue(item);
-	};
-	listbox.appendChild(li);
-      });
-      setTimeout(() => { // Needs a tick.
-	const width = listbox.clientWidth;
-	const max = Math.max(125, width);
-	newtag.style.width = max + 'px'; // Set newtag so that input box makes room for floating lis
-      }, 50);
     }
+    this.selectors.forEach((item, i) => {
+      const li = document.createElement('li');
+      li.className = 'combobox-option';
+      li.id = `tag-option-${i}`;
+      li.setAttribute('role', 'option');
+      li.innerHTML = this.formatPubtag(highlight(item, matchString), item);
+      li.onpointerdown = event => {
+        // pointerdown (not click) so it fires before the field's blur event
+        event.preventDefault();
+	event.stopPropagation();
+        this.selectValue(item);
+      };
+      listbox.appendChild(li);
+    });
+    setTimeout(() => { // Needs a tick.
+      const width = listbox.clientWidth;
+      const max = Math.max(125, width);
+      newtag.style.width = max + 'px'; // Set newtag so that input box makes room for floating lis
+    }, 50);
 
     this.openSelector();
   },
@@ -334,7 +334,7 @@ export const Hashtags = {
     };
     newtag.oninput = () => this.renderSelector(newtag.value);
     newtag.onblur = () => this.closeSelector();
-    newtag.onchange = () => this.acceptTag();
+    //newtag.onchange = () => this.acceptTag();
   },
   remove(chip, redisplaySubscribers = false) { // Remove this topic, persistently.
     delete this.hashtags[chip.label];
@@ -386,7 +386,7 @@ globalThis.Hashtags = Hashtags; // for debugging
 
 // Populate hashtags data and display.
 // First the persisted/default data:
-const allKnownHashtags = JSON.parse(localStorage.getItem('allKnownHashtags') || `[
+let allKnownHashtags = JSON.parse(localStorage.getItem('allKnownHashtags') || `[
   "🍰 cake",
   "🎸 classic rock",
   "🎼 classical",
