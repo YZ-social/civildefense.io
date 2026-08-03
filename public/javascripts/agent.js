@@ -64,7 +64,7 @@ export class Agent {
       const owner = this.tag;
       ['handle', 'avatar'].forEach(type => {
 	const eventName = this.networkPersistKey(type);
-	contact.subscribe({eventName, region, owner, /*since: 'latest',*/ handler: data => this.setPublicData({...data, type})});
+	contact.subscribe({eventName, region, owner, since: 'latest', handler: data => this.setPublicData({...data, type})});
       });
     });
   }
@@ -128,23 +128,25 @@ export class Agent {
     const eventName = this.networkPersistKey(type);
     const region = this.currentRegion;
     const owner = this.tag;
-    // TODO: set owner as well.
     const contact = await networkPromise;
-    if (value) {
-      let payload = value;
-      // Our downsampling is such that we do not need to chunkify.
-      // if (type === 'avatar') {
-      // 	const blob = await P2PWebNetwork.dataURL2blob(value);
-      // 	payload = (await contact.chunkifyBlob({blob, region})).topic;
-      // }
-      return contact.publish({eventName, region, owner, payload});
-    }
-    // For now, until since:'latest' works, supply a null payload and no subject.
-    await contact.publish({eventName, region, owner, payload: null});
-    // const subject = this.publicMsgId[type];
-    // if (!subject) return null; // We have not published a value, so nothing to kill.
-    // await contact.publish({eventName, region, owner, subject, payload: null});
-    // return null;
+
+    // First kill previous, if any.
+    // Publish doesn't know whether subscribers will be since all or latest, so it must retain all unkilled.
+    // Thus if we only kill the last one when there is no value,
+    // a subscribe since:latest will produce the PREVIOUS value -- the last unkilled one.
+
+    const killTag = this.publicMsgId[type];
+    console.log('persist', {type, killTag, value: value && value.slice(0, 15)});
+    if (killTag) await contact.publish({eventName, region, owner, killTag, payload: null});
+
+    if (!value) return null;
+    let payload = value;
+    // Our downsampling is such that we do not need to chunkify.
+    // if (type === 'avatar') {
+    // 	const blob = await P2PWebNetwork.dataURL2blob(value);
+    // 	payload = (await contact.chunkifyBlob({blob, region})).topic;
+    // }
+    return contact.publish({eventName, region, owner, payload});
   }
 
   // We represent handles and avatars by inserting stuff into given elements.
