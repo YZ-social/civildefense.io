@@ -55,8 +55,8 @@ const argv = yargs(hideBin(process.argv))
       })
       .parse();
 
-function log(...rest) { argv.info && console.log(new Date(), ...rest); }
-function debug(...rest) { argv.verbose && console.log(new Date(), ...rest); }
+const log = argv.info && ((...rest) => console.log(new Date(), ...rest));
+const debug = argv.verbose && ((...rest) => console.log(new Date(), ...rest));
 function delay(ms = argv.spacing * 1e3) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 if (cluster.isPrimary) { // Parent process with portal webserver through which clienta can bootstrap
@@ -106,7 +106,7 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   }
   log(process.title, 'RUNNING.');
   process.on('SIGINT', async () => { // Leave the network politely.
-    const seconds = argv.nPortals * argv.spacing;
+    const seconds = (1 + argv.nPortals) * argv.spacing;
     log(process.title, 'shutting down', argv.nPortals, 'nodes.');
     await delay(seconds * 1e3);
     log(process.title, 'done');
@@ -126,9 +126,11 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   }, 30e3);
   process.on('SIGINT', async () => { // Leave the network politely.
     const id = cluster.worker.id;
-    const seconds = (id - 1) * argv.spacing;
-    log(process.title, 'Shutdown for Ctrl+C in', seconds, 'seconds.');
+    const seconds = id * argv.spacing;
     clearInterval(update);
+    log(process.title, 'Shutdown for Ctrl+C in', seconds, 'seconds.');
+    network.info(`Node ${id} has ${network.inRegionConnectivity()} connections in region.`);
+    network.shortHealth();
     await delay(seconds * 1e3);
     await network.disconnect();
     process.exit(0);
