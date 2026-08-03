@@ -25,8 +25,8 @@ export const Hashtags = {
   //     Later, we will allow a user to change what they see on their own device.)
   // 4. While an identicon is displayed, it is the same for all markers of this hashtag, regardless of whether the original posters
   //    were using the same emoji as each other.
-  hashtags: {},
-  canonical2extended: {},
+  hashtags: {}, // extended string => true/false/'pub'
+  canonical2extended: {}, // canonical string => extended string
   add(label, active = true, updateAlerts = true) { // Ensure label is a hashtag, initialized to active, and if existing, forcing it active.
     // Return our (possibly new) understanding of the extended hashtag.
     // Note that only startup-population of tags from persistence would ever specify active=false.
@@ -35,15 +35,15 @@ export const Hashtags = {
     // (We do not change the emoji of an existing extended.)
     const canonical = canonicalTag(label);                   // no emoji, lower case.
     const ourExtended = this.canonical2extended[canonical];  // our current version, if any
-    const oursHasEmoji = this.firstEmoji(ourExtended);
-    const extended = oursHasEmoji ? ourExtended : label;      // full emoji form to use
-    if (!oursHasEmoji) {
+    const replaceExisting = !this.firstEmoji(ourExtended);
+    const extended = replaceExisting ? label : ourExtended;      // full emoji form to use
+    if (replaceExisting) {
       active = this.hashtags[canonical] || active;
       delete this.hashtags[ourExtended];
     }
     this.hashtags[extended] ||= active; // If it's 'pub', let it remain so.
     this.canonical2extended[canonical] = extended;
-    if (!oursHasEmoji) {
+    if (replaceExisting) {
       this.onchange({resetSubscriptions: false});
       if (updateAlerts) Alert.updateAlerts(canonical, extended);
     }
@@ -108,6 +108,19 @@ export const Hashtags = {
         <md-icon-button slot="remove-trailing-icon" title="fixme help"><md-icon class="material-icons"></md-icon></md-icon-button>
       </md-filter-chip>`;
   },
+
+  // Topic entry, with autocomplete.
+  // - When you click the input box, it shows all the topics we know about.
+  //   This includes topics you already have available, because you might not realize you have them.
+  // - As you type, it filters out entries that do not match:
+  //   - If you happen to start with an emoji and have not yet entered a separating space, it matches against those that use the same emoji.
+  //   - Otherwise, it matches text, ignoring the emoji, and it highlights the substring that matches.
+  // - up/down arrow or tab ==> highlights from among those shown and copies its text to the input box, but not yet accepting it.
+  //    - But if tab is used when something was already highlighted, then it is accepted (like enter).
+  // - click (regardless of highlighting) ==> what you click on is used.
+  // - enter:
+  //   - something highlighted ==> what is highlighted is used.
+  //   - otherwise => exact contents of input box is used.
   closeSelector() { // Close the autocomplete tag selector
     const { listbox, newtag } = this;
     listbox.classList.toggle('hidden', true);
@@ -121,7 +134,7 @@ export const Hashtags = {
     listbox.classList.toggle('hidden', false);
     newtag?.setAttribute('aria-expanded', 'true');
   },
-  setActive(index) {
+  setActive(index) { // Highlight the index among selectors, and copy it's value to newtag.
     const { listbox, newtag } = this;
     this.activeIndex = index;
     listbox.querySelectorAll('.combobox-option').forEach((option, optionIndex) => {
@@ -134,19 +147,28 @@ export const Hashtags = {
 	newtag.removeAttribute('aria-activedescendant');
       }
     });
+    newtag.value = this.selectors[this.activeIndex];
   },
-  selectValue(value) {
+  selectValue(value) { // Accept the specified string.
     this.newtag.value = value;
     this.acceptTag();
   },
   acceptTag() { // Add the new hashtag.
     resetInactivityTimer();
-    let tag = this.newtag?.value.trim()  // Get into standard form, but do not strip emoji or case into canonical yet.
+    let tag = this.newtag?.value  // Get into standard form, but do not strip emoji or case into canonical yet.
 	.replace(/^#/, '')       // No leading hash
 	.replace(/\s+/g, ' ')    // Replace multiple spaces with a single space
 	.normalize('NFD');        // Standardize different ways of making accents into decomposed form - but do not remove them.
     Alert.closePopup();
     if (!tag) return;
+    if (this.firstEmoji(tag)) { // Possibly REPLACE existing with the new tag.
+      const canonical = canonicalTag(tag);
+      const existingExtended = this.canonical2extended[canonical];
+      if (existingExtended !== tag) {
+	delete this.canonical2extended[canonical];
+	delete this.hashtags[existingExtended];
+      }
+    }
     tag = this.add(tag); // Might exist, in which case tag might now be extended.
     this.setPublish(tag);
     this.onchange({highlightPublish: true});
@@ -166,8 +188,12 @@ export const Hashtags = {
 
     // TODO: create the elements only when allKnownHashtags changes. Then hide/highlight here.
     listbox.innerHTML = '';
+    let matchString = canonicalTag(query);
     this.selectors = allKnownHashtags.filter(item =>
-      item.toLowerCase().includes(query.toLowerCase())
+      // Subtle: Starting with emoji will match all/only those tags that start with the same tag. Cool.
+      // But because of the way canonicalTag() works, once you type a space after an emoji, we match
+      // against only the non-emoji, non-space text.
+      item.toLowerCase().includes(matchString)
     );
 
     if (this.selectors.length === 0) {
@@ -186,7 +212,7 @@ export const Hashtags = {
 	li.className = 'combobox-option';
 	li.id = `tag-option-${i}`;
 	li.setAttribute('role', 'option');
-	li.innerHTML = this.formatPubtag(highlight(item, query), item);
+	li.innerHTML = this.formatPubtag(highlight(item, matchString), item);
 	li.onpointerdown = event => {
           // pointerdown (not click) so it fires before the field's blur event
           event.preventDefault();
@@ -203,11 +229,6 @@ export const Hashtags = {
     }
 
     this.openSelector();
-    if (this.selectors.length === 1) {
-	this.setActive(0);
-      } else {
-	this.setActive(-1);
-      }
   },
   sort(tags) { // Sort list of tags in place without regard to leding emoji
     tags.sort((a, b) => stripLeadingEmoji(a).localeCompare(stripLeadingEmoji(b)));
@@ -280,20 +301,10 @@ export const Hashtags = {
       const optionCount = listbox.querySelectorAll('.combobox-option').length;
 
       switch (event.key) {
-      case 'ArrowDown':
-	event.preventDefault();
-        if (optionCount > 0) this.setActive((this.activeIndex + 1) % optionCount);
-        break;
-
-      case 'ArrowUp':
-	event.preventDefault();
-        if (optionCount > 0) this.setActive((this.activeIndex - 1 + optionCount) % optionCount);
-        break;
-
       case 'Enter':
 	event.preventDefault();
         if (this.activeIndex < 0) {
-	  this.acceptTag();
+	  this.acceptTag(); // As is, not from list.
         } else {
           this.selectValue(this.selectors[this.activeIndex]);
 	}
@@ -304,9 +315,19 @@ export const Hashtags = {
         this.closeSelector();
         break;
 
+      case 'ArrowDown':
+	event.preventDefault();
+        if (optionCount > 0) this.setActive((this.activeIndex + 1) % optionCount);
+        break;
+
+      case 'ArrowUp':
+	event.preventDefault();
+        if (optionCount > 0) this.setActive((this.activeIndex - 1 + optionCount) % optionCount);
+        break;
+
       case 'Tab':
 	event.preventDefault();
-	if (this.activeIndex < 0) this.setActive(0); // If nothing active, make the first line active.
+	if (this.activeIndex < 0) this.setActive(0);
 	else this.selectValue(this.selectors[this.activeIndex]); // Otherwise select what is active.
         break;
       }
