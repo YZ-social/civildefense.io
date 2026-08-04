@@ -129,8 +129,11 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
     const seconds = id * argv.spacing;
     clearInterval(update);
     log(process.title, 'Shutdown for Ctrl+C in', seconds, 'seconds.');
-    network.info(`Node ${id} has ${network.inRegionConnectivity()} connections in region.`);
-    network.shortHealth();
+    const health = network.peer.health();
+    const inRegionTags = network.inRegionConnections();
+    network.info(`Node ${id} has ${inRegionTags.length} connections in region.`);
+    network.info(network.ice(inRegionTags));
+    network.shortHealth(health);
     await delay(seconds * 1e3);
     await network.disconnect();
     process.exit(0);
