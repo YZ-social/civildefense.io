@@ -241,14 +241,25 @@ export class P2PWebNetwork {
   info(...rest) { // Add debug logspam.
     (this.infoLogger || this.debugLogger)?.(this.nodeIdentity.id, ...rest);
   }
-  shortHealth(health = this.peer.health()) { // Info-report a short form of health.
-    const short = string => string.slice(0, 8);
-    this.info(`disconnected with connections ${health.peers.map(short)}\nand roots ${health.axonRoles.filter(r => r.isRoot).map(r => short(r.topic))}.`);
+  static short(tag) {
+    return tag.slice(0, 8);
   }
-  inRegionConnectivity() {
-    const health = this.peer.health();
+  shortHealth(health = this.peer.health()) { // Info-report a short form of health.
+    const roots = health.axonRoles.filter(r => r.isRoot);
+    this.info(`disconnected with connections ${health.peers.map(P2PWebNetwork.short)}\nand ${roots.length ? `roots ${roots.map(r => P2PWebNetwork.short(r.topic))}.` : 'no roots.'}`);
+  }
+  inRegionConnections(health = this.peer.health()) {
     const region = this.nodeIdentity.id.slice(0, 2);
-    return health.peers.reduce((total, tag) => total + (tag.startsWith(region) ? 1 : 0), 0);
+    return health.peers.filter(tag => tag.startsWith(region));
+  }
+  ice(tags) {
+    const ice = {};
+    for (const nodeTag of tags) {
+      const meshTag = this.transport.webrtc.meshIdFor(BigInt('0x'+nodeTag));
+      const peer = this.transport.mesh._peers.get(meshTag);
+      ice[P2PWebNetwork.short(nodeTag)] = peer ? `${peer.localCand} => ${peer.remoteCand}` : 'no webrtc connection';
+    }
+    return ice;
   }
 }
 export default P2PWebNetwork;
