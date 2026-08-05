@@ -474,7 +474,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const reply = await super.ensure(data);
     if (reply) {
       if (reply === this.items[0]) { // If first sorted reply, and there's a message, update the tooltip.
-	const message = reply.payload?.message || (!reply.payload.file || reply.payload);
+	const message = reply.payload?.message || (!reply.payload.file && reply.payload);
 	const markerElement = message && this.marker.getElement();
 	if (markerElement) tooltip(markerElement, message);
       }
