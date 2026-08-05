@@ -7,8 +7,8 @@ import { consume } from './display.js';
 import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
 import { Conversation, Reply } from './conversation.js';
-import { alertTopic, topicRegion } from './versions.js';
-import { getContainingCells, findCoverCellsByCenterAndPoint } from './s2.js';
+import { alertTopic, topicRegion, topicCell } from './versions.js';
+import { getContainingCells, getSubdivision, findCoverCellsByCenterAndPoint } from './s2.js';
 const { localStorage, getComputedStyle, URL, URLSearchParams, domtoimage } = globalThis;
 
 
@@ -95,7 +95,10 @@ class AlertReply extends Reply {
       Object.assign(payload, {file, name, attachmentTopic, msgIds});
     }
     let element;
-    if (this === container.items[container.items.length - 1]) { // If this is the last of the sorted replies (could come out of order)...
+    // FIXME: this determination of whether we are the last one .... is all wrong. We get replies before we have finished adding the first.
+    const lastExisting = container.items.length ? container.items[container.items.length - 1] : null;
+    const lastTime = lastExisting?.issuedTime || 0;
+    if (issuedTime >= lastTime) { // If this is the last of the sorted replies (could come out of order)...
       const remaining = issuedTime + ttl - Date.now();
       element = container.startFader('.alert-commented', remaining);
     } else {
@@ -114,38 +117,67 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // When we resubscribe to different cells covering the same place, we will get the same
   // sticky data. We don't want to change the marker. Fortunately, the publication to each
   // of the cells (at different scales) are all published with the same data.
-  static subscriptions = []; // array of stringy keys <mumble>:<cellID>:<hashtag>
+  static subscriptions = {}; // maps currently active eventNames (<mumble>:<cellID>:<hashtag>) to count of event received for it.
   // We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
   static lastLevel9Cell = null; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
-  static async updateSubscriptions(oldKeys = this.subscriptions, newKeys, throttleMS = 20) { // Update current subscriptions to the new map bounds.
-    // A value of [] passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
-    if (!networkPromise) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
-    let region;
-    if (!newKeys) { // None specified. Compute them.
-      const center = map.getCenter();
-      const bounds = map.getBounds();
-      const northEast = bounds.getNorthEast();
-      const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
-      region = P2PWebNetwork.regionCode(center.lat, center.lng);
-      newKeys = newCells.flatMap(cell => Hashtags.getSubscribe().map(hash => alertTopic(cell, hash)));
-      Agent.current?.trackPublicChanges(region);
-      // Record a zoomed-out cell id in case next session does not have geolocation services.
-      let level9Cell = getContainingCells(center.lat, center.lng)[9];
-      if (level9Cell !== this.lastLevel9Cell) localStorage.setItem('level9Cell', this.lastLevel9Cell = level9Cell);
-    }
-
+  static subscriptionFromMap() { // Generate {eventName => count} for current map bounds.
+    const center = map.getCenter();
+    const bounds = map.getBounds();
+    const northEast = bounds.getNorthEast();
+    const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
+    const region = P2PWebNetwork.regionCode(center.lat, center.lng);
+    const newKeys = {};
+    newCells.forEach(cell => Hashtags.getSubscribe().forEach(hash => {
+      const eventName = alertTopic(cell, hash);
+      newKeys[eventName] = this.subscriptions[eventName] || 0;
+    }));
+    Agent.current?.trackPublicChanges(region);
+    // Record a zoomed-out cell id in case next session does not have geolocation services.
+    let level9Cell = getContainingCells(center.lat, center.lng)[9];
+    if (level9Cell !== this.lastLevel9Cell) localStorage.setItem('level9Cell', this.lastLevel9Cell = level9Cell);
+    return newKeys;
+  }
+  static async updateSubscriptions({
+    oldKeys = this.subscriptions,
+    newKeys = this.subscriptionFromMap(),
+    throttleMS = 20
+  } = {}) { // Update current subscriptions.
+    // A value of {} passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
     const contact = await networkPromise;
-    const subscribe = (key, handler) =>
-	  contact.subscribe({eventName: key, region: topicRegion(key), handler}).then(() => throttleMS && P2PWebNetwork.delay(throttleMS));
-
+    if (!contact) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
+    this.subscriptions = newKeys; // Before subscribing.
+    const subscribe = async (key, handlerIn) => {
+      const handler = handlerIn && (properties => {
+	// When there are enough alerts within a topic, it rolls over and just reports the most recent number.
+	// When get near that count, we update the subscriptions such that the overloading topic is replaced
+	// with the topics for each of the four subcells that that make up the one with too many alerts.
+	// This repeats until we reach cells that are not rolling over.
+	const maxAlertsInCell = 900;
+	let count = ++newKeys[key];
+	handlerIn(properties);
+	if (count >= maxAlertsInCell) {
+	  let nextKeys = {};
+	  for (const old in newKeys) {
+	    if (old !== key) {
+	      nextKeys[old] = newKeys[old];
+	    } else {
+	      const cellTag = topicCell(key);
+	      const subdivisions = getSubdivision(cellTag);
+	      const topics = subdivisions.map(cellTag => alertTopic(cellTag, properties.hashtag));
+	      console.log('subdividing', key, 'into', topics);
+	      topics.forEach(topic => nextKeys[topic] = 0);
+	    }
+	  }
+	  this.updateSubscriptions({oldKeys: newKeys, newKeys: nextKeys, throttleMS});
+	}
+      });
+      await contact.subscribe({eventName: key, region: topicRegion(key), handler}).then(() => throttleMS && P2PWebNetwork.delay(throttleMS));
+    };
+    console.log('updating subscriptions', {newKeys, oldKeys});
     // For each entry in the new subscription set that was not previously subscribed, subscribe now.
-    for (const key of newKeys) oldKeys.includes(key) || await subscribe(key, data => Alert.ensure(data));
+    for (const key in newKeys) oldKeys.hasOwnProperty(key) || await subscribe(key, data => Alert.ensure(data));
     // For each existing subscription, if it does not appear in the new set then unsubscribe.
-    for (const key of oldKeys) newKeys.includes(key) || await subscribe(key, null);
-
-    console.log('Subscribed', {newKeys, region, length: newKeys.length, oldKeys});
-
-    this.subscriptions = newKeys;
+    for (const key in oldKeys) newKeys.hasOwnProperty(key) || await subscribe(key, null);
   }
   static maxPublish = 5;
   static publishing = false;

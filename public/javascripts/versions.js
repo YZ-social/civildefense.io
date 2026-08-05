@@ -22,7 +22,10 @@ export function agentTopic(metadataType, agentTag) { // Return topic name for pu
 export function alertTopic(cellid, tag) { // Return topic name for public info about specified tag in cellid.
   return `civildefense.io:${dataVersion}:${cellid.toString(16)}:${canonicalTag(tag)}`;
 }
-export function topicRegion(topicName) { // Return the region that is baked in to the topic.
+export function topicCell(topicName) { // Return the cell that is baked in to the topic.
   // Note that canonicalTag(tag) may contain a colon, but dataVersion must not.
-  return '0x' + topicName.match(/civildefense.io:[^:]+:([a-z0-9]{2})/)[1];
+  return topicName.match(/civildefense.io:[^:]+:([a-z0-9]+):/)[1];
+}
+export function topicRegion(topicName) { // Return the region that is baked in to the topic.
+  return '0x' + topicCell(topicName).slice(0, 2);
 }
