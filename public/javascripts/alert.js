@@ -94,19 +94,6 @@ class AlertReply extends Reply {
       const {dataURL:file, name, msgIds} = await contact.assembleChunkedDataURL(attachmentTopic);
       Object.assign(payload, {file, name, attachmentTopic, msgIds});
     }
-    let element;
-    // FIXME: this determination of whether we are the last one .... is all wrong. We get replies before we have finished adding the first.
-    const lastExisting = container.items.length ? container.items[container.items.length - 1] : null;
-    const lastTime = lastExisting?.issuedTime || 0;
-    if (issuedTime >= lastTime) { // If this is the last of the sorted replies (could come out of order)...
-      const remaining = issuedTime + ttl - Date.now();
-      element = container.startFader('.alert-commented', remaining);
-    } else {
-      element = container.marker.getElement().querySelector('.alert-commented');
-    }
-    element.style.display = 'block';
-    // Restart the pulse animation by setting animationName to something it isn't.
-    element.style.animationName = element.style.animationName === 'pulse2' ? 'pulse' : 'pulse2';
     container.showNotification({agent, issuedTime, body: payload.message || payload.name || payload});
     return this;
   }
@@ -480,13 +467,23 @@ export class Alert extends Conversation { // A wrapper around L.marker
   get itemKind() { // Answer class of reply items.
     return AlertReply;
   }
-  async ensure(data) { // Add or update reply for this marker.
+  async ensure(data) { // Add or update reply for this reply.
     data.subject = data.tag; //fixme
     const reply = await super.ensure(data);
-    if (reply && reply === this.items[0]) { // If first sorted reply, and there's a message, update the tooltip.
-      const element = this.marker.getElement();
-      const message = reply.payload?.message || (!reply.payload.file || reply.payload);
-      if (element && message) tooltip(element, message);
+    if (reply) {
+      if (reply === this.items[0]) { // If first sorted reply, and there's a message, update the tooltip.
+	const message = reply.payload?.message || (!reply.payload.file || reply.payload);
+	if (message) console.log(this.tag, 'first', message);
+	const markerElement = message && this.marker.getElement();
+	if (markerElement) tooltip(markerElement, message);
+      }
+      if (reply === this.items[this.items.length - 1]) { // If last reply so far (even if first), show ring and update fader.
+	const remaining = reply.issuedTime + ttl - Date.now();
+	const ringElement = this.startFader('.alert-commented', remaining);
+	ringElement.style.display = 'block';
+	// Restart the pulse animation by setting animationName to something it isn't.
+	ringElement.style.animationName = ringElement.style.animationName === 'pulse2' ? 'pulse' : 'pulse2';
+      }
     }
     this.needsRedisplay = true;
     this.ensureContent();
