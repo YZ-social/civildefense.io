@@ -244,7 +244,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
     if (!subscribeOneShot) return;
     subscribeOneShot = false;
     resetInactivityTimer(false);
-    Alert.updateSubscriptions([]); // This was for a new node, so supply an empty oldSubscriptions.
+    Alert.updateSubscriptions({oldKeys: {}}); // This was for a new node, so supply an empty oldSubscriptions.
   };
   if (!geolocation) {
     showMessage(Int`Geolocation not supported. Using default location.`, 'error', 'fail');

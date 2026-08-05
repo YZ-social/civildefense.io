@@ -1,5 +1,6 @@
 import { s2 } from 's2js';
 const { cellid, LatLng, Point, Cell, Cap, RegionCoverer } = s2;
+const { BigInt } = globalThis;
 
 // s2 defines non-overlapping cells that completely cover the globe, at several different levels of cell-size.
 // Each cell, at each level, has its own unique id, which we use a pub/sub key.
@@ -16,12 +17,16 @@ const MAX_MAP_LEVEL = 17; // The max level that findCoverCellsByCenterAndRadius 
 
 const EARTH_RADIUS_METERS = 6371e3;
 
-export function getPointInCell(cellId) { // answer [lat, lng] in degrees.
+export function getPointInCell(cellId) { // answer [lat, lng] in degrees from a BigInt
   let {lat, lng} = s2.cellid.latLng(cellId);
   const degrees = 180 / Math.PI;
   lat *= degrees;
   lng *= degrees;
   return [lat, lng];
+}
+
+export function getSubdivision(hexString) {
+  return cellid.children(BigInt('0x' + hexString)).map(childCell => childCell.toString(16));
 }
 
 // Return a list of the cell ids that contain the point.
