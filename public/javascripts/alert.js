@@ -469,20 +469,22 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
   async ensure(data) { // Add or update reply for this reply.
     data.subject = data.tag; //fixme
+    const remaining = data.issuedTime + ttl - Date.now();
+    if (remaining < 0) return null;
     const reply = await super.ensure(data);
     if (reply) {
       if (reply === this.items[0]) { // If first sorted reply, and there's a message, update the tooltip.
 	const message = reply.payload?.message || (!reply.payload.file || reply.payload);
-	if (message) console.log(this.tag, 'first', message);
 	const markerElement = message && this.marker.getElement();
 	if (markerElement) tooltip(markerElement, message);
       }
       if (reply === this.items[this.items.length - 1]) { // If last reply so far (even if first), show ring and update fader.
-	const remaining = reply.issuedTime + ttl - Date.now();
 	const ringElement = this.startFader('.alert-commented', remaining);
-	ringElement.style.display = 'block';
-	// Restart the pulse animation by setting animationName to something it isn't.
-	ringElement.style.animationName = ringElement.style.animationName === 'pulse2' ? 'pulse' : 'pulse2';
+	if (ringElement) {
+	  ringElement.style.display = 'block';
+	  // Restart the pulse animation by setting animationName to something it isn't.
+	  ringElement.style.animationName = ringElement.style.animationName === 'pulse2' ? 'pulse' : 'pulse2';
+	}
       }
     }
     this.needsRedisplay = true;
@@ -600,7 +602,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
   startFader(selector, remaining) { // Set up or update fader on the specified marker element, returning that element.
     const { marker } = this;
-    const element = marker.getElement().querySelector(selector);
+    const markerElement = marker.getElement();
+    if (!markerElement) return null; // removed (e.g., if expired).
+    const element = markerElement.querySelector(selector);
     const fraction = remaining / ttl; // Start at 1 and go to 0, but we may be some way along that.
     const endOpacity = 0.5; // Fully transparent is 0, but that's too hard to see. :-)
     const endGrayscale = 1; // Fully gray.
