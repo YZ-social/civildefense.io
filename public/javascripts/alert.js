@@ -68,7 +68,7 @@ export function go({lat = null, lng = null, zoom = null, alert = null}) { // Go 
   }
   openOnReceive = null;
   if (alert) {
-    Alert.openPopup(alert) || (openOnReceive = alert);
+    Alert.openPopup(alert);
   }
 }
 
@@ -248,7 +248,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
   static openPopup(alertTag) { // Open the marker specified by subject.
     const wrapper = this.getItem(alertTag);
-    wrapper?.openPopup();
+    wrapper?.openPopup() || (openOnReceive = alertTag);
   }
   async openPopup() { // Open this wrapper's popup, and resolve any waiting promise.
     const { resolveGo } = this; // A handy hook for scripting.
