@@ -1,8 +1,8 @@
 const { Request, Response, URL, localStorage, BroadcastChannel } = globalThis;
 import { appVersion } from './versions.js';
-import { resetInactivityTimer, clickTip } from './main.js';
+import { resetInactivityTimer, clickTip, closeAbout } from './main.js';
 import { openDisplay } from './display.js';
-import { go } from './alert.js';
+import { go, getShareableURL } from './alert.js';
 import { Int } from './translations.js';
 
 /*
@@ -73,12 +73,13 @@ function newVersionAvailable(newVersion) {
 }
 async function installUpdate(event, newVersion) {
   event.stopPropagation();
-  event.target.textContent = "Installing..."; // In case there is some delay, tell the user what we're trying to do. Will be cleared with reload.
+  event.target.textContent = Int`Installing...`; // In case there is some delay, tell the user what we're trying to do. Will be cleared with reload.
   event.target.disabled = true;
   await caches.delete(appVersion); // Must be before cacheSource, or we'll just recache the same files!
   await cacheSource(newVersion);
+  closeAbout();
   // Reload, but convince all browsers to re-"fetch" (through the new service worker that is now running).
-  const url = new URL(location.href);
+  const url = getShareableURL(null, []);
   url.searchParams.set('v', newVersion); // Preserving any other searchParams.
   // For any other tabs in THIS browser:
   new BroadcastChannel('site_control').postMessage({method: 'reload', params: url.href});

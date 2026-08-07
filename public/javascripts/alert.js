@@ -17,7 +17,7 @@ export function getShareableURL(tag = null, tags = Hashtags.getSubscribe()) { //
   const zoom = map.getZoom();
   const { lat, lng } = map.getCenter();
 
-  params.set('tags', tags.map(tag => encodeURIComponent(tag)).join(','));
+  if (tags.length) params.set('tags', tags.map(tag => encodeURIComponent(tag)).join(','));
   if (lat !== null) params.set('lat', lat);
   if (lng !== null) params.set('lng', lng);
   if (zoom !== null) params.set('z', zoom);

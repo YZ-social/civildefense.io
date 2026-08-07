@@ -1,6 +1,6 @@
 const { Request, Response, URL, clients} = self;
 // Little point in trying to automatically pull this through package.json, as we need a byte change in THIS file to trigger a new worker.
-const serviceVersion = '4.5.14';
+const serviceVersion = '4.5.15';
 
 const cacheList = [ // The files we need.
   "/",
@@ -172,13 +172,13 @@ async function cacheSource(version, event) { // Cache source in the given versio
   await Promise.all([
     // These are referenced within material web, but missing. Turns out we don't need them,
     // but let's cache empty responses to keep the console cleaner.
-    "https://esm.run/npm/lit@3.3.1/+esm",
+    "https://esm.run/npm/lit@3.3.3/+esm",
     "https://esm.run/npm/tslib@2.8.1/+esm",
-    "https://esm.run/npm/lit@3.3.1/static-html.js/+esm",
-    "https://esm.run/npm/lit@3.3.1/decorators.js/+esm",
-    "https://esm.run/npm/lit@3.3.1/directives/style-map.js/+esm",
-    "https://esm.run/npm/lit@3.3.1/directives/class-map.js/+esm",
-    "https://esm.run/npm/lit@3.3.1/directives/when.js/+esm",
+    "https://esm.run/npm/lit@3.3.3/static-html.js/+esm",
+    "https://esm.run/npm/lit@3.3.3/decorators.js/+esm",
+    "https://esm.run/npm/lit@3.3.3/directives/style-map.js/+esm",
+    "https://esm.run/npm/lit@3.3.3/directives/class-map.js/+esm",
+    "https://esm.run/npm/lit@3.3.3/directives/when.js/+esm",
     "https://esm.run/npm/lit@3.3.1/directives/live.js/+esm",
   ].map(url => cache.put(new Request(url),
                          new Response("", {headers: { "Content-Type": "text/javascript" }}))));
