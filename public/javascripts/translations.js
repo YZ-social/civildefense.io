@@ -52,6 +52,7 @@ const translations = {
   ['does not support notifications on WebViews embedded in other programs. Please use CivilDefense.io in native']: {es: "no admite notificaciones en WebViews integrados en otros programas. Por favor, utilice CivilDefense.io en el navegador nativo"},
   ['Apple only supports mobile notifications for web pages that have been']: {es: "Apple solo admite notificaciones móviles para páginas web que hayan sido"},
   ['installed to the home screen']: {es: "instaladoi en la pantalla de inicio"},
+  ['Installing...']: {es: "Instalando..."},
   ['Enable notifications']: {es: "Habilitar notificaciones"},
   ['Allow notifications']: {es: "Permitir notificaciones"},
   ['Permissions can be re-enabled through the']: {es: "Los permisos se pueden volver a habilitar a través de"},

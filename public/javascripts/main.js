@@ -124,6 +124,9 @@ export function openAbout(event) {
   openDisplay('aboutContainer', event);
   noteNotificationPermission(window.Notification?.permission);
 }
+export function closeAbout() {
+  document.getElementById('aboutContainer').classList.toggle('hidden', true);
+}
 clickTip('#aboutButton', Int`Information about this app, and options to change notifications or how you appear to others.`, event => { // open about
   Alert.closePopup();
   openAbout(event);
@@ -292,7 +295,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
   checking = true;
   try {
     // Always close about display, because notification permissions and the like can change in the OS while we're hidden, and safari and mobile chrome don't issue change events for them.
-    document.getElementById('aboutContainer').classList.toggle('hidden', true);
+    closeAbout();
 
     // If networkPromise has not yet been set (or cleared by disconnect), we will be subscribing.
     const needsConnection = !networkPromise;
