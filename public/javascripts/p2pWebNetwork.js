@@ -252,7 +252,7 @@ export class P2PWebNetwork {
     const region = this.nodeIdentity.id.slice(0, 2);
     return health.peers.filter(tag => tag.startsWith(region));
   }
-  ice(tags) {
+  ice(tags = this.peer.health().peers) {
     const ice = {};
     for (const nodeTag of tags) {
       const meshTag = this.transport.webrtc.meshIdFor(BigInt('0x'+nodeTag));
