@@ -19,8 +19,11 @@ export function agentPersistKey(metadataType, agentTag) { // A label for looking
 export function agentTopic(metadataType, agentTag) { // Return topic name for public info about agent specified by tag.
   return `public:${dataVersion}:${agentPersistKey(metadataType, agentTag)}`;
 }
+export function cellHex(cellid) { // Convert cellid BigInt to properly padded hex.
+  return cellid.toString(16).padStart(16, '0');
+}
 export function alertTopic(cellid, tag) { // Return topic name for public info about specified tag in cellid.
-  return `civildefense.io:${dataVersion}:${cellid.toString(16)}:${canonicalTag(tag)}`;
+  return `civildefense.io:${dataVersion}:${cellHex(cellid)}:${canonicalTag(tag)}`;
 }
 export function topicCell(topicName) { // Return the cell that is baked in to the topic.
   // Note that canonicalTag(tag) may contain a colon, but dataVersion must not.
