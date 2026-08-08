@@ -100,6 +100,7 @@ class AlertReply extends Reply {
   update() { } // TODO: are we really getting multiple reply events for the same data?
 }
 
+import { s2 } from 's2js';
 export class Alert extends Conversation { // A wrapper around L.marker
   // When we resubscribe to different cells covering the same place, we will get the same
   // sticky data. We don't want to change the marker. Fortunately, the publication to each
@@ -112,6 +113,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const bounds = map.getBounds();
     const northEast = bounds.getNorthEast();
     const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
+    if (!newCells) return null;
     const region = P2PWebNetwork.regionCode(center.lat, center.lng);
     const newKeys = {};
     newCells.forEach(cell => Hashtags.getSubscribe().forEach(hash => {
@@ -130,6 +132,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     throttleMS = 20
   } = {}) { // Update current subscriptions.
     // A value of {} passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
+    if (!newKeys) return; // e.g., wacky computation. Don't change anything.
     const contact = await networkPromise;
     if (!contact) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
     this.subscriptions = newKeys; // Before subscribing.
@@ -158,7 +161,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	  this.updateSubscriptions({oldKeys: newKeys, newKeys: nextKeys, throttleMS});
 	}
       });
-      await contact.subscribe({eventName: key, region: topicRegion(key), handler}).then(() => throttleMS && P2PWebNetwork.delay(throttleMS));
+      const region = topicRegion(key);
+      await contact.subscribe({eventName: key, region, handler}).then(() => throttleMS && P2PWebNetwork.delay(throttleMS));
     };
     console.log('updating subscriptions', {newKeys, oldKeys});
     // For each entry in the new subscription set that was not previously subscribed, subscribe now.
