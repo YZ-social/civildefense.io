@@ -502,3 +502,9 @@ input[type="file"] {
 .hidden {
     display: none !important;
 }
+
+@media (orientation: landscape) and (pointer: coarse) {
+    .combobox-option {
+	display: none !important;
+    }
+}
