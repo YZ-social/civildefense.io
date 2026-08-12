@@ -179,7 +179,7 @@ async function cacheSource(version, event) { // Cache source in the given versio
     "https://esm.run/npm/lit@3.3.3/directives/style-map.js/+esm",
     "https://esm.run/npm/lit@3.3.3/directives/class-map.js/+esm",
     "https://esm.run/npm/lit@3.3.3/directives/when.js/+esm",
-    "https://esm.run/npm/lit@3.3.1/directives/live.js/+esm",
+    "https://esm.run/npm/lit@3.3.3/directives/live.js/+esm",
   ].map(url => cache.put(new Request(url),
                          new Response("", {headers: { "Content-Type": "text/javascript" }}))));
   return version;
