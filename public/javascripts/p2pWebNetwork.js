@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import { connect, createNodeIdentity, createAuthorIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from '@axona/protocol';
-import { stringToBytes, bytesToString, publishChunkedBytes, receiveChunkedBytes } from '@axona/protocol/std';
+import { connect, createAuthorIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from './protocol.js';
+import { stringToBytes, bytesToString, publishChunkedBytes, receiveChunkedBytes } from './protocol.js';
 
 if (!Uint8Array.prototype.toBase64) { // NodeJS < 24
   Object.defineProperty(Uint8Array.prototype, 'toBase64', {
@@ -217,7 +217,7 @@ export class P2PWebNetwork {
   static regionCode(lat, lng) { // Answer containing region code.
     return geoCellId(lat, lng);
   }
-  static regionCenter(regionCode) {
+  static regionCenter(regionCode) { // {lat, lng} of center of regionCode
     return geoCellCenter(regionCode);
   }
   static delay(ms, result) { // Promise result after ms milliseconds.

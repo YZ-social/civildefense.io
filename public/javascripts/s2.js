@@ -1,4 +1,4 @@
-import { s2 } from 's2js';
+import { s2, s1 } from 's2js';
 const { cellid, LatLng, Point, Cell, Cap, RegionCoverer } = s2;
 import { cellHex } from './versions.js';
 const { BigInt } = globalThis;
@@ -12,18 +12,17 @@ const { BigInt } = globalThis;
 // Meanwhile as the user changes the area being shown, we subscribe to whatever cells we need in order to cover the display
 // area without overlapping cells.
 
-export const MIN_LEVEL = 2; // Corresponds to the top level Axona regions.
+export const MIN_LEVEL = 3; // Corresponds to the top level Axona regions.
 const MAX_S2_LEVEL = 30; // The leaf level that Cell.fromPoint operates at.
 const MAX_MAP_LEVEL = 17; // The max level that findCoverCellsByCenterAndRadius will use on our maps.
 
 const EARTH_RADIUS_METERS = 6371e3;
 
 export function getPointInCell(cellId) { // answer [lat, lng] in degrees from a BigInt
-  let {lat, lng} = s2.cellid.latLng(cellId);
-  const degrees = 180 / Math.PI;
-  lat *= degrees;
-  lng *= degrees;
-  return [lat, lng];
+  // CAUTION: This is intended for s2 level 3 or finer, and won't always work symmetrically for our top-level regions.
+  // e.g. getContainingCells(...getPointInCell( cell for 0x47 )][0] is 0x46!
+  let center = s2.cellid.latLng(cellId);
+  return [s1.angle.degrees(center.lat), s1.angle.degrees(center.lng)];
 }
 
 export function getSubdivision(hexString) {
