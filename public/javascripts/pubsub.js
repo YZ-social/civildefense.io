@@ -116,8 +116,10 @@ export function unpublish(topic, msgId, {signWith}) {
   const topicId = deriveTopicId(topic);  
   cancel('pub', topicId, msgId);
   const envelope = removeBucket(data, 'pub', topicId, msgId);
-  envelope.deleted = true;
-  envelope.message = null;
+  if (envelope) {
+    envelope.deleted = true;
+    envelope.message = null;
+  }
   for (const [nodeTag, id] of getDataEntries('sub', topicId)) invoke(nodeTag, id, envelope);
   return {ok: true};
 }
