@@ -69,7 +69,7 @@ if (dht < 1) {
     return {bytes: u8, name, mime, msgIds: []};
   };
 
-  connect = async ({bridge, location}) => {
+  connect = async ({bridge, location, onDisconnect}) => {
     // We always call location as {lat, lng}
     // We always call it with author:false
     const {lat, lng} = location;
@@ -102,7 +102,10 @@ if (dht < 1) {
 	  });
 	};
 	// onerror is of no help, as the event is generic.
-	socket.onclose = event => console.warn('websocket close', event.code, event.wasClean, event.reason);
+	socket.onclose = event => {
+	  console.warn('websocket close', event.code, event.wasClean, event.reason);
+	  onDisconnect();
+	};
       } else {
 	operator.setReceiver((nodeTag, id, ...rest) => handlers[id](...rest));
 	resolve((methodName, ...rest) => operator[methodName](...rest)); // send()

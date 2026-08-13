@@ -33,15 +33,17 @@ export class P2PWebNetwork {
     // Promise a ready-to-use network peer.
     region = await region;
 
+    const network = new this();
+    network.resetStatePromises();
+
     const { peer, nodeIdentity, transport, status, disconnect } = await connect({
       bridge: bridgeUrl,
       location: region,
+      onDisconnect: network.detached,
       author: false
     });
-
-    const network = new this();
     Object.assign(network, {infoLogger, debugLogger, disconnector: disconnect, transport, nodeIdentity, peer});
-    network.resetStatePromises();
+
     network.info(`Created network node for kernel ${this.kernelVersion} region 0x${this.regionCode(region.lat, region.lng).toString(16)}.`);
     peer.onError(error => {
       network.info(`error: ${error.message || error}`);
