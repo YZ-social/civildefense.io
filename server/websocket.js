@@ -7,6 +7,11 @@ operator.setReceiver((nodeId, id, envelope) => {
   const socket = sockets[nodeId];
   socket.send(JSON.stringify([id, envelope]));
 });
+
+function heartbeat() {
+  this.isAlive = true;
+}
+
 export function configureWebsocket(server) {
   const wss = new WebSocketServer({ server });
   wss.on('connection', (ws, req) => {
@@ -20,9 +25,22 @@ export function configureWebsocket(server) {
       ws.send(JSON.stringify([id, result]));
     });
 
+    ws.isAlive = true;
+    ws.on('pong', heartbeat);
+
+    ws.on('error', console.error);
     ws.on('close', () => {
       console.log('Disconnected', nodeTag);
       operator.deleteSubscriber(nodeTag);
     });
   });
+
+  const interval = setInterval(function ping() { // Keep-alive ping/pong on interval
+    wss.clients.forEach(function each(ws) {
+      if (!ws.isAlive) return ws.terminate();
+      ws.isAlive = false;
+      ws.ping();
+      return null;
+    });
+  }, 30e3);
 }
