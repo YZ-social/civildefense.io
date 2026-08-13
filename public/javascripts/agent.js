@@ -136,7 +136,7 @@ export class Agent {
     // a subscribe since:latest will produce the PREVIOUS value -- the last unkilled one.
 
     const killTag = this.publicMsgId[type];
-    console.log('persist', {type, killTag, value: value && value.slice(0, 15)});
+    //console.log('persist', {type, killTag, value: value && value.slice(0, 15)});
     if (killTag) await contact.publish({eventName, region, owner, killTag, payload: null});
 
     if (!value) return null;

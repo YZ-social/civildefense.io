@@ -1,11 +1,7 @@
 #!/usr/bin/env node
 import process from 'node:process';
-import { exec } from 'node:child_process';
 import {cpus, availableParallelism } from 'node:os';
 import cluster from 'node:cluster';
-import http from 'node:http';
-import express from 'express';
-import logger from 'morgan';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { resolve } from './dirname.js';
@@ -60,10 +56,17 @@ const debug = argv.verbose && ((...rest) => console.log(new Date(), ...rest));
 function delay(ms = argv.spacing * 1e3) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 if (cluster.isPrimary) { // Parent process with portal webserver through which clienta can bootstrap
+  const http = await import('node:http');
+  const express = (await import('express')).default;
+  const logger = (await import('morgan')).default;
+  const { configureWebsocket } = await import('./websocket.js');
+
   const port = parseInt((new URL(argv.baseURL)).port || '80');
   process.title = 'yz.social';
   const app = express();
   app.use(logger(':date[iso] :status :method :url :res[content-length] - :response-time ms'));
+  const server = http.createServer(app);
+  configureWebsocket(server);
 
   // if (argv.announce) { // The default is to not announce.
   //   let announce = null;
@@ -98,7 +101,7 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
     extensions: ['js'] // Some dependencies refer to .js files as relative pathnames, with the .js missing.
   }));
 
-  app.listen(port);
+  server.listen(port);
   log(`Listening on ${port} and starting ${argv.nPortals} nodes on ${logicalCores} ${cpus()[0].model} logical cores.`);
   for (let i = 0; i < argv.nPortals; i++) {
     cluster.fork();
