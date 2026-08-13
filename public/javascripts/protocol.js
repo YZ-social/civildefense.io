@@ -80,6 +80,7 @@ if (dht < 1) {
 
     const handlers = {}; // guid => handler tag
     const inFlight = {};
+    let disconnect;
     const send = await new Promise(resolve => {
       if (dht === 0) {
 	const socket = new WebSocket(`${globalThis.location.origin.replace(/^http/, 'ws')}/${nodeTag}`);
@@ -106,7 +107,9 @@ if (dht < 1) {
 	  console.warn('websocket close', event.code, event.wasClean, event.reason);
 	  onDisconnect();
 	};
+	disconnect = () => socket.close();
       } else {
+	disconnect = () => null;
 	operator.setReceiver((nodeTag, id, ...rest) => handlers[id](...rest));
 	resolve((methodName, ...rest) => operator[methodName](...rest)); // send()
       }
@@ -118,8 +121,9 @@ if (dht < 1) {
       health() {
 	return {peers: [], axonRoles: []};
       },
-      leave() {
-	send('deleteSubscriber', nodeTag);
+      async leave() {
+	await send('deleteSubscriber', nodeTag);
+	disconnect();
       },
       async sub(topic, handler, options) {
 	const result = await send('subscribe', topic, nodeTag, options);
@@ -140,7 +144,6 @@ if (dht < 1) {
       host() {},
       unhost() {}
     };
-    const disconnect = () => null; // fixme
     const status = {peers: 0, ms: 0}; // fixme ms
     return { peer, nodeIdentity, transport, status, disconnect };
   };
