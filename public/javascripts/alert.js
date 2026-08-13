@@ -114,13 +114,11 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const northEast = bounds.getNorthEast();
     const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
     if (!newCells) return null;
-    const region = P2PWebNetwork.regionCode(center.lat, center.lng);
     const newKeys = {};
     newCells.forEach(cell => Hashtags.getSubscribe().forEach(hash => {
       const eventName = alertTopic(cell, hash);
       newKeys[eventName] = this.subscriptions[eventName] || 0;
     }));
-    Agent.current?.trackPublicChanges(region);
     // Record a zoomed-out cell id in case next session does not have geolocation services.
     let level9Cell = getContainingCells(center.lat, center.lng)[9];
     if (level9Cell !== this.lastLevel9Cell) localStorage.setItem('level9Cell', this.lastLevel9Cell = level9Cell);
@@ -162,6 +160,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	}
       });
       const region = topicRegion(key);
+      Agent.current?.trackPublicChanges(region); // Background. No need to await.
       await contact.subscribe({eventName: key, region, handler}).then(() => throttleMS && P2PWebNetwork.delay(throttleMS));
     };
     console.log('updating subscriptions', {newKeys, oldKeys});
@@ -513,7 +512,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       payload = {message: payload, file};
     }
     await contact.publish({eventName: subject, region, payload}); // Publish the new reply.
-    Agent.current.persistPublicMetadata(region);
+    Agent.current.persistPublicMetadata();
   }
   deleteReply(replyElement) {
     resetInactivityTimer();
