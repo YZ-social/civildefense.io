@@ -153,7 +153,7 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
     if (document.getElementById('map').querySelector('.leaflet-popup')) return; // Ignore clicks with popup open.
     const { lat, lng } = e.latlng;
     Alert.openPopup(await Alert.publish({lat, lng}));
-    Agent.current.persistPublicMetadata(P2PWebNetwork.regionCode(lat, lng));
+    Agent.current.persistPublicMetadata();
   });
   if (document.querySelector('.leaflet-control-zoom')) { // Not present in mobile
     tooltip('.leaflet-control-zoom-in', Int`Zoom in to show more detail in the map.`);
