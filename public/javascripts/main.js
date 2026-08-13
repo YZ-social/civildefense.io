@@ -242,7 +242,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
 	[lat, lng] = [37.7749, -122.4194]; // San Fransisco
       }
     }
-    console.log('initializeGeolocation updateLocation');
+    //console.log('initializeGeolocation updateLocation');
     updateLocation(lat, lng, zoom, positionLabel);
     if (!subscribeOneShot) return;
     subscribeOneShot = false;
@@ -258,7 +258,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
   positionWatch = geolocation.watchPosition(
     position => {
       const {latitude, longitude} = position.coords;
-      console.log('Location update.', map ? 'Map exists.' : 'Will create map.', subscribeOneShot ? 'Will subscribe fresh.' : 'Has subscriptions.');
+      //console.log('Location update.', map ? 'Map exists.' : 'Will create map.', subscribeOneShot ? 'Will subscribe fresh.' : 'Has subscriptions.');
       initMap(latitude, longitude);
     }, error => {
       geolocation.clearWatch(positionWatch);
