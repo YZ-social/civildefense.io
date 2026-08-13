@@ -1,4 +1,4 @@
-const { localStorage } = globalThis;
+const { localStorage, URL } = globalThis;
 import { v4 as uuidv4 } from 'uuid';
 import { minidenticonSvg } from 'minidenticons';
 import { agentTopic, agentPersistKey } from './versions.js';
@@ -275,14 +275,16 @@ export class Agent {
   static current = null;
   static tag = null;
   static identity = null;
+  // Keep user separate between dht=1 or empty (Axona) vs dht=0 or -1 (no Axona, for testing).
+  static usertagKey = `usertag${parseInt(new URL(location).searchParams.get('dht')) < 1 ? '0' : ''}`;
   static switchUser(tag, identity) { // Set/persist/ensure the current user, return Agent
     this.tag = tag; // Before the ensure().
     this.identity = P2PWebNetwork.currentPublishIdentity = identity;
-    localStorage.setItem('usertag', this.tag);
+    localStorage.setItem(this.usertagKey, this.tag);
     return this.current = this.ensure({tag, identity});
   }
   static async initialize() { // Initialize what the agent needs from the about screen
-    let tag = localStorage.getItem('usertag');
+    let tag = localStorage.getItem(this.usertagKey);
     const persistAs = tag || uuidv4(); // Give it SOMETHING to persistAs.
     const myIdentity = await P2PWebNetwork.createAuthorIdentity({persistAs});
     if (tag !== persistAs) { // Fix up persistence by moving it to where it need to go.
@@ -328,4 +330,3 @@ export class Agent {
     });
   }
 }
-
