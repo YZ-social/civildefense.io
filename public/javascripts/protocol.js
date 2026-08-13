@@ -1,14 +1,20 @@
 // If ?dht=0, use a websocket to the server instead of Axona.
+const { TextEncoder, TextDecoder, BigInt, URL, WebSocket, Buffer } = globalThis;
 
 let connect, createAuthorIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION, stringToBytes, bytesToString, publishChunkedBytes, receiveChunkedBytes;
 
-const dht = globalThis.process ? globalThis.process.env.DHT : new URL(globalThis.location).searchParams.get('dht');
+// dht 1  -> Axona (default)
+// dht 0  -> server
+// dht -1 -> in-memory on client only
+const dht = parseInt(globalThis.process ? globalThis.process.env.DHT : new URL(globalThis.location).searchParams.get('dht'));
 
-if (dht === '0') {
+if (dht < 1) {
 
+  const { v4:uuidv4 } = await import('uuid');
   const { getContainingCells, getPointInCell } = await import('./s2.js');
   const { cellHex } = await import('./versions.js');
-  const { v4:uuidv4 } = await import('uuid');
+  const operator = await import('./pubsub.js');
+
   WIRE_VERSION = 'SERVER';
   KERNEL_VERSION = `${WIRE_VERSION}.1.0`;
   createAuthorIdentity = ({persistAs}) => {
@@ -63,7 +69,7 @@ if (dht === '0') {
     return {bytes: u8, name, mime, msgIds: []};
   };
 
-  connect = ({bridge, location}) => {
+  connect = async ({bridge, location}) => {
     // We always call location as {lat, lng}
     // We always call it with author:false
     const {lat, lng} = location;
@@ -72,52 +78,36 @@ if (dht === '0') {
     const nodeIdentity = {id: nodeTag};
     const transport = null; // But do not call P2PWebNetwork.ice!!!
 
-    function setBucket(collection, type, topic, subject, value) { // Set value in the collection.
-      const bucket = collection[type][topic] ||= {};
-      bucket[subject] = value;
-    }
-    function removeBucket(collection, type, topic, subject) { // Return the value and stop storing it.
-      const bucket = collection[type][topic];
-      if (!bucket) return null;
-      const value = bucket[subject];
-      delete bucket[subject];
-      if (!Object.keys(bucket).length) delete collection[type][topic];
-      return value;
-    }
-
-    const SUBSCRIPTION_TIMEOUT = 0;//fixme60 * 60e3; // Delete after an hour. Must be renewed by app.
-    const PUBLISH_TIMEOUT = 24 * 60e3;      // Delete after 24 hours.
-    const timeouts = {pub: {}, sub: {}};
-    function expire(type, topic, subject, remover, timeout) { // Cancellably schedule remover() to fire at timeout.
-      if (!timeout) return;
-      setBucket(timeouts, type, topic, subject, setTimeout(remover, timeout));
-    }
-    function cancel(type, topic, subject) { // Cancel a sheduled expiration.
-      clearTimeout(removeBucket(timeouts, type, topic, subject));
-    }
-
-    // pub maps eventName => {[subject]: storageItem, ...}, where subject is the message id. Entries purged after PUBLISH_TIMEOUT.
-    // sub maps  eventName => {[subject]: ws, ...}, where subject is the subscriber id. Entries purged after SUBSCRIPTION_TIMEOUT.
-    const data = {pub: {}, sub: {}};
-    function getDataValues(type, topic) { // For all subjects
-      return Object.values(data[type][topic] || {});
-    }
-
-    function deleteSub(topic, subject) {
-      removeBucket(data, 'sub', topic, subject);
-    }
-    function deleteWS() { /// fixme on leave
-      for (const eventName in data.sub)  {
-	const keySubs = data.sub[eventName];
-	for (const [subject, socket] of Object.entries(keySubs)) {
-	  if (peer === socket) deleteSub(eventName, subject, keySubs);
-	}
+    const handlers = {}; // guid => handler tag
+    const inFlight = {};
+    const send = await new Promise(resolve => {
+      if (dht === 0) {
+	const socket = new WebSocket(`${globalThis.location.origin.replace(/^http/, 'ws')}/${nodeTag}`);
+	socket.onmessage = event => {
+	  const [tag, ...rest] = JSON.parse(event.data);
+	  const subHandler = handlers[tag];
+	  if (subHandler) return subHandler(...rest);
+	  const inFlightResolver = inFlight[tag];
+	  delete inFlight[tag];
+	  return inFlightResolver(...rest);
+	};
+	socket.onopen = () => {
+	  if (socket.readyState !== WebSocket.OPEN) return; // You would think that can't happen, but...
+	  resolve((...rest) => { // send()
+	    const tag = uuidv4();
+	    const {promise, resolve} = Promise.withResolvers();
+	    inFlight[tag] = resolve;
+	    socket.send(JSON.stringify([tag, ...rest]));
+	    return promise;
+	  });
+	};
+	// onerror is of no help, as the event is generic.
+	socket.onclose = event => console.warn('websocket close', event.code, event.wasClean, event.reason);
+      } else {
+	operator.setReceiver((nodeTag, id, ...rest) => handlers[id](...rest));
+	resolve((methodName, ...rest) => operator[methodName](...rest)); // send()
       }
-    }
-    function normalizeTopic({name, region, owner, write = 'open'} = {}) {
-      if (typeof(region) === 'string') region = parseInt(region);;
-      return JSON.stringify({name, region, owner, write});
-    }
+    });
 
     const peer = {
       onError() {},
@@ -125,56 +115,24 @@ if (dht === '0') {
       health() {
 	return {peers: [], axonRoles: []};
       },
-      leave() {},
-      sub(topic, handler, {since = 'all'}) {
-	topic = normalizeTopic(topic);
-	cancel('sub', topic, nodeTag);
-	expire('sub', topic, nodeTag, () => deleteSub(topic, nodeTag), SUBSCRIPTION_TIMEOUT);
-	setBucket(data, 'sub', topic, nodeTag, handler);
-	if (!since) return;
-	let lastEnvelope = null, lastTime = 0;
-	for (const envelope of getDataValues('pub', topic)) {
-	  switch (since) {
-	  case 'all':
-	    handler(envelope);
-	    break;
-	  case 'latest':
-	    if (envelope.ts > lastTime) {
-	      lastTime = envelope.ts;
-	      lastEnvelope = envelope;
-	    }
-	    break;
-	  default: // Must be a timestamp
-	    if (envelope.ts === since) handler(envelope);
-	  }
-	}
-	if (lastEnvelope) handler(lastEnvelope);
+      leave() {
+	send('deleteSubscriber', nodeTag);
       },
-      unsub(topic, options) {
-	topic = normalizeTopic(topic);
-	cancel('sub', topic, nodeTag);
-	deleteSub(topic, nodeTag);
+      async sub(topic, handler, options) {
+	const result = await send('subscribe', topic, nodeTag, options);
+	handlers[result.id] = handler;
+	return result;
       },
-      async pub(topic, message, {signWith}) {
-	topic = normalizeTopic(topic);
-	const signerPubkey = signWith?.authorId || undefined;
-	const payload = JSON.stringify({message, publisher: signerPubkey});
-	const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
-	const msgId = new Uint8Array(hash).toHex();
-	const envelope = {msgId, topic, ts: Date.now(), message, signerPubkey};
-	const subs = getDataValues('sub', topic);
-	for (const subscriber of subs) subscriber(envelope);
-	setBucket(data, 'pub', topic, msgId, envelope);
-	expire('pub', topic, msgId, () => removeBucket(data, 'pub', topic, msgId), PUBLISH_TIMEOUT);
-	return msgId;
+      async unsub(topic, options) {
+	const result = await send('unsubscribe', topic, nodeTag, options);
+	delete handlers[result.id];
+	return result;
       },
-      kill(topic, msgId, {signWith}) {
-	topic = normalizeTopic(topic);	
-	cancel('pub', topic, msgId);
-	const envelope = removeBucket(data, 'pub', topic, msgId);
-	envelope.deleted = true;
-	envelope.message = null;
-	for (const subscriber of getDataValues('sub', topic)) subscriber(envelope);	
+      async pub(topic, message, options) {
+	return send('publish', topic, message, options);
+      },
+      kill(topic, msgId, options) {
+	return send('unpublish', topic, msgId, options);
       },
       host() {},
       unhost() {}
