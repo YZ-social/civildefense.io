@@ -21,6 +21,8 @@ const cacheList = [ // The files we need.
   "javascripts/translations.js",
   "javascripts/service-manager.js",
   "javascripts/p2pWebNetwork.js",
+  "javascripts/protocol.js",
+  "javascripts/pubsub.js",
 
   "stylesheets/style.css",
 
