@@ -16,6 +16,7 @@
     --md-sys-shape-corner-full: 12px;
 
     --about-image-size: 80px;
+    --combobox-minWidth: 125px;
 
     /* --md-sys-color-tertiary-container: blue; */
     /* --md-sys-color-background: yellow; */
@@ -196,21 +197,25 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
 .combobox {
     position: relative;
     --textFieldHeight: 34px;
-    --minWidth: 125px;
 }
 .combobox-listbox {
     padding: 5px;
     position: absolute;
-    bottom: calc(var(--textFieldHeight) + 2px);
-    left: 0;
-    max-height: 50dvh; /* leaving room for portrait keyboard. landscape keyboard has no room at all */
-    width: fit-content;
-    min-width: var(--minWidth);
+    right: 5px;
+    bottom: 55px;
+    max-height: 45dvh; /* leaving room for portrait keyboard. landscape keyboard has no room at all *\/ */
     overflow-y: auto;
-    z-index: 9999;
+    width: fit-content;
+    min-width: var(--combobox-minWidth);
+    z-index: 1000;
     background: rgba(255, 255, 255, 0.95);
     border-top-left-radius: 12px;
     border-top-right-radius: 12px;
+}
+@media (orientation: landscape) and (pointer: coarse) {
+    .combobox-listbox {
+	display: none !important;
+    }
 }
 .combobox-option {
     font-size: 0.95rem;
@@ -238,12 +243,13 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     background:  #B8C2D7;
 }
 .watching-hashtags md-filled-text-field.newtag {
+    anchor-name: --combobox-newtag;
     --md-filled-field-top-space: 0px;
     --md-filled-field-bottom-space: 0px;
     --md-filled-text-field-leading-space: 8px;
     --md-filled-text-field-trailing-space: 0px;
-    height: var(--textFieldHeight);
-    width: var(--minWidth);
+    height: 34px;
+    width: var(--combobox-minWidth);
 }
 .alert-marker {
     text-shadow: 8px -3px 10px rgb(0 0 0 / 60%);
@@ -501,10 +507,4 @@ input[type="file"] {
 
 .hidden {
     display: none !important;
-}
-
-@media (orientation: landscape) and (pointer: coarse) {
-    .combobox-option {
-	display: none !important;
-    }
 }

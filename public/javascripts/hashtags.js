@@ -234,8 +234,10 @@ export const Hashtags = {
       li.id = `tag-option-${i}`;
       li.setAttribute('role', 'option');
       li.innerHTML = this.formatPubtag(highlight(item, matchString), item);
-      li.onpointerdown = event => {
-        // pointerdown (not click) so it fires before the field's blur event
+      li.onclick = event => {
+	// pointerdown would fire before the text field's blur event,
+	// so we would not have to delay that. But then we would not
+	// scroll properly by touch drag.
         event.preventDefault();
 	event.stopPropagation();
         this.selectValue(item);
@@ -295,7 +297,6 @@ export const Hashtags = {
     });
     this.chipset.insertAdjacentHTML("afterbegin",  // Chip to add a new hashtag.
 				    `<div class="combobox">
-  <ul class="combobox-listbox hidden" id="knownTagsListbox" role="listbox"></ul>
   <md-filled-text-field class="newtag"
      aria-expanded="false"
      aria-controls="knownTagsListbox"
@@ -307,7 +308,7 @@ export const Hashtags = {
     // I've tried also supplying a datalist, e.g., to supply the mobile keyboard completions, but
     // I have not been able to get it to work.
     const newtag = this.newtag = this.chipset.querySelector('.newtag');
-    const listbox = this.listbox = this.chipset.querySelector('.combobox-listbox');
+    const listbox = this.listbox = document.querySelector('.combobox-listbox');
     clickTip(newtag, Int`Add a new topic for which the map should show any alerts.`, event => { // Focusing "add topic".
       event.stopPropagation();
       Alert.closePopup();
@@ -353,8 +354,10 @@ export const Hashtags = {
       }
     };
     newtag.oninput = () => this.renderSelector(newtag.value);
-    newtag.onblur = () => this.closeSelector();
-    //newtag.onchange = () => this.acceptTag();
+    // When we click on the listbox, the browser will first blur newtag, and then
+    // we would not get the click! So here we delay closing a bit.
+    newtag.onblur = () => setTimeout(() => this.closeSelector(), 200);
+    newtag.onchange = () => this.acceptTag();
   },
   remove(chip, redisplaySubscribers = false) { // Remove this topic, persistently.
     delete this.hashtags[chip.label];
