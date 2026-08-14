@@ -17,17 +17,22 @@ if (dht < 1) {
 
   WIRE_VERSION = 'SERVER';
   KERNEL_VERSION = `${WIRE_VERSION}.1.0`;
-  createAuthorIdentity = ({persistAs}) => {
-    let tag;
-    if (persistAs && globalThis.localStorage) {
-      tag = globalThis.localStorage.getItem(persistAs);
-      if (!tag) {
-	tag = uuidv4();
-	globalThis.localStorage.setItem(persistAs, tag);
+  createAuthorIdentity = ({
+    persistAs, store = {
+      get: (key) => globalThis.localStorage.getItem(key),
+      set: (key, value) => globalThis.localStorage.setItem(key, value)
+    }}) => {
+      let tag;
+      if (persistAs) {
+	tag = store.get(persistAs);
+	if (tag.includes('pubkey')) tag = JSON.parse(tag).pubkey; // if it is a real dump, as for alert-bot.
+	if (!tag) {
+	  tag = uuidv4();
+	  store.set(persistAs, tag);
+	}
       }
-    }
-    return {authorId: tag};
-  };
+      return {authorId: tag};
+    };
   geoCellId = (lat, lng) => {
     const cells = getContainingCells(lat, lng);
     const hex = cellHex(cells[0]);
@@ -83,12 +88,16 @@ if (dht < 1) {
     let disconnect;
     const send = await new Promise(resolve => {
       if (dht === 0) {
-	const socket = new WebSocket(`${globalThis.location.origin.replace(/^http/, 'ws')}/${nodeTag}`);
+	const url = `${bridge}/${nodeTag}`;
+	const socket = new WebSocket(url);
 	socket.onmessage = event => {
 	  const [tag, ...rest] = JSON.parse(event.data);
 	  const subHandler = handlers[tag];
-	  if (subHandler) return subHandler(...rest);
 	  const inFlightResolver = inFlight[tag];
+	  if ((!subHandler && !inFlightResolver) ||
+	      ((typeof(subHandler) !== 'function') && (typeof(inFlightResolver) !== 'function')))
+	    console.log({tag, rest, subHandler, inFlightResolver, handlers, inFlight});
+	  if (subHandler) return subHandler(...rest);
 	  delete inFlight[tag];
 	  return inFlightResolver(...rest);
 	};
