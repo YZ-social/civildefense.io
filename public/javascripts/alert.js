@@ -221,6 +221,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
       for (const cell of cells) {
 	const eventName = alertTopic(cell, hashtag);
 	if (payload) {
+	  // The Axona message will be {hashtag, issuedTime, payload:{lat, lng, originalPosting}}
+	  // and when combined with the publisher's authorId will be unique to this user/time/hashtag,
+	  // and yet the same for each of the individual publications at the different s2 scales.
 	  const msgId = await contact.publish({eventName, region, payload, issuedTime, hashtag, ...rest});
 	  if (subject && subject !== msgId) throw new Error(`msgId is drifting: ${subject} => ${msgId}`);
 	  subject = msgId;
@@ -542,7 +545,11 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const icon = new URL('./images/civil-defense-192.png', location.href).href;
       const url = getShareableURL(alert, [hashtag]).href; // For opening page when it has been closed.
       const data = {lat, lng, url};
-      const options = {icon, timestamp, tag: alert, body, data};
+      // It appears that on 8/14/26:
+      // Safari ignores tag/renotify, and ALWAYS tells the user and displays each notification separately, without consolidating by tag.
+      // Chrome ignores renotify, and ALWAYS consolidates by tag, replacing old body with new, and NEVER renotifies the user (for the same tag).
+      // So... we could get uniform behavior by skipping the tag, but for now we'll try using it as intended, in case the browsers ever start to comply.
+      const options = {icon, timestamp, tag: alert, body, data, renotify: true};
       console.log('showNotification', hashtag, options);
       registration.showNotification(hashtag, options);
     });
