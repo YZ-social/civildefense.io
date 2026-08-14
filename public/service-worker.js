@@ -36,6 +36,7 @@ const cacheList = [ // The files we need.
 
   "axona-protocol/src/index.js",
   "axona-protocol/src/errors.js",
+  "axona-protocol/src/connect.js",
   "axona-protocol/src/bridgeDirectory.js",
   "axona-protocol/src/contracts/Transport.js",
   "axona-protocol/src/contracts/DHT.js",
@@ -51,6 +52,18 @@ const cacheList = [ // The files we need.
   "axona-protocol/src/dht/Subscription.js",
   "axona-protocol/src/pubsub/AxonaManager.js",
   "axona-protocol/src/pubsub/authorClass.js",
+  "axona-protocol/src/pubsub/ids.js",
+  "axona-protocol/src/pubsub/dispatch.js",
+  "axona-protocol/src/pubsub/durability.js",
+  "axona-protocol/src/pubsub/rootClaim.js",
+  "axona-protocol/src/pubsub/constants.js",
+  "axona-protocol/src/pubsub/topicStore.js",
+  "axona-protocol/src/pubsub/rootElection.js",
+  "axona-protocol/src/pubsub/syncEngine.js",
+  "axona-protocol/src/pubsub/repairPlane.js",
+  "axona-protocol/src/pubsub/wireHandlers.js",
+  "axona-protocol/src/pubsub/writeFlight.js",
+  "axona-protocol/src/pubsub/ackProof.js",
   "axona-protocol/src/pubsub/kill.js",
   "axona-protocol/src/pubsub/touch.js",
   "axona-protocol/src/pubsub/post.js",
@@ -168,14 +181,14 @@ self.addEventListener('fetch', event => {
 async function cacheSource(version, event) { // Cache source in the given version.
   console.log(`service-worker ${serviceVersion} is caching source in cache ${version}.`);
   const cache = await caches.open(version);
-  // for (const file of cacheList) cache.add(new Request(file, {cache: 'no-store'})).catch(error => console.error(file + ' ' + error.message)); // dev testing for changed file tree
-  await cache.addAll(cacheList.map(name => new Request(name, {cache: 'no-store'}))); // Might not be necessary to specify no-store, but if any browsers insist on their own caching...
+  await Promise.all(cacheList.map(file => cache.add(file)
+				  .catch(error => console.error(file + ' ' + error.message))));
 
   await Promise.all([
     // These are referenced within material web, but missing. Turns out we don't need them,
     // but let's cache empty responses to keep the console cleaner.
-    "https://esm.run/npm/lit@3.3.3/+esm",
     "https://esm.run/npm/tslib@2.8.1/+esm",
+    "https://esm.run/npm/lit@3.3.3/+esm",
     "https://esm.run/npm/lit@3.3.3/static-html.js/+esm",
     "https://esm.run/npm/lit@3.3.3/decorators.js/+esm",
     "https://esm.run/npm/lit@3.3.3/directives/style-map.js/+esm",
