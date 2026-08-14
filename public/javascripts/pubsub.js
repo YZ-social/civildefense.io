@@ -15,7 +15,7 @@ function removeBucket(collection, type, topicId, subject) { // Return the value 
   return value;
 }
 
-const SUBSCRIPTION_TIMEOUT = 0;//fixme60 * 60e3; // Delete after an hour. Must be renewed by app.
+const SUBSCRIPTION_TIMEOUT = 0; // No need, because we run deleteSubscriber on disconnect.
 const PUBLISH_TIMEOUT = 24 * 60e3;      // Delete after 24 hours.
 const timeouts = {pub: {}, sub: {}};
 function expire(type, topicId, subject, remover, timeout) { // Cancellably schedule remover() to fire at timeout.
