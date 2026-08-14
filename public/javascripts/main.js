@@ -237,7 +237,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
       if (level9Cell) { // Zoomed out near where we last where, but not too exact for security.
 	zoom = 12;
 	[lat, lng] = getPointInCell(BigInt(level9Cell));
-      } else {
+      } else { // If the user doesn't want to turn on geolocation, we whould certainly not use ipinfo.io or the like.
 	zoom = 13;
 	[lat, lng] = [37.7749, -122.4194]; // San Fransisco
       }

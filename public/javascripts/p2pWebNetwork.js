@@ -28,6 +28,8 @@ export class P2PWebNetwork {
 		       region = this.sessionRegion,
 		       bridgeUrl = (globalThis.location && new URL(globalThis.location).searchParams.get('bridge')) ||
 		       globalThis.process?.env.BRIDGE_URL ||
+		       (parseInt(new URL(globalThis.location || 'file://').searchParams.get('dht')) <= 0 && // fixme remove when we host bridges
+			globalThis.location?.origin.replace(/^http/, 'ws')) ||
 		       'wss://bridge.axona.net',
 		      } = {}) {
     // Promise a ready-to-use network peer.
