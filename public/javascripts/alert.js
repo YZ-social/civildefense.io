@@ -175,7 +175,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // Publish an alert to all applicable eventNames, canceling as required. Promises tag (msgId).
   static async publish({lat, lng,
 			originalPosting = undefined,
-			hashtag = Hashtags.getPublish(),
+			hashtag = Hashtags.getPublish('force'),
 			payload = {lat, lng, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
 			cancel = undefined, // First unpublish the specified data, if any. Complicated default.
 			issuedTime = Date.now(), subject,

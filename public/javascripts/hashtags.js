@@ -84,11 +84,12 @@ export const Hashtags = {
   isPublish(key) {
     return this.hashtags[key] === 'pub';
   },
-  getPublish() { // Return the one hashtag to which the user intends to publish.
+  getPublish(force = false) { // Return the one hashtag to which the user intends to publish.
+    // If force and no publisher, setPublisher and return that from last/help.
     let pub = this.getAll().find(key => this.isPublish(key));
-    if (!pub) {
+    if (!pub && force) {
       pub = this.lastRemainingPublisher || "🆘 help";
-      this.hashtags[pub] = 'pub';
+      this.setPublish(pub); // clears lastRemainingPublisher
       this.onchange({highlightPublish: true});
     }
     return pub;
@@ -373,19 +374,22 @@ export const Hashtags = {
     // chip.selected is new state, after clicking.
     if (chip.selected) return this.setPublish(label);  // Become publisher, clearing old publisher.
 
+    // Not selected:
+
     // If we're not publisher, just clear. But don't go through getPublish, as that can have side effects.
     if (this.hashtags[label] !== 'pub') return this.hashtags[label] = false;
 
-    // Find an alternative publisher if possible.
-    let subs = this.getSubscribe();
-    if (subs.length > 1) {
-      let pubIndex = subs.indexOf(label);
-      let index = (pubIndex + 1) % subs.length;
-      return this.setPublish(subs[index], false);
+    // Also clear, but...
+    const subs = this.getSubscribe();
+    if (subs.length > 1) {  // Find and set alternative publisher if possible.
+      const pubIndex = subs.indexOf(label);
+      const index = (pubIndex + 1) % subs.length;
+      this.setPublish(subs[index]); // Will set hashtags[label] = 'pub', but that will be cleared below.
+    } else {
+      // No alternative available. Clear it, but remember for use by getPublish.
+      // It will stay .pub styled while toggled, until anything toggles on.
+      this.lastRemainingPublisher = label;
     }
-
-    // No alternative. Clear it, but remember for use by getPublish.
-    this.lastRemainingPublisher = label;
     return this.hashtags[label] = false;
   },
   getChip(label) { // Handy for scripting, but not otherwise used in app.
@@ -394,9 +398,15 @@ export const Hashtags = {
     }
     return null;
   },
-  setPublish(newTag, isOldTagNowSubscribed = true) { // Make this topic be the one to be used when we next publish an alert.
+  setPublish(newTag) { // Make this topic be the one to be used when we next publish an alert.
+    // newTag will be marked for publishing (in this.hashtags and element style)
+    // Old publish tag (if any) will be set back to merely be subscribed (in same)
+    if (this.lastRemainingPublisher) {
+      this.hashtags[this.lastRemainingPublisher] = 'pub'; // Treat as actually 'pub' in the following, for proper cleanup.
+      this.lastRemainingPublisher = null;
+    }
     const oldTag = this.getPublish();
-    if (oldTag) this.hashtags[oldTag] = isOldTagNowSubscribed;
+    if (oldTag) this.hashtags[oldTag] = true; // true (instead of 'pub')
     this.hashtags[newTag] = 'pub';
     for (const chip of this.chipset.children) {
       if (chip.label === oldTag) chip.classList.remove('pub');
