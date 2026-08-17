@@ -6,6 +6,7 @@ import { Alert } from './alert.js';
 import { resetInactivityTimer, clickTip } from './main.js';
 
 
+const help = `🆘 ${Int`help`}`;
 let allKnownHashtags = JSON.parse(localStorage.getItem('allKnownHashtags') || `[
   "🍰 cake",
   "🎸 classic rock",
@@ -15,7 +16,7 @@ let allKnownHashtags = JSON.parse(localStorage.getItem('allKnownHashtags') || `[
   "🎧 edm",
   "🔥 fire",
   "🌊 flood",
-  "🆘 help",
+  help,
   "🎤 hiphop",
   "🧊 ice",
   "🎷 jazz",
@@ -84,12 +85,13 @@ export const Hashtags = {
   isPublish(key) {
     return this.hashtags[key] === 'pub';
   },
+  backupPublisher: false,
   getPublish(force = false) { // Return the one hashtag to which the user intends to publish.
-    // If force and no publisher, setPublisher and return that from last/help.
+    // If force and no publisher, setPublisher to backup and return it.
     let pub = this.getAll().find(key => this.isPublish(key));
     if (!pub && force) {
-      pub = this.lastRemainingPublisher || "🆘 help";
-      this.setPublish(pub); // clears lastRemainingPublisher
+      pub = this.backupPublisher || help;
+      this.setPublish(pub);
       this.onchange({highlightPublish: true});
     }
     return pub;
@@ -127,7 +129,7 @@ export const Hashtags = {
         ${active === 'pub' ? 'class="pub"' : ''}
         ${active ? ' selected' : ''}
       >${this.firstEmoji(label) ? '' : this.identicon(label, 'selected-icon')}
-        <md-icon-button slot="remove-trailing-icon" title="fixme help"><md-icon class="material-icons"></md-icon></md-icon-button>
+        <md-icon-button slot="remove-trailing-icon"><md-icon class="material-icons"></md-icon></md-icon-button>
       </md-filter-chip>`;
   },
 
@@ -368,7 +370,7 @@ export const Hashtags = {
   toggleChip(chip) { // Switch whether the topic is or is not subscribed.
     // Now selected => hashtags[label] becomes 'pub' (selected and the publisher) and clear old pub
     // NOT now selected => hashtags[label] becomes false (through mechanism as follows)
-    //    but if publisher => set alt publisher if possible, else remember as lastActivePublisher
+    //    but if publisher => set alt publisher if possible, else remember as backupPublisher
     const label = chip.label;
 
     // chip.selected is new state, after clicking.
@@ -384,11 +386,11 @@ export const Hashtags = {
     if (subs.length > 1) {  // Find and set alternative publisher if possible.
       const pubIndex = subs.indexOf(label);
       const index = (pubIndex + 1) % subs.length;
-      this.setPublish(subs[index]); // Will set hashtags[label] = 'pub', but that will be cleared below.
+      this.setPublish(subs[index]);
     } else {
       // No alternative available. Clear it, but remember for use by getPublish.
       // It will stay .pub styled while toggled, until anything toggles on.
-      this.lastRemainingPublisher = label;
+      this.backupPublisher = label;
     }
     return this.hashtags[label] = false;
   },
@@ -401,16 +403,15 @@ export const Hashtags = {
   setPublish(newTag) { // Make this topic be the one to be used when we next publish an alert.
     // newTag will be marked for publishing (in this.hashtags and element style)
     // Old publish tag (if any) will be set back to merely be subscribed (in same)
-    if (this.lastRemainingPublisher) {
-      this.hashtags[this.lastRemainingPublisher] = 'pub'; // Treat as actually 'pub' in the following, for proper cleanup.
-      this.lastRemainingPublisher = null;
-    }
-    const oldTag = this.getPublish();
+    let oldTag = this.getPublish();
+    const backup = this.backupPublisher;
     if (oldTag) this.hashtags[oldTag] = true; // true (instead of 'pub')
+    else if (backup) oldTag = backup;
+    this.backupPublisher = false;
     this.hashtags[newTag] = 'pub';
     for (const chip of this.chipset.children) {
-      if (chip.label === oldTag) chip.classList.remove('pub');
-      else if (chip.label === newTag) chip.classList.add('pub');
+      if (chip.label === newTag) chip.classList.add('pub');
+      else if (chip.label === oldTag) chip.classList.remove('pub');
     }
     return oldTag;
   }
@@ -419,5 +420,5 @@ globalThis.Hashtags = Hashtags; // for debugging
 
 // Populate hashtags data and display.
 // First the persisted/default data:
-const persisted = JSON.parse(localStorage.getItem('hashtags') || `{"🍰 ${Int`cake`}": true, "🆘 ${Int`help`}": "pub"}`);
+const persisted = JSON.parse(localStorage.getItem('hashtags') || `{"🍰 ${Int`cake`}": true, help: "pub"}`);
 Object.entries(persisted).forEach(([tag, active]) => Hashtags.add(tag, active, false));
