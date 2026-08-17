@@ -81,15 +81,13 @@ if (dht < 1) {
     const region = geoCellId(lat, lng);
     const nodeTag = region.toString(16).padStart(2, '0') + uuidv4();
     const nodeIdentity = {id: nodeTag};
-    const transport = null; // But do not call P2PWebNetwork.ice!!!
-
     const handlers = {}; // guid => handler tag
     const inFlight = {};
-    let disconnect;
+    let disconnect, transport; // But do not call P2PWebNetwork.ice!!!
     const send = await new Promise(resolve => {
       if (dht === 0) {
 	const url = `${bridge}/${nodeTag}`;
-	const socket = new WebSocket(url);
+	const socket = transport = new WebSocket(url);
 	socket.onmessage = event => {
 	  const [tag, ...rest] = JSON.parse(event.data);
 	  const subHandler = handlers[tag];
