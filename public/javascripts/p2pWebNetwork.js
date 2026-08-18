@@ -193,7 +193,7 @@ export class P2PWebNetwork {
       };
       await this.peer.sub(topic, callback, {since});
     } else {
-      this.peer.unsub(topic, {});
+      await this.peer.unsub(topic, {});
     }
   }
   static currentPublishIdentity = null;

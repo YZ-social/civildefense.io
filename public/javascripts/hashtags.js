@@ -82,6 +82,9 @@ export const Hashtags = {
   getSubscribe() { // Return a list of the hashtags to which the user intendeds to subscribe.
     return this.getAll().filter(tag => this.hashtags[tag]);
   },
+  isSubscribed(key) {
+    return this.hashtags[key];
+  },
   isPublish(key) {
     return this.hashtags[key] === 'pub';
   },
@@ -118,8 +121,10 @@ export const Hashtags = {
     if (redisplaySubscribers) this.resetSubscriberDisplay();
     localStorage.setItem('hashtags', JSON.stringify(this.hashtags));
     if (resetSubscriptions) {
-      Alert.updateSubscriptions();
+      // We destroy unsubscribed markers right away, because we don't want the user to have to wait and wonder why they're still displayed.
+      // If there are alerts in flight, they will be rejected by Alert initialize because we will have already turned off the sub.
       Object.values(Alert.items).forEach(wrapper => this.hashtags[wrapper.hashtag] || wrapper.destroy());
+      Alert.updateSubscriptions();
     }
   },
   chipset: document.body.querySelector('.watching-hashtags'), // Element containing the user's chips.
