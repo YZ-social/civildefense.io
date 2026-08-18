@@ -25,10 +25,11 @@ if (dht < 1) {
       let tag;
       if (persistAs) {
 	tag = store.get(persistAs);
-	if (tag.includes('pubkey')) tag = JSON.parse(tag).pubkey; // if it is a real dump, as for alert-bot.
 	if (!tag) {
 	  tag = uuidv4();
 	  store.set(persistAs, tag);
+	} else if (tag.includes('pubkey')) {
+	  tag = JSON.parse(tag).pubkey; // if it is a real dump, as for alert-bot.
 	}
       }
       return {authorId: tag};

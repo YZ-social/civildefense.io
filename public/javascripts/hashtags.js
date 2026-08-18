@@ -16,7 +16,7 @@ let allKnownHashtags = JSON.parse(localStorage.getItem('allKnownHashtags') || `[
   "🎧 edm",
   "🔥 fire",
   "🌊 flood",
-  help,
+  "${help}",
   "🎤 hiphop",
   "🧊 ice",
   "🎷 jazz",
@@ -420,5 +420,5 @@ globalThis.Hashtags = Hashtags; // for debugging
 
 // Populate hashtags data and display.
 // First the persisted/default data:
-const persisted = JSON.parse(localStorage.getItem('hashtags') || `{"🍰 ${Int`cake`}": true, help: "pub"}`);
+const persisted = JSON.parse(localStorage.getItem('hashtags') || `{"🍰 ${Int`cake`}": true, "${help}": "pub"}`);
 Object.entries(persisted).forEach(([tag, active]) => Hashtags.add(tag, active, false));
