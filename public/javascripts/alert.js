@@ -7,8 +7,8 @@ import { consume } from './display.js';
 import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
 import { Conversation, Reply } from './conversation.js';
-import { alertTopic, topicRegion, topicCell } from './versions.js';
-import { getContainingCells, getSubdivision, findCoverCellsByCenterAndPoint } from './s2.js';
+import { alertTopic, topicRegion, topicCell, cellHex } from './versions.js';
+import { getContainingCells, getSubdivision, findCoverCellsByMinMaxLatLng } from './s2.js';
 const { localStorage, getComputedStyle, URL, URLSearchParams, domtoimage } = globalThis;
 
 
@@ -112,9 +112,18 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const center = map.getCenter();
     const bounds = map.getBounds();
     const northEast = bounds.getNorthEast();
-    const newCells = findCoverCellsByCenterAndPoint(center.lat, center.lng, northEast.lat, northEast.lng); // array of cell IDs (BigInts)
+    const southWest = bounds.getSouthWest();
+    const zoom = map.getZoom();
+    const newCells = findCoverCellsByMinMaxLatLng({
+      full: zoom <= map.options.minZoom,
+      minLat: southWest.lat,
+      maxLat: northEast.lat,
+      minLng: southWest.lng,
+      maxLng: northEast.lng
+    });
     if (!newCells) return null;
     const newKeys = {};
+
     newCells.forEach(cell => Hashtags.getSubscribe().forEach(hash => {
       const eventName = alertTopic(cell, hash);
       newKeys[eventName] = this.subscriptions[eventName] || 0;
@@ -175,7 +184,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // Publish an alert to all applicable eventNames, canceling as required. Promises tag (msgId).
   static async publish({lat, lng,
 			originalPosting = undefined,
-			hashtag = Hashtags.getPublish('force'),
+			hashtag = Hashtags.getPublish(true),
 			payload = {lat, lng, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
 			cancel = undefined, // First unpublish the specified data, if any. Complicated default.
 			issuedTime = Date.now(), subject,

@@ -1,4 +1,4 @@
-import { s2, s1 } from 's2js';
+import { s2, s1, r1 } from 's2js';
 const { cellid, LatLng, Point, Cell, Cap, RegionCoverer } = s2;
 import { cellHex } from './versions.js';
 const { BigInt } = globalThis;
@@ -25,8 +25,17 @@ export function getPointInCell(cellId) { // answer [lat, lng] in degrees from a 
   return [s1.angle.degrees(center.lat), s1.angle.degrees(center.lng)];
 }
 
+function getCellSubdivision(cell) {
+  return cellid.children(cell);
+}
+function getCellLevel(cell) {
+  return cellid.level(cell);
+}
+function getFace(cell) {
+  return cellid.face(cell);
+}
 export function getSubdivision(hexString) {
-  return cellid.children(BigInt('0x' + hexString)).map(childCell => cellHex(childCell));
+  return getCellSubdivision(BigInt('0x' + hexString)).map(childCell => cellHex(childCell));
 }
 
 // Return a list of the cell ids that contain the point.
@@ -42,39 +51,22 @@ export function getContainingCells(lat, lng) {
   return cells.slice(MIN_LEVEL, MAX_MAP_LEVEL + 1); // We can only make use between Axona region size and the smallest region our maps subscribe to.
 }
 
-// Return a list of cell ids that covers a circle specified by a center and a point on that circle, without overlapped cells.
-export function findCoverCellsByCenterAndPoint(centerLat, centerLng, pointLat, pointLng) {
-  // TODO: Does it make sense to do this by the actual borders shown, rather than by the length of the half-diagonal?
-  const center = Point.fromLatLng(LatLng.fromDegrees(centerLat, centerLng));
-  const point = Point.fromLatLng(LatLng.fromDegrees(pointLat, pointLng));
-  const distanceAngle = center.distance(point);
-  const interestRadiusMeters = distanceAngle * EARTH_RADIUS_METERS;
-  return findCoverCellsByCenterAndRadius(centerLat, centerLng, interestRadiusMeters);
+export function findCoverCellsByMinMaxLatLng({minLat, maxLat, minLng, maxLng, full = false,
+					      options:{minLevel = MIN_LEVEL, maxLevel = MAX_MAP_LEVEL, maxCells = 12} = {}}) {
+  // Return a list-like object of cell ids that cover the specified range.
+  // The lat/lng won't work well for the full map, so an exact full map can be requested, overriding that lat/lng.
+
+  // There are a lot of ways that seem like they do this, but it is very easy to find something that works for a few cases,
+  // but misses cells in some circumstances, so be wary about rewriting this.
+  const lo = s2.LatLng.fromDegrees(minLat, Math.max(minLng, -180));
+  const hi = s2.LatLng.fromDegrees(maxLat, Math.max(maxLng, 190));
+
+  const rect = full ? s2.Rect.fullRect() : new s2.Rect(
+    new r1.Interval(lo.lat, hi.lat),
+    new r1.Interval(lo.lng, hi.lng)
+  );
+
+  const coverer = new RegionCoverer({minLevel, maxLevel, maxCells});
+  return coverer.covering(rect); // a CellUnion — array-like of bigint cell IDs, already normalized/minimal
 }
 
-// Return a list of cell ids that covers interestRadiusMeters around latitude/longitude, without overlapped cells.
-export function findCoverCellsByCenterAndRadius(lat, lng, interestRadiusMeters) {
-  const point = Point.fromLatLng(LatLng.fromDegrees(lat, lng));
-
-  // replicating key parts of Cap.cellUnionBound():
-  // Find the maximum (i.e., finest-grained) level such that the cap contains at
-  // most [ael: at least??] one cell vertex and such that CellID.AppendVertexNeighbors() can be called.
-  const findLevel = radius => {
-    let levelForRadius = MAX_S2_LEVEL;
-    const radiusAngle = radius / EARTH_RADIUS_METERS;
-    if (radiusAngle > 0) {
-      const deriv = 2 * Math.SQRT2 / 3;
-      levelForRadius = Math.floor(Math.log2(deriv / radiusAngle));
-      if (levelForRadius > MAX_S2_LEVEL) levelForRadius = MAX_S2_LEVEL;
-      if (levelForRadius < 0) levelForRadius = 0;
-    }
-    return levelForRadius;
-  };
-  const levelForRadius = findLevel(interestRadiusMeters); // - 1; // as seen in cellUnionBound: go one level bigger
-
-  const minLevel = Math.max(MIN_LEVEL, levelForRadius - 1);
-  const maxLevel = Math.max(MIN_LEVEL, levelForRadius + 2);
-  const rc = new RegionCoverer({ minLevel, maxLevel, maxCells: 9 }); // Will exceed maxCells as needed to obey minLevel.
-  const r = Cap.fromCenterAngle(point, interestRadiusMeters / EARTH_RADIUS_METERS);
-  return rc.covering(r);
-}

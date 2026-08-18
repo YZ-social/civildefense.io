@@ -98,7 +98,7 @@ if (dht < 1) {
 	    console.log({tag, rest, subHandler, inFlightResolver, handlers, inFlight});
 	  if (subHandler) return subHandler(...rest);
 	  delete inFlight[tag];
-	  return inFlightResolver(...rest);
+	  return inFlightResolver?.(...rest);
 	};
 	socket.onopen = () => {
 	  if (socket.readyState !== WebSocket.OPEN) return; // You would think that can't happen, but...
