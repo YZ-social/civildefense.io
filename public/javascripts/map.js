@@ -83,7 +83,7 @@ export var trackMap;
 export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate zoomed initial map and handlers for this position.
   // Then show initial message and updateSubscriptions.
 
-  P2PWebNetwork.setSessionRegion({lat, lng});
+  P2PWebNetwork.setSessionLocation({lat, lng});
 
   // Map will be centered at the given current location marker, unless overriden by query parameters.
   let center = {lat, lng};

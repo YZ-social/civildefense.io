@@ -16,16 +16,16 @@ const { BigInt, URL, File, pica } = globalThis;
    await network.disconnect();
  */
 
-const {promise:sessionRegionPromise, resolve:resolveSessionRegion} = Promise.withResolvers();
+const {promise:sessionLocationPromise, resolve:resolveSessionLocation} = Promise.withResolvers();
 
 export class P2PWebNetwork {
   static wireVersion = WIRE_VERSION;
   static kernelVersion = KERNEL_VERSION;
   static createAuthorIdentity = createAuthorIdentity;
-  static setSessionRegion = resolveSessionRegion;
-  static sessionRegion = sessionRegionPromise;
+  static setSessionLocation = resolveSessionLocation;
+  static sessionLocation = sessionLocationPromise;
   static async create({infoLogger = console.log, debugLogger,
-		       region = this.sessionRegion,
+		       location = this.sessionLocation,
 		       bridgeUrl = (globalThis.location && new URL(globalThis.location).searchParams.get('bridge')) ||
 		       globalThis.process?.env.BRIDGE_URL ||
 		       (parseInt(new URL(globalThis.location || 'file://').searchParams.get('dht')) <= 0 && // fixme remove when we host bridges
@@ -33,20 +33,20 @@ export class P2PWebNetwork {
 		       'wss://bridge.axona.net',
 		      } = {}) {
     // Promise a ready-to-use network peer.
-    region = await region;
+    location = await location;
 
     const network = new this();
     network.resetStatePromises();
 
     const { peer, nodeIdentity, transport, status, disconnect } = await connect({
       bridge: bridgeUrl,
-      location: region,
+      location,
       onDisconnect: network.detached,
       author: false
     });
     Object.assign(network, {infoLogger, debugLogger, disconnector: disconnect, transport, nodeIdentity, peer});
 
-    network.info(`Created network node for kernel ${this.kernelVersion} region 0x${this.regionCode(region.lat, region.lng).toString(16)}.`);
+    network.info(`Created network node for kernel ${this.kernelVersion} region 0x${this.regionCode(location.lat, location.lng).toString(16)}.`);
     peer.onError(error => {
       network.info(`error: ${error.message || error}`);
       throw error;
