@@ -314,6 +314,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
   initialize({payload, hashtag, subject, agent, issuedTime, ...rest}) { // Set up the marker for a newly received alert.
     if (!payload) return null; // Do not cache. E.g., Received a delete event without the initial creation.
+    if (!Hashtags.isSubscribed(hashtag)) return null; // A subscribed event may have been in flight while unsubscribing.
     const icon = this.constructor.makeIcon(hashtag);
     const {lat, lng, originalPosting} = payload;
     const marker = this.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
