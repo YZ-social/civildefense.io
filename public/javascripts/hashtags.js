@@ -133,7 +133,8 @@ export const Hashtags = {
     return `<md-filter-chip label="${label}" elevated removable
         ${active === 'pub' ? 'class="pub"' : ''}
         ${active ? ' selected' : ''}
-      >${this.firstEmoji(label) ? '' : this.identicon(label, 'selected-icon')}
+      >${this.firstEmoji(label) ? '' :
+        `<div slot="selected-icon" class="identicon"><md-icon class="material-icons">checkmark</md-icon> ${this.identicon(label)}</div>`}
         <md-icon-button slot="remove-trailing-icon"><md-icon class="material-icons"></md-icon></md-icon-button>
       </md-filter-chip>`;
   },

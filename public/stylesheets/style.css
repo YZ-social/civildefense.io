@@ -303,8 +303,28 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
 md-filter-chip {
     --md-sys-color-surface-container-low: #B8C2D7; /* non-selected elevated filter chip */
 }
-md-filter-chip minidenticon-svg + md-icon-button {
+md-filter-chip minidenticon-svg + md-icon-button,
+md-filter-chip .identicon + md-icon-button {
     bottom: 10px;
+}
+md-filter-chip .identicon md-icon {
+    font-size: 18px;
+    width: 20px;
+    position: relative;
+    bottom: 3px;
+}
+md-filter-chip .identicon {
+    width: 43px;
+}
+md-filter-chip .identicon minidenticon-svg {
+    width: 18px;
+    display: inline-block;
+    position: relative;
+    bottom: 5px;
+    left: -3px;
+}
+md-filter-chip minidenticon-svg {
+    background: white;
 }
 md-filter-chip md-icon-button {
     position: relative;
@@ -322,9 +342,6 @@ md-filter-chip:not([selected]) md-icon::after {
 }
 md-filter-chip.pub md-icon {
     color: var(--md-sys-color-secondary);
-}
-md-filter-chip minidenticon-svg {
-    background: white;
 }
 md-outlined-icon-button minidenticon-svg, md-outlined-icon-button img {
     height: 40px;
