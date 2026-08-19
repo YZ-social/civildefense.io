@@ -119,7 +119,7 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   process.title = 'axona-starting';
   const { P2PWebNetwork, location } = await import('../index.js');
   const network = await P2PWebNetwork.create({
-    region: location,
+    location,
     infoLogger: log,
     debugLogger: debug
   });

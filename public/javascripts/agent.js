@@ -5,6 +5,7 @@ import { agentTopic, agentPersistKey } from './versions.js';
 import { Int } from './translations.js';
 import { consume, openDisplay } from './display.js';
 import { networkPromise, resetInactivityTimer, clickTip, tooltip } from './main.js';
+import { dht } from './protocol.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 
 export class Agent {
@@ -292,7 +293,7 @@ export class Agent {
   static tag = null;
   static identity = null;
   // Keep user separate between dht=1 or empty (Axona) vs dht=0 or -1 (no Axona, for testing).
-  static usertagKey = `usertag${parseInt(new URL(location).searchParams.get('dht')) < 1 ? '0' : ''}`;
+  static usertagKey = `usertag${(dht <= 0) ? '0' : ''}`;
   static switchUser(tag, identity) { // Set/persist/ensure the current user, return Agent
     this.tag = tag; // Before the ensure().
     this.identity = P2PWebNetwork.currentPublishIdentity = identity;

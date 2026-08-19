@@ -3,10 +3,13 @@ const { TextEncoder, TextDecoder, BigInt, URL, WebSocket, Buffer } = globalThis;
 
 let connect, createAuthorIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION, stringToBytes, bytesToString, publishChunkedBytes, receiveChunkedBytes;
 
-// dht 1  -> Axona (default)
+// dht 1  -> Axona
 // dht 0  -> server
 // dht -1 -> in-memory on client only
-const dht = parseInt(globalThis.process ? globalThis.process.env.DHT : new URL(globalThis.location).searchParams.get('dht'));
+const defaultDHT = 1;
+export const dht = parseInt((globalThis.process ?
+			     globalThis.process.env.DHT :
+			     new URL(globalThis.location).searchParams.get('dht')) ?? defaultDHT);
 
 if (dht < 1) {
 
@@ -93,9 +96,11 @@ if (dht < 1) {
 	  const [tag, ...rest] = JSON.parse(event.data);
 	  const subHandler = handlers[tag];
 	  const inFlightResolver = inFlight[tag];
-	  if ((!subHandler && !inFlightResolver) ||
+
+	  if ((!subHandler && !inFlightResolver) || // debug
 	      ((typeof(subHandler) !== 'function') && (typeof(inFlightResolver) !== 'function')))
 	    console.log({tag, rest, subHandler, inFlightResolver, handlers, inFlight});
+
 	  if (subHandler) return subHandler(...rest);
 	  delete inFlight[tag];
 	  return inFlightResolver?.(...rest);

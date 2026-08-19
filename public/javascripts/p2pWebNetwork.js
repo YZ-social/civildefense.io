@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { connect, createAuthorIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION } from './protocol.js';
+import { connect, createAuthorIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNEL_VERSION, dht } from './protocol.js';
 import { stringToBytes, bytesToString, publishChunkedBytes, receiveChunkedBytes } from './protocol.js';
 
 if (!Uint8Array.prototype.toBase64) { // NodeJS < 24
@@ -28,8 +28,9 @@ export class P2PWebNetwork {
 		       location = this.sessionLocation,
 		       bridgeUrl = (globalThis.location && new URL(globalThis.location).searchParams.get('bridge')) ||
 		       globalThis.process?.env.BRIDGE_URL ||
-		       (parseInt(new URL(globalThis.location || 'file://').searchParams.get('dht')) <= 0 && // fixme remove when we host bridges
-			globalThis.location?.origin.replace(/^http/, 'ws')) ||
+		       ((dht <= 0) && // fixme remove when we host bridges
+			(globalThis.location?.origin.replace(/^http/, 'ws') ||
+			 'ws://localhost:3000')) ||
 		       'wss://bridge.axona.net',
 		      } = {}) {
     // Promise a ready-to-use network peer.
