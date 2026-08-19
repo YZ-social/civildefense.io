@@ -10,6 +10,7 @@
   "scripts": {
     "start": "npm stop; node ./server/app.js",
     "stop": "pkill yz.social",
+    "background": "npm stop; node ./server/app.js >server.log &",
     "postinstall": "touch server/location.json; chmod a+w server/location.json",
     "prepack": "mv server/location.json server/location.save.json",
     "postpack": "mv server/location.save.json server/location.json"
