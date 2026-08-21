@@ -105,6 +105,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // When we resubscribe to different cells covering the same place, we will get the same
   // sticky data. We don't want to change the marker. Fortunately, the publication to each
   // of the cells (at different scales) are all published with the same data.
+
+  // In general here, a key is an eventName - i.e., a string <mumble>:<cellID>:<hashtag>.
+  // newKeys/oldKeys are a map of the currently subscribed eventName and the count of events for that cell+hashtag
   static subscriptions = {}; // maps currently active eventNames (<mumble>:<cellID>:<hashtag>) to count of event received for it.
   // We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
   static lastLevel9Cell = null; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
@@ -422,7 +425,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       menu.onclick = consume; // Must be onlick rather than addEventListener.
       const handler = event => {
 	menu.removeEventListener('close-menu', handler);
-	this.updatePost(event.detail.initiator.dataset.tag);
+	this.updatePost(event.detail.initiator.dataset.tag); // initiator is a hashtag menu item and dataset.tag is a hashtag.
       };
       menu.addEventListener('close-menu', handler); // Must be addEventListener because there's no onclosemenu.
     });
@@ -467,16 +470,16 @@ export class Alert extends Conversation { // A wrapper around L.marker
   ${actions}
 </div>`;
   }
-  updatePost(newTag) { // Republish under a different hashtag, or cancel altogether if no newTag (which is not allowed as a hashtag).
+  updatePost(newHashtag) { // Republish under a different hashtag, or cancel altogether if no newHashtag (which is not allowed as a hashtag).
     resetInactivityTimer();
     const {lat, lng, hashtag, subject, issuedTime, originalPosting = issuedTime} = this;
-    console.log("updatePost", {newTag, lat, lng, hashtag, subject, issuedTime, originalPosting, self:this});
-    if (!newTag) return Alert.publish({lat, lng, subject, originalPosting, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
-    if (newTag === hashtag) return this.needsRedisplay = true;
-    const cancel = {lat, lng, subject, hashtag}; // Cancel old hashtag as we publish newTag, below.
-    Hashtags.setPublish(newTag);
+    console.log("updatePost", {newHashtag, lat, lng, hashtag, subject, issuedTime, originalPosting, self:this});
+    if (!newHashtag) return Alert.publish({lat, lng, subject, originalPosting, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
+    if (newHashtag === hashtag) return this.needsRedisplay = true;
+    const cancel = {lat, lng, subject, hashtag}; // Cancel old hashtag as we publish newHashtag, below.
+    Hashtags.setPublish(newHashtag);
     Hashtags.onchange({redisplaySubscribers: false, resetSubscriptions: false});
-    return Alert.publish({lat, lng, hashtag: newTag, originalPosting, cancel}); // Publish new alert w/cancellation.
+    return Alert.publish({lat, lng, hashtag: newHashtag, originalPosting, cancel}); // Publish new alert w/cancellation.
   }
 
   // Each reply is separately published by its author, and only they can modify/unpublish it.
@@ -531,7 +534,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     resetInactivityTimer();
     const {lat, lng, subject} = this;
     const region = P2PWebNetwork.regionCode(lat, lng);
-    const killTag = replyElement.dataset.subject;
+    const killTag = replyElement.dataset.tag;
     networkPromise.then(async contact => {
       // We won't be here unless we are the signer.
       await contact.publish({eventName: subject, region, killTag, payload: null});
@@ -564,7 +567,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       registration.showNotification(hashtag, options);
     });
   }
-  // Each reply element is a DIV.reply with data-subject and data-text attributes that are used in sharing.
+  // Each reply element is a DIV.reply with data-tag and data-text attributes that are used in sharing.
   // It contains an attribution header with controls, zero or one attachments, and then the message text.
   // If present the attachment will be an A element with download attribute, surrounding either an IMG, A/V player, or an attachment icon followed by the file name.
   formatReplies() { // Answer HTML for the replies and input box.
@@ -587,7 +590,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   </a>
 </div>`;
       const messageDisplay = message ? `<span class="message">${text}</span>` : '';
-      let dataAttributes = `data-subject="${subject}" data-text="${message}"`;
+      let dataAttributes = `data-tag="${subject}" data-text="${message}"`;
       if (file) dataAttributes += ` data-file="${file}" data-name="${name}"`;
       return `<div class="reply" ${dataAttributes}>${this.formatAttribution(rest)}${attachment}${messageDisplay}</div>`;
     };
