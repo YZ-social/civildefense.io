@@ -158,6 +158,7 @@ if (dht < 1) {
       unhost() {}
     };
     const status = {peers: 0, ms: 0}; // fixme ms
+    await new Promise(resolve => setTimeout(resolve, 1e3)); // Simulate finding peers, and give the app some time to do stuff.
     return { peer, nodeIdentity, transport, status, disconnect };
   };
 
