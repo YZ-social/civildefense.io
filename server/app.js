@@ -17,15 +17,30 @@ const argv = yargs(hideBin(process.argv))
 	default: process.env.PORTALS ? parseInt(process.env.PORTALS) : Math.max(2, logicalCores - 3),
 	description: "The number of steady nodes that handle initial connections."
       })
+      .option('regionStartIndex', {
+	type: 'number',
+	default: -1,
+	description: "If non-negative, place each of the nPortals in successive regions (excluding excludedRegionFromSeries) starting with the region at regionStaartIndex."
+      })
+      .option('excludedRegionFromSeries', {
+	type: 'string', array: true,
+	default: ['80', '88', '89'],
+	description: "If regionStartIndex is used, the ordered list of regions to occupy is the list of canonical regions less these."
+      })
       .option('baseURL', {
 	type: 'string',
-	default: 'http://localhost:3000',
+	default: process.env.BRIDGE_URL || 'wss://bridge.axona.net',
 	description: "The base URL of the portal server through which to bootstrap."
       })
-      .option('externalBaseURL', {
-	type: 'string',
-	default: '',
-	description: "The base URL of the some other portal server to which we should connect ours, if any."
+      // .option('externalBaseURL', {
+      // 	type: 'string',
+      // 	default: '',
+      // 	description: "The base URL of the some other portal server to which we should connect ours, if any."
+// })
+      .option('port', {
+	type: 'number',
+	default: 3000,
+	description: "Port for the server to listen on."
       })
       .option('announce', {
 	type: 'boolean',
@@ -61,7 +76,6 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   const logger = (await import('morgan')).default;
   const { configureWebsocket } = await import('./websocket.js');
 
-  const port = parseInt((new URL(argv.baseURL)).port || '80');
   process.title = 'yz.social';
   const app = express();
   app.use(logger(':date[iso] :status :method :url :res[content-length] - :response-time ms'));
@@ -101,8 +115,8 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
     extensions: ['js'] // Some dependencies refer to .js files as relative pathnames, with the .js missing.
   }));
 
-  server.listen(port);
-  log(`Listening on ${port} and starting ${argv.nPortals} nodes on ${logicalCores} ${cpus()[0].model} logical cores.`);
+  server.listen(argv.port);
+  log(`Listening on ${argv.port} and starting ${argv.nPortals} nodes on ${logicalCores} ${cpus()[0].model} logical cores.`);
   for (let i = 0; i < argv.nPortals; i++) {
     cluster.fork();
     await delay(); // Number chosen to give an unspikey rise in packets/s.
@@ -118,8 +132,14 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
 } else {
   process.title = 'axona-starting';
   const { P2PWebNetwork, location } = await import('../index.js');
+  const { MAJORS, geoCellCenter } = await import('@axona/protocol');
+  const excluded = argv.excludedRegionFromSeries.map(hex => parseInt(hex, 16).toString());
+  const regions = Object.keys(MAJORS).filter(r => !excluded.includes(r));
+  const index = (cluster.worker.id - 1 + argv.regionStartIndex) % regions.length;
+  const region = (argv.regionStartIndex >= 0) && regions[index];
+  const loc = region ? geoCellCenter(parseInt(region)) : location;
   const network = await P2PWebNetwork.create({
-    location,
+    location: loc,
     infoLogger: log,
     debugLogger: debug
   });
