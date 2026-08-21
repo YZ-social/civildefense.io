@@ -107,7 +107,7 @@ if (dht < 1) {
 	};
 	socket.onopen = () => {
 	  if (socket.readyState !== WebSocket.OPEN) return; // You would think that can't happen, but...
-	  resolve((...rest) => { // send()
+	  resolve((...rest) => { // Promise the send() function.
 	    const tag = uuidv4();
 	    const {promise, resolve} = Promise.withResolvers();
 	    inFlight[tag] = resolve;
