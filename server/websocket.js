@@ -31,6 +31,7 @@ export function configureWebsocket(server) {
     ws.on('error', console.error);
     ws.on('close', () => {
       console.log('Disconnected', nodeTag);
+      delete sockets[nodeTag];
       operator.deleteSubscriber(nodeTag);
     });
   });
@@ -42,5 +43,5 @@ export function configureWebsocket(server) {
       ws.ping();
       return null;
     });
-  }, 30e3);
+  }, 20e3);
 }
