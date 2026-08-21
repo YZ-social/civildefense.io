@@ -251,7 +251,7 @@ export class P2PWebNetwork {
   }
   shortHealth(health = this.peer.health()) { // Info-report a short form of health.
     const roots = health.axonRoles.filter(r => r.isRoot);
-    this.info(`disconnected with connections ${health.peers.map(P2PWebNetwork.short)}\nand ${roots.length ? `roots ${roots.map(r => P2PWebNetwork.short(r.topic))}.` : 'no roots.'}`);
+    this.info(`disconnected with ${health.peers.length} connections: ${health.peers.map(P2PWebNetwork.short)}\nand ${roots.length ? `roots ${roots.map(r => P2PWebNetwork.short(r.topic))}.` : 'no roots.'}`);
   }
   inRegionConnections(health = this.peer.health()) {
     const region = this.nodeIdentity.id.slice(0, 2);
