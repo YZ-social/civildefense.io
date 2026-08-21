@@ -188,22 +188,22 @@ export class Alert extends Conversation { // A wrapper around L.marker
   static async publish({lat, lng,
 			originalPosting = undefined,
 			hashtag = Hashtags.getPublish(true),
-			payload = {lat, lng, originalPosting}, // If payload is null (cancels subject), lat & lng are still used to generate eventNames.
+			payload = {lat, lng, originalPosting}, // If payload is null (cancels tag), lat & lng are still used to generate eventNames.
 			cancel = undefined, // First unpublish the specified data, if any. Complicated default.
-			issuedTime = Date.now(), subject,
+			issuedTime = Date.now(), tag,
 			throttleMS = 0,
 			...rest
 		       }) {
-    // We call all the publishing at once and return subject, without waiting for each to occur.
+    // We call all the publishing at once and return tag, without waiting for each to occur.
     // However, the 'unpublishing' (if any) is invoked first.
     // To do this, we must hash the eventName ourselves.
-    //console.log('publish', {lat, lng, hashtag, payload, cancel, subject, issuedTime, rest});
+    //console.log('publish', {lat, lng, hashtag, payload, cancel, tag, issuedTime, rest});
     if (this.publishing) { console.log('skiping overlapping publish'); return null; } // do not stack them up.
     try {
       this.publishing = true;
 
       const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
-      let oldCells = null, oldHash, oldSubject = null; // Recorded for logging, below.
+      let oldCells = null, oldHash, oldTag = null; // Recorded for logging, below.
       let lastFillIn;
       if (payload) {
 	lastFillIn = {lat, lng, hashtag, issuedTime};
@@ -216,14 +216,14 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	}
       }
       if (cancel) {
-	const {lat, lng, hashtag, subject} = cancel;
+	const {lat, lng, hashtag, tag} = cancel;
 	oldCells = getContainingCells(lat, lng);
-	oldHash = hashtag; oldSubject = subject;
+	oldHash = hashtag; oldTag = tag;
 	const region = P2PWebNetwork.regionCode(lat, lng);
 	for (const cell of oldCells) {
 	  const eventName = alertTopic(cell, hashtag);
 	  // Note: we cannot unpublish replies by others, but they expire after a while anyway.
-	  await contact.publish({eventName, region, killTag: subject, payload: null});
+	  await contact.publish({eventName, region, killTag: tag, payload: null});
 	  throttleMS && await P2PWebNetwork.delay(throttleMS);
 	}
       }
@@ -237,23 +237,23 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	  // and when combined with the publisher's authorId will be unique to this user/time/hashtag,
 	  // and yet the same for each of the individual publications at the different s2 scales.
 	  const msgId = await contact.publish({eventName, region, payload, issuedTime, hashtag, ...rest});
-	  if (subject && subject !== msgId) throw new Error(`msgId is drifting: ${subject} => ${msgId}`);
-	  subject = msgId;
+	  if (tag && tag !== msgId) throw new Error(`msgId is drifting: ${tag} => ${msgId}`);
+	  tag = msgId;
 	  if (lastFillIn) {
-	    lastFillIn.subject = subject;
+	    lastFillIn.tag = tag;
 	    lastFillIn = null;
 	  }
 	} else {
-	  await contact.publish({eventName, region, killTag: subject, payload: null});
+	  await contact.publish({eventName, region, killTag: tag, payload: null});
 	  throttleMS && await P2PWebNetwork.delay(throttleMS);
 	}
       }
       if (!payload) {
-	const index = this.lastPublished.findIndex(past => past.subject === subject);
+	const index = this.lastPublished.findIndex(past => past.tag === tag);
 	if (index >= 0) this.lastPublished.splice(index, 1);
       }
-      console.log('Published', {cells, n: cells.length, region, hashtag, subject, payload, oldCells, oldHash, oldSubject});
-      return subject;
+      console.log('Published', {cells, n: cells.length, region, hashtag, tag, payload, oldCells, oldHash, oldTag});
+      return tag;
     } finally {
       this.publishing = false;
     }
@@ -264,7 +264,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     map.closePopup();
     Hashtags.closeSelector();
   }
-  static openPopup(alertTag) { // Open the marker specified by subject.
+  static openPopup(alertTag) { // Open the marker specified by tag.
     const wrapper = this.getItem(alertTag);
     wrapper?.openPopup() || (openOnReceive = alertTag);
   }
@@ -304,7 +304,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     });
   }
   static async ensure({tag, topic, ts, issuedTime, ...rest}) { // Add marker at position with appropriate fade if not already present.
-    const alert = await super.ensure({tag, subject: tag, issuedTime, ...rest}); // Does not include topic or ts. fixme: get rid of subject. fixme: why is ts different?
+    const alert = await super.ensure({tag, issuedTime, ...rest}); // Does not include topic or ts. fixme: get rid of tag. fixme: why is ts different?
     if (!alert) return null;
     // Regardless of initialize vs update, reset fader.
     const now = Date.now(),
@@ -315,7 +315,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     alert.destroyer = setTimeout(() => alert.destroy(), remaining);
     return alert;
   }
-  initialize({payload, hashtag, subject, agent, issuedTime, ...rest}) { // Set up the marker for a newly received alert.
+  initialize({payload, hashtag, tag, agent, issuedTime, ...rest}) { // Set up the marker for a newly received alert.
     if (!payload) return null; // Do not cache. E.g., Received a delete event without the initial creation.
     if (!Hashtags.isSubscribed(hashtag)) return null; // A subscribed event may have been in flight while unsubscribing.
     const icon = this.constructor.makeIcon(hashtag);
@@ -323,17 +323,17 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const marker = this.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
     const region = P2PWebNetwork.regionCode(lat, lng);
     hashtag = Hashtags.add(hashtag); // We already have it and are subscribing, but this updates our extended form if needed.
-    super.initialize({payload, hashtag, subject, agent, lat, lng, issuedTime, originalPosting, ...rest});
+    super.initialize({payload, hashtag, tag, agent, lat, lng, issuedTime, originalPosting, ...rest});
 
     marker.bindPopup('', {className: 'alert'}).on('popupopen', event => this.ensureContent(event.popup));
     tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
-    if (subject === openOnReceive) {
+    if (tag === openOnReceive) {
       openOnReceive = false;
       this.openPopup();
     }
-    // Subscribe to replies to this subject, now that we're set up to receive them.
+    // Subscribe to replies to this tag, now that we're set up to receive them.
     networkPromise.then(async contact => {
-      contact.subscribe({eventName: subject, region, handler: data => this.ensure(data)});
+      contact.subscribe({eventName: tag, region, handler: data => this.ensure(data)});
     });
     this.showNotification({agent, issuedTime});
     return this;
@@ -472,11 +472,11 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
   updatePost(newHashtag) { // Republish under a different hashtag, or cancel altogether if no newHashtag (which is not allowed as a hashtag).
     resetInactivityTimer();
-    const {lat, lng, hashtag, subject, issuedTime, originalPosting = issuedTime} = this;
-    console.log("updatePost", {newHashtag, lat, lng, hashtag, subject, issuedTime, originalPosting, self:this});
-    if (!newHashtag) return Alert.publish({lat, lng, subject, originalPosting, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
+    const {lat, lng, hashtag, tag, issuedTime, originalPosting = issuedTime} = this;
+    console.log("updatePost", {newHashtag, lat, lng, hashtag, tag, issuedTime, originalPosting, self:this});
+    if (!newHashtag) return Alert.publish({lat, lng, tag, originalPosting, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
     if (newHashtag === hashtag) return this.needsRedisplay = true;
-    const cancel = {lat, lng, subject, hashtag}; // Cancel old hashtag as we publish newHashtag, below.
+    const cancel = {lat, lng, tag, hashtag}; // Cancel old hashtag as we publish newHashtag, below.
     Hashtags.setPublish(newHashtag);
     Hashtags.onchange({redisplaySubscribers: false, resetSubscriptions: false});
     return Alert.publish({lat, lng, hashtag: newHashtag, originalPosting, cancel}); // Publish new alert w/cancellation.
@@ -487,7 +487,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
     return AlertReply;
   }
   async ensure(data) { // Add or update reply for this reply.
-    data.subject = data.tag; //fixme
     const remaining = data.issuedTime + ttl - Date.now();
     if (remaining < 0) return null;
     const reply = await super.ensure(data);
@@ -510,13 +509,13 @@ export class Alert extends Conversation { // A wrapper around L.marker
     this.ensureContent();
     return reply;
   }
-  async postReply(event) { // Post a reply to this marker's subject, in response to a text-field change event.
+  async postReply(event) { // Post a reply to this marker's tag, in response to a text-field change event.
     resetInactivityTimer();
     event.stopPropagation();
     const button = event.target;
     const inputElement = button.parentElement;
     let payload = inputElement.value.trim();
-    const {subject, hashtag, lat, lng} = this;
+    const {tag, hashtag, lat, lng} = this;
     const region = P2PWebNetwork.regionCode(lat, lng);
     const files = inputElement.parentElement.querySelector('input[type="file"]').files;
     if (!payload && !files.length) return;
@@ -527,17 +526,17 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const {topic:file, msgIds} = await contact.chunkifyBlob({blob: files[0], region});
       payload = {message: payload, file};
     }
-    await contact.publish({eventName: subject, region, payload}); // Publish the new reply.
+    await contact.publish({eventName: tag, region, payload}); // Publish the new reply.
     Agent.current.persistPublicMetadata();
   }
   deleteReply(replyElement) {
     resetInactivityTimer();
-    const {lat, lng, subject} = this;
+    const {lat, lng, tag} = this;
     const region = P2PWebNetwork.regionCode(lat, lng);
     const killTag = replyElement.dataset.tag;
     networkPromise.then(async contact => {
       // We won't be here unless we are the signer.
-      await contact.publish({eventName: subject, region, killTag, payload: null});
+      await contact.publish({eventName: tag, region, killTag, payload: null});
       // IFF there's an attachment AND we're given msgIds by receiveChunkedBytes, then delete the attachment.
       const reply = this.getItem(killTag);
       const {attachmentTopic, msgIds = []} = reply?.payload || {};
@@ -549,7 +548,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       }
     });
   }
-  showNotification({issuedTime = this.issuedTime, body = '', agent = this.agent, alert = this.subject, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
+  showNotification({issuedTime = this.issuedTime, body = '', agent = this.agent, alert = this.tag, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
     // Give OS notification that comes back to here, unless act is us.
     // All notifications on the same alert (e.g., the post and each reply) have the same tag, so OS can collapse them.
     if (agent === Agent.tag || !notificationsAllowed()) return;
@@ -572,7 +571,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // If present the attachment will be an A element with download attribute, surrounding either an IMG, A/V player, or an attachment icon followed by the file name.
   formatReplies() { // Answer HTML for the replies and input box.
     const { items, agent, originalPosting } = this;
-    const formatReply = ({subject, payload, ...rest}) => {
+    const formatReply = ({tag, payload, ...rest}) => {
       const {message = payload, file, name} = payload || {}; // Message text converts recognized urls to A/V players or links.
       let text = message
 	  .replace(/https?:\/\/\S+\.(mp3|aac|ogg|oga|opus|m4a|m3u8|m3u|mpu|mpd)$/ig, url => `<audio controls src="${url}" crossorigin="anonymous"></audio>`) // show audio urls as players
@@ -590,7 +589,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   </a>
 </div>`;
       const messageDisplay = message ? `<span class="message">${text}</span>` : '';
-      let dataAttributes = `data-tag="${subject}" data-text="${message}"`;
+      let dataAttributes = `data-tag="${tag}" data-text="${message}"`;
       if (file) dataAttributes += ` data-file="${file}" data-name="${name}"`;
       return `<div class="reply" ${dataAttributes}>${this.formatAttribution(rest)}${attachment}${messageDisplay}</div>`;
     };
@@ -611,12 +610,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
 
   async share(event) { // Share reply or post
     resetInactivityTimer();
-    // TODO: Preserve attribution data. Maybe by including the subject reply tag in the url, and metadata in the text?
+    // TODO: Preserve attribution data. Maybe by including the tag reply tag in the url, and metadata in the text?
     const shareable = event.currentTarget.closest('[data-text]');
     const {text, file, name = 'unknown'} = shareable.dataset;
     const {lat, lng} = this;
     console.log('Share', shareable.dataset);
-    const url = getShareableURL(this.subject, [this.hashtag]).href;
+    const url = getShareableURL(this.tag, [this.hashtag]).href;
     let textBase = `New CivilDefense.io alert @${lat},${lng}`;
     const extendedText = text ? `${textBase}\n${text}` : textBase;
     const data = {text: extendedText, url};
@@ -653,7 +652,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     clearInterval(this.destroyer);
     this.clearAvatars();
     // Unsubscribe from replies.
-    networkPromise?.then(async contact => contact.subscribe({eventName: this.subject, region: this.region, handler: null}));
+    networkPromise?.then(async contact => contact.subscribe({eventName: this.tag, region: this.region, handler: null}));
     this.marker.removeFrom(map);
     super.destroy();
   }
