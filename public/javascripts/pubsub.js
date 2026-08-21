@@ -4,6 +4,14 @@ const { TextEncoder, crypto, Buffer } = globalThis;
 
 function setBucket(collection, type, topicId, subject, value) { // Set value in the collection.
   const bucket = collection[type][topicId] ||= {};
+  if ((collection === data) && (type === 'pub')) {
+    const keys = Object.keys(bucket);
+    const size = keys.length;
+    if (size > 1000) {
+      console.warn('Over pub limit on topic', topicId, size); // TODO: rotate out the earliest received.
+      delete bucket[keys[0]];
+    }
+  }
   bucket[subject] = value;
 }
 function removeBucket(collection, type, topicId, subject) { // Return the value and stop storing it.
@@ -20,7 +28,7 @@ const PUBLISH_TIMEOUT = 24 * 60 * 60e3;      // Delete after 24 hours.
 const timeouts = {pub: {}, sub: {}};
 function expire(type, topicId, subject, remover, timeout) { // Cancellably schedule remover() to fire at timeout.
   if (!timeout) return;
-  setBucket(timeouts, type, topicId, subject, setTimeout(remover, timeout));
+  setBucket(timeouts, type, topicId, subject, setTimeout(() => { remover(); cancel(type, topicId, subject); }, timeout));
 }
 function cancel(type, topicId, subject) { // Cancel a sheduled expiration.
   clearTimeout(removeBucket(timeouts, type, topicId, subject));
@@ -92,7 +100,10 @@ export function deleteSubscriber(nodeTag) {
   for (const topicId in data.sub)  {
     const keySubs = data.sub[topicId];
     for (const [subject, value] of Object.entries(keySubs)) {
-      if (nodeTag === subject) deleteSub(topicId, subject, keySubs);
+      if (nodeTag === subject) {
+	deleteSub(topicId, subject, keySubs);
+	cancel('sub', topicId, subject);
+      }
     }
   }
 }
