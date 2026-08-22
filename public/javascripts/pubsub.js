@@ -1,13 +1,14 @@
 // In memory pubsub, for either client-only testing, or server-websocket testing
 const { v4:uuidv4 } = await import('uuid');
 const { TextEncoder, crypto, Buffer } = globalThis;
+const publicationRolloverLimit = 1000;
 
 function setBucket(collection, type, topicId, subject, value) { // Set value in the collection.
   const bucket = collection[type][topicId] ||= {};
   if ((collection === data) && (type === 'pub')) {
     const keys = Object.keys(bucket);
     const size = keys.length;
-    if (size > 1000) {
+    if (size > publicationRolloverLimit) {
       console.warn('Over pub limit on topic', topicId, size); // TODO: rotate out the earliest received.
       delete bucket[keys[0]];
     }

@@ -99,7 +99,7 @@ if (dht < 1) {
 
 	  if ((!subHandler && !inFlightResolver) || // debug
 	      ((typeof(subHandler) !== 'function') && (typeof(inFlightResolver) !== 'function')))
-	    console.log({tag, rest, subHandler, inFlightResolver, handlers, inFlight});
+	    console.warn('no handler or request', {tag, rest, subHandler, inFlightResolver, handlers, inFlight});
 
 	  if (subHandler) return subHandler(...rest);
 	  delete inFlight[tag];
@@ -154,6 +154,7 @@ if (dht < 1) {
       kill(topic, msgId, options) {
 	return send('unpublish', topic, msgId, options);
       },
+      lookup() { return {}; },
       host() {},
       unhost() {}
     };
