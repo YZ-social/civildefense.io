@@ -146,33 +146,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const contact = await networkPromise;
     if (!contact) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
     this.subscriptions = newKeys; // Before subscribing.
-    const subscribe = async (key, handlerIn) => {
-      const handler = handlerIn && (properties => {
-	// When there are enough alerts within a topic, it rolls over and just reports the most recent number.
-	// When get near that count, we update the subscriptions such that the overloading topic is replaced
-	// with the topics for each of the four subcells that that make up the one with too many alerts.
-	// This repeats until we reach cells that are not rolling over.
-	const maxAlertsInCell = 900;
-	let count = ++newKeys[key];
-	handlerIn(properties);
-	if (count >= maxAlertsInCell) {
-	  let nextKeys = {};
-	  for (const old in newKeys) {
-	    if (old !== key) {
-	      nextKeys[old] = newKeys[old];
-	    } else {
-	      const cellTag = topicCell(key);
-	      const subdivisions = getSubdivision(cellTag);
-	      const topics = subdivisions.map(cellTag => alertTopic(cellTag, properties.hashtag));
-	      console.log('subdividing', key, 'into', topics);
-	      topics.forEach(topic => nextKeys[topic] = 0);
-	    }
-	  }
-	  this.updateSubscriptions({oldKeys: newKeys, newKeys: nextKeys, throttleMS});
-	}
-      });
+    const subscribe = async (key, handler) => {
       const region = topicRegion(key);
-      Agent.current?.trackPublicChanges(region); // Background. No need to await.
+      if (handler) Agent.current?.trackPublicChanges(region); // Background. No need to await.
       await contact.subscribe({eventName: key, region, handler}).then(() => throttleMS && P2PWebNetwork.delay(throttleMS));
     };
     console.log('updating subscriptions', {newKeys, oldKeys});
