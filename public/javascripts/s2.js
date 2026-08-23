@@ -58,8 +58,8 @@ export function findCoverCellsByMinMaxLatLng({minLat, maxLat, minLng, maxLng, fu
 
   // There are a lot of ways that seem like they do this, but it is very easy to find something that works for a few cases,
   // but misses cells in some circumstances, so be wary about rewriting this.
-  const lo = s2.LatLng.fromDegrees(minLat, Math.max(minLng, -180));
-  const hi = s2.LatLng.fromDegrees(maxLat, Math.max(maxLng, 190));
+  const lo = s2.LatLng.fromDegrees(minLat, minLng);
+  const hi = s2.LatLng.fromDegrees(maxLat, maxLng);
 
   const rect = full ? s2.Rect.fullRect() : new s2.Rect(
     new r1.Interval(lo.lat, hi.lat),
@@ -69,4 +69,3 @@ export function findCoverCellsByMinMaxLatLng({minLat, maxLat, minLng, maxLng, fu
   const coverer = new RegionCoverer({minLevel, maxLevel, maxCells});
   return coverer.covering(rect); // a CellUnion — array-like of bigint cell IDs, already normalized/minimal
 }
-
