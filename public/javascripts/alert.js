@@ -113,19 +113,19 @@ export class Alert extends Conversation { // A wrapper around L.marker
     return parseInt(minAggregate.value);
   }
   static markerAggregates(eventName) {
-    return false//++this.subscriptions[eventName] > this.aggregateLimit;
+    return this.subscriptions[eventName]++ === this.aggregateLimit;
   }
   static getAggregate(eventName) {
     for (const alert of this.items) {
-      //if (alert.eventName === eventName) return alert.isAggregate && alert;
+      if (alert.eventName === eventName) return alert.isAggregate && alert;
     }
     return null;
   }
   static clearEventMarkers(eventName, aggregate = null) {
     for (const alert of this.items) {
-      // if (alert.eventName !== eventName) continue;
-      // if (aggregate) aggregate.lerp(alert.lat, alert.lng);
-      // alert.destroy();
+      if (alert.eventName !== eventName) continue;
+      if (aggregate) aggregate.lerp(alert.lat, alert.lng);
+      alert.destroy();
     }
   }
   update({topic, ts, ...rest}) { // topic, ts vary with level, and so must not be part of ensure/update checks.
@@ -147,21 +147,24 @@ export class Alert extends Conversation { // A wrapper around L.marker
       keep = null; // This new instance is superfluous. Tell ensure() to destroy it.
       aggregate.lerp(payload.lat, payload.lng);
     } else { // Does not exist yet
+      const {lat, lng, originalPosting} = payload;
       if (this.constructor.markerAggregates(eventName)) { // If this event pushes us over; treat this marker as an aggregate.
 	aggregate = this;
 	tag = eventName;
-	this.isAggregate = true;
-	this.constructor.clearEventMarkers(eventName, aggregate); // Does not include the alert we just made as it is not in Alert.items yet.
+	aggregate.isAggregate = true;
       }
       const icon = this.constructor.makeIcon(hashtag, tag, aggregate);
-      const {lat, lng, originalPosting} = payload;
       const marker = this.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
       const region = P2PWebNetwork.regionCode(lat, lng);
       hashtag = Hashtags.add(hashtag); // We already have it and are subscribing, but this updates our extended form if needed.
       super.initialize({payload, hashtag, tag, agent, lat, lng, issuedTime, originalPosting, ...rest});
+      this.eventName = eventName;
       if (aggregate) {
-	marker.on('click', event => console.log('FIXME go down one level'));
+	marker.on('click', event => console.log('FIXME go down one level', this.lat, this.lng, this.eventName));
 	tooltip(marker.getElement(), Int`Zoom in on multiple ${hashtag} alerts.`); // fixme Int.
+	this.constructor.clearEventMarkers(eventName, aggregate); // Does not include the alert we just made as it is not in Alert.items yet.
+	this.eventName = eventName; // Hack
+	this.constructor.setItem(eventName, this); //hack
       } else {
 	marker.bindPopup('', {className: 'alert'}).on('popupopen', event => this.ensureContent(event.popup));
 	tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
@@ -180,10 +183,11 @@ export class Alert extends Conversation { // A wrapper around L.marker
     alert.showNotification({agent, issuedTime});
     return keep;
   }
-  lerp(lat, lng) {
-    const k = 1 / this.aggregateLimit;
-    this.lat = (1 - k) * this.lat + k * lat;
-    this.lng = (1 - k) * this.lng + k * lng;
+  lerp(additionaLatitude, additionalLongitude) {
+    const k = 1 / this.constructor.aggregateLimit;
+    const {lat, lng} = this;
+    this.lat = (1 - k) * lat + k * additionaLatitude;
+    this.lng = (1 - k) * lng + k * additionalLongitude;
     this.marker.setLatLng([this.lat, this.lng]);
   }
   destroy() { // Remove this Alert pin entirely.
@@ -383,6 +387,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   needsRedisplay = true;
   ensureContent(popup = this.marker.getPopup()) { // Set content and handlers in popup if/as needed.
     if (!popup.isOpen()) return;
+    console.warn(`latitude: ${this.lat}, longitude: ${this.lng}, ${this.eventName}`); // Handy for debugging.
     if (!this.needsRedisplay) {
       this.initializeHandlers(popup);
       return;
@@ -397,7 +402,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
       this.marker.getPopup().update();
       this.initializeHandlers(popup);
     });
-    console.warn(`latitude: ${this.lat}, longitude: ${this.lng}`); // Handy for debugging.
   }
   clearAvatars(popup = this.marker?.getPopup()) {
     popup?.getElement()?.querySelectorAll('.correspondent[data-tag]')
