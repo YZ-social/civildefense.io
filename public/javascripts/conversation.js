@@ -19,7 +19,7 @@ export class Tagged { // Maintains cached existence within a (possibly instance-
     for (const key in properties) {
       const existing = this[key];
       const proposed = properties[key];
-      if (JSON.stringify(existing) !== JSON.stringify(proposed)) throw new Error(`Cannot update '${key}' from ${existing} to ${proposed}.`);
+      if (JSON.stringify(existing) !== JSON.stringify(proposed)) throw new Error(`Cannot update '${key}' in ${this.constructor.name} ${this.tag} from ${JSON.stringify(existing)} to ${JSON.stringify(proposed)}.`);
     }
     return this;
   }
@@ -32,13 +32,15 @@ export class Tagged { // Maintains cached existence within a (possibly instance-
 
   static async ensureIn(data, container, kind = container.itemKind) { // update() or initialize() item and remember what those answer. (Falsy is deleted).
     const {tag, payload, ...rest} = data;
-    let item = container.getItem(tag);
+    let item = container.getItem(tag); // existing item
     if (!payload) return item?.destroy();
+
+    // update or create item.
     if (item) item = await item.update(data);
     else item = await (new kind().initialize({...data, container}));
 
     if (!item) return container.removeItem(tag)?.destroy();
-    return container.setItem(tag, item);
+    return container.setItem(item.tag, item); // initialize() may come up with a better tag.
   }
 }
 

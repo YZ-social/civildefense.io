@@ -109,6 +109,98 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // In general here, a key is an eventName - i.e., a string <mumble>:<cellID>:<hashtag>.
   // newKeys/oldKeys are a map of the currently subscribed eventName and the count of events for that cell+hashtag
   static subscriptions = {}; // maps currently active eventNames (<mumble>:<cellID>:<hashtag>) to count of event received for it.
+  static get aggregateLimit() {
+    return parseInt(minAggregate.value);
+  }
+  static markerAggregates(eventName) {
+    return false//++this.subscriptions[eventName] > this.aggregateLimit;
+  }
+  static getAggregate(eventName) {
+    for (const alert of this.items) {
+      //if (alert.eventName === eventName) return alert.isAggregate && alert;
+    }
+    return null;
+  }
+  static clearEventMarkers(eventName, aggregate = null) {
+    for (const alert of this.items) {
+      // if (alert.eventName !== eventName) continue;
+      // if (aggregate) aggregate.lerp(alert.lat, alert.lng);
+      // alert.destroy();
+    }
+  }
+  update({topic, ts, ...rest}) { // topic, ts vary with level, and so must not be part of ensure/update checks.
+    return super.update({...rest});
+  }
+  initialize({topic, payload, hashtag, tag, agent, issuedTime, ...rest}) { // Make appropriate instance for a new individual tag, or update aggregate.
+    // Subscribed events come in for individual tags, and are managed by Conversation#ensure() to destroy if no payload, etc. and calls here if new by that tag.
+
+    if (!Hashtags.isSubscribed(hashtag)) return null; // A subscribed event may have been in flight while unsubscribing. Caller destroys instance.
+    const now = Date.now(),
+	  expiration = issuedTime + ttl,
+          remaining = expiration - now;
+    if (remaining < 0) return null;  // Network shouldn't send us expired, but if it does, let its instance be destroyed.
+
+    const eventName = topic.name;
+    let keep = this; // Instance to be kept as marker.
+    let aggregate = this.constructor.getAggregate(eventName);
+    if (aggregate) {
+      keep = null; // This new instance is superfluous. Tell ensure() to destroy it.
+      aggregate.lerp(payload.lat, payload.lng);
+    } else { // Does not exist yet
+      if (this.constructor.markerAggregates(eventName)) { // If this event pushes us over; treat this marker as an aggregate.
+	aggregate = this;
+	tag = eventName;
+	this.isAggregate = true;
+	this.constructor.clearEventMarkers(eventName, aggregate); // Does not include the alert we just made as it is not in Alert.items yet.
+      }
+      const icon = this.constructor.makeIcon(hashtag, tag, aggregate);
+      const {lat, lng, originalPosting} = payload;
+      const marker = this.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
+      const region = P2PWebNetwork.regionCode(lat, lng);
+      hashtag = Hashtags.add(hashtag); // We already have it and are subscribing, but this updates our extended form if needed.
+      super.initialize({payload, hashtag, tag, agent, lat, lng, issuedTime, originalPosting, ...rest});
+      if (aggregate) {
+	marker.on('click', event => console.log('FIXME go down one level'));
+	tooltip(marker.getElement(), Int`Zoom in on multiple ${hashtag} alerts.`); // fixme Int.
+      } else {
+	marker.bindPopup('', {className: 'alert'}).on('popupopen', event => this.ensureContent(event.popup));
+	tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
+	if (tag === openOnReceive) { // Bug! How can we handle URLs to an alert that has been aggregated?
+	  openOnReceive = false;
+	  this.openPopup();
+	}
+	networkPromise.then(async contact => { // Subscribe to replies to this tag, now that we have an alert for them to go to.
+	  contact.subscribe({eventName: tag, region, handler: data => this.ensure(data)});
+	});
+      }
+    }
+    const alert = aggregate || this;
+    alert.startFader('.alert-pin', remaining);
+    alert.destroyer = setTimeout(() => this.destroy(), remaining);
+    alert.showNotification({agent, issuedTime});
+    return keep;
+  }
+  lerp(lat, lng) {
+    const k = 1 / this.aggregateLimit;
+    this.lat = (1 - k) * this.lat + k * lat;
+    this.lng = (1 - k) * this.lng + k * lng;
+    this.marker.setLatLng([this.lat, this.lng]);
+  }
+  destroy() { // Remove this Alert pin entirely.
+    if (!this.isAggregate && this.eventName) --this.constructor.subscriptions[this.eventName];
+    // It might be nice to toggle subscription and start over if that transitioned us to non-aggregate, but things get weird with rollover.
+    // eventName is normally defined, but the guard is here for some debugging situations.
+
+    this.marker.removeFrom(map);
+    clearInterval(this['.alert-pin']);
+    clearInterval(this['.alert-commented']);
+    clearInterval(this.destroyer);
+    this.clearAvatars();
+    // Unsubscribe from replies.
+    if (!this.isAggregate) networkPromise?.then(async contact => contact.subscribe({eventName: this.tag, region: this.region, handler: null}));
+    super.destroy();
+  }
+
   // We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
   static lastLevel9Cell = null; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
   static subscriptionFromMap() { // Generate {eventName => count} for current map bounds.
@@ -126,36 +218,43 @@ export class Alert extends Conversation { // A wrapper around L.marker
     });
     if (!newCells) return null;
     const newKeys = {};
-
     newCells.forEach(cell => Hashtags.getSubscribe().forEach(hash => {
       const eventName = alertTopic(cell, hash);
-      newKeys[eventName] = this.subscriptions[eventName] || 0;
+      newKeys[eventName] = /*this.subscriptions[eventName] ||*/ 0;
     }));
     // Record a zoomed-out cell id in case next session does not have geolocation services.
     let level9Cell = getContainingCells(center.lat, center.lng)[9];
     if (level9Cell !== this.lastLevel9Cell) localStorage.setItem('level9Cell', this.lastLevel9Cell = level9Cell);
     return newKeys;
   }
+  static subscriptionQueue = Promise.resolve();
   static async updateSubscriptions({
     oldKeys = this.subscriptions,
     newKeys = this.subscriptionFromMap(),
     throttleMS = 20
   } = {}) { // Update current subscriptions.
     // A value of {} passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
-    if (!newKeys) return; // e.g., wacky computation. Don't change anything.
-    const contact = await networkPromise;
-    if (!contact) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
-    this.subscriptions = newKeys; // Before subscribing.
-    const subscribe = async (key, handler) => {
-      const region = topicRegion(key);
-      if (handler) Agent.current?.trackPublicChanges(region); // Background. No need to await.
-      await contact.subscribe({eventName: key, region, handler}).then(() => throttleMS && P2PWebNetwork.delay(throttleMS));
-    };
-    console.log('updating subscriptions', {newKeys, oldKeys});
-    // For each entry in the new subscription set that was not previously subscribed, subscribe now.
-    for (const key in newKeys) oldKeys.hasOwnProperty(key) || await subscribe(key, data => Alert.ensure(data));
-    // For each existing subscription, if it does not appear in the new set then unsubscribe.
-    for (const key in oldKeys) newKeys.hasOwnProperty(key) || await subscribe(key, null);
+    return this.subscriptionQueue = this.subscriptionQueue.then(async () => {
+      if (!newKeys) return; // e.g., wacky computation. Don't change anything.
+      const contact = await networkPromise;
+      const dropped = [], added = [];
+      if (!contact) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
+      this.subscriptions = newKeys; // Before subscribing.
+      const subscribe = async (key, handler) => {
+	if (!key) console.log('sub to no key', {oldKeys, newKeys, dropped, added, handler});
+	const region = topicRegion(key);
+	if (handler) Agent.current?.trackPublicChanges(region); // Background. No need to await.
+	await contact.subscribe({eventName: key, region, handler}).then(() => throttleMS && P2PWebNetwork.delay(throttleMS));
+      };
+      for (const key in newKeys) oldKeys.hasOwnProperty(key) || added.push(key);
+      for (const key in oldKeys) newKeys.hasOwnProperty(key) || dropped.push(key);
+      console.log('updating subscriptions', {added, dropped, newKeys, oldKeys});
+      for (const key of added) await subscribe(key, data => Alert.ensure({inEvent: true, ...data}));
+      for (const key of dropped) {
+	await subscribe(key, null);
+	this.clearEventMarkers(key);
+      }
+    });
   }
   static maxPublish = 5;
   static publishing = false;
@@ -253,9 +352,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
     }
     this.marker.openPopup();
   }
-  static makeIcon(hashtag) { // Return a Leaflet icon. TODO: are these cacheable and reusable?
+  static makeIcon(hashtag, tag, isAggregate = false) { // Return a Leaflet icon. 
+    // tag is handy for debugging. TODO: are these cacheable and reusable?
     return L.divIcon({
-      html: `<div class="alert-commented"></div><div class="alert-pin">${Hashtags.formatAlert(hashtag)}</div>`,
+      html: `<div class="alert-commented"></div><div class="alert-pin${isAggregate ? ' aggregate' : ''}" data-debug="${tag}">${Hashtags.formatAlert(hashtag)}</div>`,
       iconSize: [40, 40],
       popupAnchor: [0, 0],
       className: 'alert-marker'
@@ -265,12 +365,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
     this.items.forEach(wrapper => {
       const { hashtag, marker, agent } = wrapper;
       if (hashtag !== canonicalHashtag) return;
-      const newIcon = this.makeIcon(extendedHashtag);
-      const popup = marker.getPopup();
+      const newIcon = this.makeIcon(extendedHashtag, wrapper.tag);
       marker.setIcon(newIcon);
       wrapper.hashtag = extendedHashtag;
       wrapper.needsRedisplay = true; // See comment for initializeHandlers. We need to clear and rebuild content on re-open.
-      if (!popup.isOpen()) return;
+      const popup = marker.getPopup();
+      if (!popup?.isOpen()) return; // Either an aggregate or closed.
       // Fix what's showing now without flashing everything. Make sure menu works.
       const popupAttribution = popup.getElement().querySelector('.attribution');
       const attributionActions = popupAttribution.lastElementChild;
@@ -278,41 +378,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
       attributionActions.insertAdjacentHTML('beforeend', this.formatAttributionHashtag(agent, extendedHashtag));
       wrapper.initChangeHashtag(popupAttribution);
     });
-  }
-  static async ensure({tag, topic, ts, issuedTime, ...rest}) { // Add marker at position with appropriate fade if not already present.
-    const alert = await super.ensure({tag, issuedTime, ...rest}); // Does not include topic or ts. fixme: get rid of tag. fixme: why is ts different?
-    if (!alert) return null;
-    // Regardless of initialize vs update, reset fader.
-    const now = Date.now(),
-	  expiration = issuedTime + ttl,
-          remaining = expiration - now;
-    if (remaining < 0) return alert?.destroy();  // Expired.
-    alert.startFader('.alert-pin', remaining); // From the new value of remaining, after marker is set in wrapper, regardless of popup/dirty state.
-    alert.destroyer = setTimeout(() => alert.destroy(), remaining);
-    return alert;
-  }
-  initialize({payload, hashtag, tag, agent, issuedTime, ...rest}) { // Set up the marker for a newly received alert.
-    if (!payload) return null; // Do not cache. E.g., Received a delete event without the initial creation.
-    if (!Hashtags.isSubscribed(hashtag)) return null; // A subscribed event may have been in flight while unsubscribing.
-    const icon = this.constructor.makeIcon(hashtag);
-    const {lat, lng, originalPosting} = payload;
-    const marker = this.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
-    const region = P2PWebNetwork.regionCode(lat, lng);
-    hashtag = Hashtags.add(hashtag); // We already have it and are subscribing, but this updates our extended form if needed.
-    super.initialize({payload, hashtag, tag, agent, lat, lng, issuedTime, originalPosting, ...rest});
-
-    marker.bindPopup('', {className: 'alert'}).on('popupopen', event => this.ensureContent(event.popup));
-    tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
-    if (tag === openOnReceive) {
-      openOnReceive = false;
-      this.openPopup();
-    }
-    // Subscribe to replies to this tag, now that we're set up to receive them.
-    networkPromise.then(async contact => {
-      contact.subscribe({eventName: tag, region, handler: data => this.ensure(data)});
-    });
-    this.showNotification({agent, issuedTime});
-    return this;
   }
 
   needsRedisplay = true;
@@ -332,7 +397,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       this.marker.getPopup().update();
       this.initializeHandlers(popup);
     });
-    console.warn(`latitude: ${this.lat}, longitude: ${this.lng}`);
+    console.warn(`latitude: ${this.lat}, longitude: ${this.lng}`); // Handy for debugging.
   }
   clearAvatars(popup = this.marker?.getPopup()) {
     popup?.getElement()?.querySelectorAll('.correspondent[data-tag]')
@@ -621,16 +686,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
       element.style.opacity = (opacity += opacityFade);
     }, interval);
     return element;
-  }
-  destroy() { // Remove this Alert pin entirely.
-    clearInterval(this['.alert-pin']);
-    clearInterval(this['.alert-commented']);
-    clearInterval(this.destroyer);
-    this.clearAvatars();
-    // Unsubscribe from replies.
-    networkPromise?.then(async contact => contact.subscribe({eventName: this.tag, region: this.region, handler: null}));
-    this.marker.removeFrom(map);
-    super.destroy();
   }
 }
 globalThis.Alert = Alert; // for debugging
