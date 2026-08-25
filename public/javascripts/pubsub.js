@@ -8,7 +8,7 @@ function setBucket(collection, type, topicId, subject, value) { // Set value in 
   if ((collection === data) && (type === 'pub')) {
     const keys = Object.keys(bucket);
     const size = keys.length;
-    if (size > publicationRolloverLimit) {
+    if (size >= publicationRolloverLimit) {
       console.warn('Over pub limit on topic', topicId, size); // TODO: rotate out the earliest received.
       delete bucket[keys[0]];
     }

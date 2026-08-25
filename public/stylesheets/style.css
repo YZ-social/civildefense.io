@@ -154,6 +154,12 @@ md-outlined-text-field {
     cursor: pointer;
     padding: 0;
 }
+#minAggregate {
+    z-index: 1000;
+    position: absolute;
+    top: 100px;
+    right: 5px;
+}
 button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon-button, md-filled-icon-button, md-tonal-icon-button, md-elevated-button, md-checkbox, .attachment > md-icon {
     transition: transform 0.2s ease;
     &:hover { transform: scale(1.1); }
@@ -270,6 +276,22 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     top: 5px;
     left: 5px;
     text-align: center;
+}
+.aggregate.alert-pin {
+    font-size: 60px;
+    line-height: 60px;
+    top: -10px;
+    left: -10px;
+}
+.aggregate.alert-pin:after {
+    content: "";
+    width: 70px;
+    height: 70px;
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    background-image: radial-gradient(transparent 30%, var(--md-sys-color-primary), transparent 70%);
+    animation: pulse ease 0.8s 1;
 }
 @keyframes pulse {
     0% { filter: saturate(1); }
