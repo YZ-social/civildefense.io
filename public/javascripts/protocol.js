@@ -14,7 +14,7 @@ export const dht = parseInt((globalThis.process ?
 if (dht < 1) {
 
   const { v4:uuidv4 } = await import('uuid');
-  const { getContainingCells, getPointInCell } = await import('./s2.js');
+  const { getSmallestCellId, getPointInCell } = await import('./s2.js');
   const { cellHex } = await import('./versions.js');
   const operator = await import('./pubsub.js');
 
@@ -38,8 +38,8 @@ if (dht < 1) {
       return {authorId: tag};
     };
   geoCellId = (lat, lng) => {
-    const cells = getContainingCells(lat, lng);
-    const hex = cellHex(cells[0]);
+    const cellid = getSmallestCellId(lat, lng);
+    const hex = cellHex(cellid);
     const sliced = hex.slice(0, 2);
     return parseInt(sliced, 16); // The worst way to do this.
   };

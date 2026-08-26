@@ -41,26 +41,25 @@ export function getSubdivision(hexString) {
   return getCellSubdivision(BigInt('0x' + hexString)).map(childCell => cellHex(childCell));
 }
 
+export function getSmallestCellId(lat, lng, level = MAX_MAP_LEVEL) { // At level.
+  const userLatLng = LatLng.fromDegrees(lat, lng);
+  const userPt = Point.fromLatLng(userLatLng);
+  const userLocCellId = Cell.fromPoint(userPt).id; // This is at MAX_S2_LEVEL
+  return cellid.parent(userLocCellId, level);
+}
+
 // Return a list of the cell ids that contain the point, from region to MAX_S2_LEVEL
 // Note that the first of the cells (the region
 export function getContainingCells(lat, lng) {
-  const userLatLng = LatLng.fromDegrees(lat, lng);
-  const userPt = Point.fromLatLng(userLatLng);
-  // Get leaf-level CellId (level 30)
-  const userLocCellId = Cell.fromPoint(userPt).id; // This is at level 30.
-
-  let cells = Array(MAX_S2_LEVEL);
-  for (let level = 0; level <= MAX_S2_LEVEL; level++) { // This would be more efficient going backwards using immediateParent, but who cares.
-    cells[level] = cellid.parent(userLocCellId, level);
+  let id = getSmallestCellId(lat, lng);
+  const level = MAX_MAP_LEVEL, cells = Array(MAX_MAP_LEVEL + 1 - MIN_LEVEL);
+  for (let index = level - MIN_LEVEL; index >= 0; index--) {
+    console.log({index, id, hex: cellHex(id)});
+    cells[index] = id;
+    id = cellid.immediateParent(id);
   }
-  return cells.slice(MIN_LEVEL, MAX_MAP_LEVEL + 1); // We can only make use between Axona region size and the smallest region our maps subscribe to.
-
-  // let level = MAX_S2_LEVEL - 1, cells2 = Array(MAX_S2_LEVEL);
-  // cells2[level] = cellid.parent(userLocCellId, level);
-  // while (--level > 2) cells2[level] = cellid.immediateParent(cells2[level+1]);
-  // cells2[level] = cells2[level+1] & BigInt('0xFF00000000000000');
-  // //for (let i=0; i<MAX_S2_LEVEL; i++) console.log(globalThis.cellHex(cells[i]), globalThis.cellHex(cells2[i] || 0));
-  // return cells2.slice(MIN_LEVEL, MAX_MAP_LEVEL + 1); // We can only make use between Axona region size and the smallest region our maps subscribe t.o
+  console.log(cells.length, cells);
+  return cells;
 }
 
 export function findCoverCellsByMinMaxLatLng({minLat, maxLat, minLng, maxLng, full = false,
@@ -81,6 +80,3 @@ export function findCoverCellsByMinMaxLatLng({minLat, maxLat, minLng, maxLng, fu
   const coverer = new RegionCoverer({minLevel, maxLevel, maxCells});
   return coverer.covering(rect); // a CellUnion — array-like of bigint cell IDs, already normalized/minimal
 }
-// globalThis.s2 = s2;
-// globalThis.geoCellId = geoCellId;
-// globalThis.getContainingCells = getContainingCells;

@@ -8,7 +8,7 @@ import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
 import { Conversation, Reply } from './conversation.js';
 import { alertTopic, topicRegion, topicCell, cellHex } from './versions.js';
-import { getContainingCells, getSubdivision, findCoverCellsByMinMaxLatLng } from './s2.js';
+import { getContainingCells, getSmallestCellId, getSubdivision, findCoverCellsByMinMaxLatLng } from './s2.js';
 const { localStorage, getComputedStyle, URL, URLSearchParams, domtoimage } = globalThis;
 
 
@@ -127,11 +127,20 @@ export class Alert extends Conversation { // A wrapper around L.marker
     return null;
   }
   static clearEventMarkers(eventName, aggregate = null) {
-    for (const alert of this.items) {
+    const items = this.items;
+    for (const alert of items) {
       if (alert.eventName !== eventName) continue;
-      if (aggregate) aggregate.lerp(alert.lat, alert.lng);
+      // if (aggregate) aggregate.lerp(eventName, alert.lat, alert.lng); // fixme: do as one.
+      // if (aggregate) { lat += alert.lat; lng += alert.lng; }
       alert.destroy();
     }
+    // if (!aggregate) return;
+    // for (const alert of items) {
+    //   aggregate.lat += alert.lat;
+    //   aggregate.lng += alert.lng;
+    // }
+    // aggregate.lat /= items.length + 1;
+    // aggregate.lng /= items.length + 1;
   }
   logAlert(label = '') { // Handy for debugging.
     const {lat, lng, eventName} = this;
@@ -154,7 +163,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     let aggregate = this.constructor.getAggregate(eventName);
     if (aggregate) {
       keep = null; // This new instance is superfluous. Tell ensure() to destroy it.
-      aggregate.lerp(payload.lat, payload.lng);
+      aggregate.lerp(eventName, payload.lat, payload.lng);
     } else { // Does not exist yet
       const {lat, lng, originalPosting} = payload;
       if (this.constructor.markerAggregates(eventName)) { // If this event pushes us over; treat this marker as an aggregate.
@@ -187,17 +196,21 @@ export class Alert extends Conversation { // A wrapper around L.marker
       }
     }
     const alert = aggregate || this;
-    alert.startFader('.alert-pin', remaining);
-    alert.destroyer = setTimeout(() => this.destroy(true), remaining);
+    alert.startExpiration('.alert-pin', remaining);
     alert.showNotification({agent, issuedTime});
     return keep;
   }
-  lerp(additionaLatitude, additionalLongitude) {
-    const k = 1 / this.constructor.aggregateLimit;
+  lerp(eventName, additionaLatitude, additionalLongitude) {
+    const k = 1 / (this.constructor.subscriptions[eventName] + 1);
     const {lat, lng} = this;
-    this.lat = (1 - k) * lat + k * additionaLatitude;
-    this.lng = (1 - k) * lng + k * additionalLongitude;
-    this.marker.setLatLng([this.lat, this.lng]);
+    this.reposition((1 - k) * lat + k * additionaLatitude,
+		    (1 - k) * lng + k * additionalLongitude);
+  }
+  reposition(lat, lng) {
+    this.lat = lat;
+    this.lng = lng;
+    this.marker.setLatLng([lat, lng]);
+    this.startExpiration('.alert-pin', Date.now() + ttl);
   }
   destroy() { // Remove this Alert pin entirely.
     // Bug: What to do about count? Sometimes we want to decrement and sometimes not. And then there's rollover.
@@ -233,7 +246,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       newKeys[eventName] = this.subscriptions[eventName] || 0;
     }));
     // Record a zoomed-out cell id in case next session does not have geolocation services.
-    let level9Cell = getContainingCells(center.lat, center.lng)[9];
+    let level9Cell = getSmallestCellId(center.lat, center.lng, 9);
     if (level9Cell !== this.lastLevel9Cell) localStorage.setItem('level9Cell', this.lastLevel9Cell = level9Cell);
     return newKeys;
   }
@@ -258,11 +271,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
       for (const key in newKeys) oldKeys.hasOwnProperty(key) || added.push(key);
       for (const key in oldKeys) newKeys.hasOwnProperty(key) || dropped.push(key);
       console.log('updating subscriptions', {added, dropped, newKeys, oldKeys});
+      for (const key of dropped) this.clearEventMarkers(key); // Before added, as that that may bring in an alert with the same tag as one being cleared.
       for (const key of added) await subscribe(key, data => Alert.ensure({inEvent: true, ...data}));
-      for (const key of dropped) {
-	await subscribe(key, null);
-	this.clearEventMarkers(key);
-      }
+      for (const key of dropped) await subscribe(key, null);
     });
   }
   static maxPublish = 5;
@@ -671,6 +682,11 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const data = {text: extendedText, url};
     if (file) data.files = [await P2PWebNetwork.dataURL2blob(file, name)];
     share(data);
+  }
+  startExpiration(selector, remaining) { // Setup or update fader and destroy-on-expiration.
+    clearTimeout(this.destroyer);
+    this.destroyer = setTimeout(() => this.destroy(), remaining);
+    this.startFader(selector, remaining);
   }
   startFader(selector, remaining) { // Set up or update fader on the specified marker element, returning that element.
     const { marker } = this;
