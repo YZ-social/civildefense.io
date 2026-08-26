@@ -63,7 +63,9 @@ const ttl = 24 * 60 * 60e3; // 24 hours
 let openOnReceive = null;
 export function go({lat = null, lng = null, zoom = null, alert = null}) { // Go to specified location (if any) and open marker (if any).
   if (lat !== null && lng !== null) {
-    if (zoom) map.flyTo({lat, lng}, zoom);
+    lat = parseFloat(lat);
+    lng = parseFloat(lng);
+    if (zoom) map.flyTo({lat, lng}, parseFloat(zoom));
     else map.flyTo({lat, lng});
   }
   openOnReceive = null;
@@ -113,7 +115,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
     return parseInt(minAggregate.value);
   }
   static markerAggregates(eventName) {
-    return this.subscriptions[eventName]++ === this.aggregateLimit;
+    if (this.subscriptions[eventName] === undefined) return console.warn(`No count for ${eventName}.`);
+    //return
+    this.subscriptions[eventName]++ //=== this.aggregateLimit;
+    return false;
   }
   static getAggregate(eventName) {
     for (const alert of this.items) {
@@ -127,6 +132,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
       if (aggregate) aggregate.lerp(alert.lat, alert.lng);
       alert.destroy();
     }
+  }
+  logAlert(label = '') { // Handy for debugging.
+    const {lat, lng, eventName} = this;
+    console.warn(`${label} lat: ${lat}, lng: ${lng}, ${eventName}: ${this.constructor.subscriptions[eventName]}`);
   }
   update({topic, ts, ...rest}) { // topic, ts vary with level, and so must not be part of ensure/update checks.
     return super.update({...rest});
@@ -160,7 +169,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       super.initialize({payload, hashtag, tag, agent, lat, lng, issuedTime, originalPosting, ...rest});
       this.eventName = eventName;
       if (aggregate) {
-	marker.on('click', event => console.log('FIXME go down one level', this.lat, this.lng, this.eventName));
+	marker.on('click', event => this.logAlert('FIXME go down one level'));
 	tooltip(marker.getElement(), Int`Zoom in on multiple ${hashtag} alerts.`); // fixme Int.
 	this.constructor.clearEventMarkers(eventName, aggregate); // Does not include the alert we just made as it is not in Alert.items yet.
 	this.eventName = eventName; // Hack
@@ -179,7 +188,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     }
     const alert = aggregate || this;
     alert.startFader('.alert-pin', remaining);
-    alert.destroyer = setTimeout(() => this.destroy(), remaining);
+    alert.destroyer = setTimeout(() => this.destroy(true), remaining);
     alert.showNotification({agent, issuedTime});
     return keep;
   }
@@ -191,10 +200,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     this.marker.setLatLng([this.lat, this.lng]);
   }
   destroy() { // Remove this Alert pin entirely.
-    if (!this.isAggregate && this.eventName) --this.constructor.subscriptions[this.eventName];
-    // It might be nice to toggle subscription and start over if that transitioned us to non-aggregate, but things get weird with rollover.
-    // eventName is normally defined, but the guard is here for some debugging situations.
-
+    // Bug: What to do about count? Sometimes we want to decrement and sometimes not. And then there's rollover.
     this.marker.removeFrom(map);
     clearInterval(this['.alert-pin']);
     clearInterval(this['.alert-commented']);
@@ -224,7 +230,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const newKeys = {};
     newCells.forEach(cell => Hashtags.getSubscribe().forEach(hash => {
       const eventName = alertTopic(cell, hash);
-      newKeys[eventName] = /*this.subscriptions[eventName] ||*/ 0;
+      newKeys[eventName] = this.subscriptions[eventName] || 0;
     }));
     // Record a zoomed-out cell id in case next session does not have geolocation services.
     let level9Cell = getContainingCells(center.lat, center.lng)[9];
@@ -232,13 +238,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
     return newKeys;
   }
   static subscriptionQueue = Promise.resolve();
-  static async updateSubscriptions({
-    oldKeys = this.subscriptions,
-    newKeys = this.subscriptionFromMap(),
-    throttleMS = 20
-  } = {}) { // Update current subscriptions.
+  static async updateSubscriptions({newKeys, oldKeys, throttleMS = 20} = {}) { // Update current subscriptions.
     // A value of {} passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
     return this.subscriptionQueue = this.subscriptionQueue.then(async () => {
+      oldKeys ||= this.subscriptions;
+      newKeys ||= this.subscriptionFromMap();
+
       if (!newKeys) return; // e.g., wacky computation. Don't change anything.
       const contact = await networkPromise;
       const dropped = [], added = [];
@@ -387,7 +392,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   needsRedisplay = true;
   ensureContent(popup = this.marker.getPopup()) { // Set content and handlers in popup if/as needed.
     if (!popup.isOpen()) return;
-    console.warn(`latitude: ${this.lat}, longitude: ${this.lng}, ${this.eventName}`); // Handy for debugging.
+    this.logAlert();
     if (!this.needsRedisplay) {
       this.initializeHandlers(popup);
       return;
