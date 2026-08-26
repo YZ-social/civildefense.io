@@ -25,10 +25,13 @@ export function cellHex(cellid) { // Convert cellid BigInt to properly padded he
 export function alertTopic(cellid, tag) { // Return topic name for public info about specified tag in cellid.
   return `civildefense.io:${dataVersion}:${cellHex(cellid)}:${canonicalTag(tag)}`;
 }
-export function topicCell(topicName) { // Return the cell that is baked in to the topic.
+export function topicCellHex(topicName) { // Return the hex string cell that is baked in to the topic.
   // Note that canonicalTag(tag) may contain a colon, but dataVersion must not.
   return topicName.match(/civildefense.io:[^:]+:([a-z0-9]+):/)[1];
 }
+export function topicCell(topicName) { // Return the BigInt cell that is baked in to the topic.
+  return BigInt('0x' + topicCellHex(topicName));
+}
 export function topicRegion(topicName) { // Return the region that is baked in to the topic.
-  return '0x' + topicCell(topicName).slice(0, 2);
+  return '0x' + topicCellHex(topicName).slice(0, 2);
 }

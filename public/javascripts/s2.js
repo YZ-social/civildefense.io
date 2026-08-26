@@ -28,22 +28,30 @@ export function getPointInCell(cellId) { // answer [lat, lng] in degrees from a 
   return [s1.angle.degrees(center.lat), s1.angle.degrees(center.lng)];
 }
 
-function getCellSubdivision(cell) {
+function getCellSubdivision(cell) { // Answer four children off BigInt cell, as BigInt.
   return cellid.children(cell);
 }
-function getCellLevel(cell) {
-  return cellid.level(cell);
-}
-function getFace(cell) {
-  return cellid.face(cell);
-}
-export function getSubdivision(hexString) {
+export function getSubdivision(hexString) { // Same as getCellSubDivision, but accepting and returning hex strings.
   return getCellSubdivision(BigInt('0x' + hexString)).map(childCell => cellHex(childCell));
 }
-
-export function getSmallestCellId(lat, lng, level = MAX_MAP_LEVEL) { // At level.
-  const userLatLng = LatLng.fromDegrees(lat, lng);
-  const userPt = Point.fromLatLng(userLatLng);
+function getCellLevel(cell) { // Answer level of BigInt cell, as number.
+  return cellid.level(cell);
+}
+function getCellFace(cell) { // Answer top level face id of BigInt cell, as integer 0 through 5.
+  return cellid.face(cell);
+}
+export function cellContains(putativeOuter, putativeInner) { // Answer true IFF putativeOuter BigInt cell contains putativeInner
+  return cellid.contains(putativeOuter, putativeInner);
+}
+export function pointFromLatLng(lat, lng) { // Answer an s2 Point from lat/lng in degrees.
+  const latLng = LatLng.fromDegrees(lat, lng);
+  return Point.fromLatLng(latLng);
+}
+export function cellFromCellID(bigint) {
+  return Cell.fromCellID(bigint);
+}
+export function getSmallestCellId(lat, lng, level = MAX_MAP_LEVEL) { // Answer smallest BigInt cellid containing latitude/longitude in degrees, at integer level.
+  const userPt = pointFromLatLng(lat, lng);
   const userLocCellId = Cell.fromPoint(userPt).id; // This is at MAX_S2_LEVEL
   return cellid.parent(userLocCellId, level);
 }
@@ -54,11 +62,9 @@ export function getContainingCells(lat, lng) {
   let id = getSmallestCellId(lat, lng);
   const level = MAX_MAP_LEVEL, cells = Array(MAX_MAP_LEVEL + 1 - MIN_LEVEL);
   for (let index = level - MIN_LEVEL; index >= 0; index--) {
-    console.log({index, id, hex: cellHex(id)});
     cells[index] = id;
     id = cellid.immediateParent(id);
   }
-  console.log(cells.length, cells);
   return cells;
 }
 
