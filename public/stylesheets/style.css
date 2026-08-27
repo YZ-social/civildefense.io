@@ -260,6 +260,7 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
 .alert-marker {
     text-shadow: 8px -3px 10px rgb(0 0 0 / 60%);
     animation: pulse ease 0.8s 1;
+    transition: transform 0.8s;
 }
 .alert-commented {
     display: none;

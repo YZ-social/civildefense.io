@@ -124,6 +124,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
     }
     return null;
   }
+  static getAggregate1(eventName) {
+    return this.items.find(alert => alert.isAggregate && alert.eventName === eventName);
+  }
   static clearEventMarkers(eventName, aggregate = null) {
     const items = this.items;
     for (const alert of items) {
@@ -141,19 +144,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
   update({topic, ts, ...rest}) { // topic, ts vary with level, and so must not be part of ensure/update checks.
     return super.update({...rest});
-  }
-  becomeAggregate(eventName) { // Make an individual alert be an aggregate
-    console.error('created aggregate', eventName, this.constructor.subscriptions[eventName]);
-    this.isAggregate = true;
-    const {tag, marker, hashtag} = this;
-    if (tag !== eventName) {
-      this.constructor.removeItem(tag);
-      this.constructor.setItem(eventName, this);
-    }
-    this.tag = this.eventName = eventName;
-    // fixme remove popup
-    marker.on('click', event => this.logAlert('FIXME go down one level'));
-    tooltip(marker.getElement(), Int`Zoom in on multiple ${hashtag} alerts.`); // fixme Int.
   }
   initialize({topic, payload, hashtag, tag, agent, issuedTime, ...rest}) { // Make appropriate instance for a new individual tag, or update aggregate.
     // Subscribed events come in for individual tags, and are managed by Conversation#ensure() to destroy if no payload, etc. and calls here if new by that tag.
@@ -190,7 +180,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       this.eventName = eventName;
       if (aggregate) {
 	this.constructor.clearEventMarkers(eventName, aggregate); // Does not include the alert we just made as it is not in Alert.items yet.
-	this.becomeAggregate(eventName);
+	this.becomeAggregate(eventName, 'initialize');
       } else {
 	marker.bindPopup('', {className: 'alert'}).on('popupopen', event => this.ensureContent(event.popup));
 	tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
@@ -208,15 +198,15 @@ export class Alert extends Conversation { // A wrapper around L.marker
     alert.showNotification({agent, issuedTime});
     return keep;
   }
-  becomeAggregate(eventName) { // Make an individual alert be an aggregate
-    //console.error('created aggregate', eventName, this.constructor.subscriptions[eventName]);
+  becomeAggregate(eventName, label) { // Make an individual alert be an aggregate
+    console.error('created aggregate', label, eventName, this.constructor.subscriptions[eventName]);
     const {tag, marker, hashtag} = this;	
     this.isAggregate = true;
     // fixme unbind popup
     marker.on('click', event => this.logAlert('FIXME go down one level'));
     tooltip(marker.getElement(), Int`Zoom in on multiple ${hashtag} alerts.`); // fixme Int.
-    this.eventName = eventName;
-    this.constructor.removeItem(tag); this.tag = eventName;
+    this.tag = this.eventName = eventName;
+    this.constructor.removeItem(tag);
     this.constructor.setItem(eventName, this);
   }
   lerp(eventName, additionaLatitude, additionalLongitude) {
@@ -283,11 +273,11 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const dropped = [], added = [];
       if (!contact) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
       this.subscriptions = newKeys; // Before subscribing.
-      const subscribe = async (key, handler) => {
-	if (!key) console.log('sub to no key', {oldKeys, newKeys, dropped, added, handler});
-	const region = topicRegion(key);
+      const subscribe = async (eventName, handler) => {
+	if (!eventName) console.log('sub to no eventName', {oldKeys, newKeys, dropped, added, handler});
+	const region = topicRegion(eventName);
 	if (handler) Agent.current?.trackPublicChanges(region); // Background. No need to await.
-	await contact.subscribe({eventName: key, region, handler}).then(() => throttleMS && P2PWebNetwork.delay(throttleMS));
+	await contact.subscribe({eventName, region, handler}).then(() => throttleMS && P2PWebNetwork.delay(throttleMS));
       };
       for (const key in newKeys) oldKeys.hasOwnProperty(key) || added.push(key);
       for (const key in oldKeys) newKeys.hasOwnProperty(key) || dropped.push(key);
@@ -314,10 +304,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	// If none are aggregates but the new combined total is over, then make one such alert the aggregate and kill everything else.
 	newCounts[addedContainingEventName] += oldCounts[key];
 	if (this.markerAggregates(addedContainingEventName)) { // We're now over (maybe already was).
-	  let aggregate = alerts.find(alert => alert.isAggregate && alert.eventName === addedContainingEventName); // Reuse existing aggregate, if any. //fixme getAggregate
+	  let aggregate = this.getAggregate1(addedContainingEventName); // Reuse existing aggregate, if any.
 	  if (!aggregate) { // Reuse one from dropped cell. If we're over, and no existing alert, there has to be one here.
 	    aggregate = alerts.find(alert => alert.eventName === key);
-	    aggregate.becomeAggregate(addedContainingEventName);
+	    aggregate.becomeAggregate(addedContainingEventName, 'transfer');
 	  }
 	  for (const alert of alerts) { // Kill remaining from dropped cells.
 	    if (alert.eventName !== key) continue;
@@ -360,6 +350,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
       // Otherwise, clear the (individual and aggregate) markers of the dropped cell.
       this.clearEventMarkers(key); // Before subscribing to added, as that that may bring in an alert with the same tag as one being cleared.
     }
+  }
+  static forEachAlertOf(eventName, callback, alerts = this.items) { // Apply callback to each of alerts matching eventName. // FIXME: use this
+    alerts.forEach((alert, index, alerts) => (alert.eventName === eventName) && callback(alert, index, alerts));
   }
   static maxPublish = 5;
   static publishing = false;
