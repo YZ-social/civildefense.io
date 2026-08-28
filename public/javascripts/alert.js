@@ -171,17 +171,22 @@ export class Alert extends Conversation { // A wrapper around L.marker
   update({topic, ts, ...rest}) { // Called when handling an existing Conversation. super confirms that nothing immutable has changed.
     return super.update({...rest}); // topic and ts vary with level, and so must not be part of ensure/update checks.
   }
-  destroy() { // Remove this Alert pin entirely, either through unpublish, expiration, or conversion of a cell to aggregate.
+  async destroy(markerDelayMS = 0) { // Remove this Alert pin entirely, either through unpublish, expiration, or conversion of a cell to aggregate.
     // We do not decrement Alert.subscriptions[this.eventName] and unaggregate into individual markers.
     // That won't happen until the user completely unsubscribes from this cell and resubscribes (by toggle or map movement).
-    this.marker.removeFrom(map);
     clearInterval(this['.alert-pin']);
     clearInterval(this['.alert-commented']);
     clearInterval(this.destroyer);
     this.clearAvatars();
+    const {isAggregate, marker, tag, region} = this;
     // Unsubscribe from replies.
-    if (!this.isAggregate) networkPromise?.then(async contact => contact.subscribe({eventName: this.tag, region: this.region, handler: null}));
+    if (!isAggregate) networkPromise?.then(async contact => contact.subscribe({eventName: tag, region, handler: null}));
     super.destroy();
+    if (markerDelayMS) {
+      marker.setOpacity(0);
+      await P2PWebNetwork.delay(markerDelayMS);
+    }
+    marker.removeFrom(map);
   }
 
   static subscriptionQueue = Promise.resolve(); // Serialize updates so they don't overlap each other.
@@ -212,15 +217,15 @@ export class Alert extends Conversation { // A wrapper around L.marker
       for (const key of added) await subscribe(key, data => Alert.ensure(data));
       for (const key of dropped) await subscribe(key, null);
 
-      for (const alert of this.items) { // fixme remove
-	if (this.subscriptions[alert.eventName] == undefined) {
-	  let kind = added.includes(alert.eventName) && 'added';
-	  kind ||= dropped.includes(alert.eventName) && 'dropped';
-	  kind ||= Object.keys(newKeys).includes(alert.eventName) && 'new';
-	  kind ||= Object.keys(oldKeys).includes(alert.eventName) && 'old';
-	  throw new Error(`${kind} ${alert.eventName} has no count after subscription update.`);
-	}
-      }
+      // for (const alert of this.items) { // fixme remove
+      // 	if (this.subscriptions[alert.eventName] == undefined) {
+      // 	  let kind = added.includes(alert.eventName) && 'added';
+      // 	  kind ||= dropped.includes(alert.eventName) && 'dropped';
+      // 	  kind ||= Object.keys(newKeys).includes(alert.eventName) && 'new';
+      // 	  kind ||= Object.keys(oldKeys).includes(alert.eventName) && 'old';
+      // 	  throw new Error(`${kind} ${alert.eventName} has no count after subscription update.`);
+      // 	}
+      // }
     });
   }
 
@@ -247,33 +252,39 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
   static clearEventMarkers(eventName, aggregate = null, alerts = this.items) { // destroy each, but
     // if aggregate is specified, keep the aggregate and average all position into the aggregate.
-    let lat = 0, lng = 0, count = 0;
-    if (aggregate && (aggregate.eventName != eventName)) { // Loading from another eventName. Keep existing weight.
+    if (!aggregate) return this.forEachAlertOf(eventName, alert => alert.destroy(), alerts);
+    const eachExceptAggregate = cb => this.forEachAlertOf(eventName, alert => (alert === aggregate) || cb(alert), alerts);
+    let lat = aggregate.lat, lng = aggregate.lng, count = 1;
+    if (aggregate.eventName != eventName) { // Loading from another eventName. Keep existing weight.
       count = this.subscriptions[aggregate.eventName];
-      lat = aggregate.lat * count;
-      lng = aggregate.lng * count;
+      lat *= count;
+      lng *= count;
     }
-    this.forEachAlertOf(eventName, alert => {
-      if (aggregate) {
-	lat += alert.lat;
-	lng += alert.lng;
-	count++;
-      }
-      if (alert !== aggregate) alert.destroy();
+    eachExceptAggregate(alert => { lat += alert.lat; lng += alert.lng; count++; });
+    lat /=  count;
+    lng /= count;
+    return this.forEachAlertOf(eventName, alert => {
+      alert.reposition(lat, lng);
+      if (alert !== aggregate) alert.destroy(400); // Half the translation transition time.
     }, alerts);
-    if (aggregate) aggregate.reposition(lat / count, lng / count);
   }
   becomeAggregate(eventName) { // Make an individual alert be an aggregate
     const {tag, marker, hashtag, region} = this;
+    const element = marker.getElement();
+    const pin = element.querySelector('.alert-pin');
     this.isAggregate = true;
-    marker.getElement().querySelector('.alert-pin').classList.toggle('aggregate', true);
+    pin.classList.toggle('aggregate', true); pin.classList.toggle('starting', true);
+    setTimeout(() => pin.classList.toggle('starting', false), 100);
     marker.unbindPopup();
     marker.off('click');
     marker.on('click', event => this.logAlert('FIXME go down one level'));
-    tooltip(marker.getElement(), Int`Zoom in on multiple ${hashtag} alerts.`); // fixme Int.
+    tooltip(element, Int`Zoom in on multiple ${hashtag} alerts.`); // fixme Int.
     this.tag = this.eventName = eventName;
     if (tag !== eventName) {
       networkPromise.then(async contact => contact.subscribe({eventName: tag, region, handler: null})); // Unsubscribe from replies.
+      this.items = [];
+      clearInterval(this['.alert-commented']);
+      element.querySelector('.alert-commented').style = "opacity: 0;";
       this.constructor.removeItem(tag);
     }
     this.constructor.setItem(eventName, this);
