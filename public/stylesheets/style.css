@@ -260,7 +260,7 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
 .alert-marker {
     text-shadow: 8px -3px 10px rgb(0 0 0 / 60%);
     animation: pulse ease 0.8s 1;
-    transition: transform 0.8s;
+    transition: transform 0.8s, opacity 0.4s;
 }
 .alert-commented {
     display: none;
@@ -283,6 +283,7 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     line-height: 60px;
     top: -10px;
     left: -10px;
+    transition: font-size 0.8s;
 }
 .aggregate.alert-pin:after {
     content: "";
@@ -292,7 +293,14 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     top: -5px;
     left: -5px;
     background-image: radial-gradient(transparent 30%, var(--md-sys-color-primary), transparent 70%);
+    transition: opacity 0.8s;
     animation: pulse ease 0.8s 1;
+}
+.aggregate.alert-pin.starting {
+    font-size: 0px;
+}
+.aggregate.alert-pin.starting:after {
+    opacity: 0;
 }
 @keyframes pulse {
     0% { filter: saturate(1); }
