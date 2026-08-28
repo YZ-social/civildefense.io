@@ -104,50 +104,19 @@ class AlertReply extends Reply {
 
 import { s2 } from 's2js';
 export class Alert extends Conversation { // A wrapper around L.marker
-  // When we resubscribe to different cells covering the same place, we will get the same
-  // sticky data. We don't want to change the marker. Fortunately, the publication to each
-  // of the cells (at different scales) are all published with the same data.
+  // For each hashtag, we subscribe to a set of non-overlapping cells at varying S2 levels that cover the current map.
+  // An Alert is made when a subscription handler fires, and it keeps information that is (mostly) true regardless of
+  // which cell brought it in. E.g., each alert has a bookkeeping tag that identifies that map-click, which is
+  // the same at all S2 levels, and forms the topic for replies to that alert. When the map changes and the subscriptions
+  // are updated, we try to re-use the same Alerts so that the markers don't flash and we don't create garbage.
 
-  // In general here, a key is an eventName - i.e., a string <mumble>:<cellID>:<hashtag>.
-  // newKeys/oldKeys are a map of the currently subscribed eventName and the count of events for that cell+hashtag
-  static subscriptions = {}; // maps currently active eventNames (<mumble>:<cellID>:<hashtag>) to count of event received for it.
-  static get aggregateLimit() {
-    return parseInt(minAggregate.value);
-  }
-  static cellCountOverLimit(eventName, countsDictionary = this.subscriptions) {
-    return countsDictionary[eventName] >= this.aggregateLimit;
-  }
-  static getAggregate(eventName) {
-    return this.getItem(eventName);
-  }
-  static forEachAlertOf(eventName, callback, alerts = this.items) { // Apply callback to each of alerts matching eventName. // FIXME: use this
-    alerts.forEach((alert, index, alerts) => (alert.eventName === eventName) && callback(alert, index, alerts));
-  }
-  static clearEventMarkers(eventName, aggregate = null, alerts = this.items) { // FIXME: should we always start with aggregate position, and count it as one? Maybe we need to lerp?
-    let lat = aggregate?.lat, lng = aggregate?.lng, count = 1;
-    this.forEachAlertOf(eventName, alert => {
-      if (!aggregate) return;
-      lat += alert.lat;
-      lng += alert.lng;
-      count++;
-      alert.destroy();
-    }, alerts);
-    if (aggregate) {
-      aggregate.lat = lat / count;
-      aggregate.lng = lng / count;
-    } else {
-      this.getAggregate(eventName)?.destroy();
-    }
-  }
-  logAlert(label = '') { // Handy for debugging.
-    const {lat, lng, eventName} = this;
-    console.warn(`${label} lat: ${lat}, lng: ${lng}, ${eventName}: ${this.constructor.subscriptions[eventName]}`);
-  }
-  update({topic, ts, ...rest}) { // topic, ts vary with level, and so must not be part of ensure/update checks.
-    return super.update({...rest});
-  }
+  // INSTANCE MANAGEMENT
+  // When there are "too many" instances in a cell (at any level), we replace the individual Alerts with a single larger aggregate.
+  // This allows us to handle any any quantity of Alerts in memory and visual clutter, and to not mislead users in the presence
+  // of publication topic "rollover". However, it greatly complicates insance management.
+
+  // Conversation.ensure is the subscription handler, and it keeps track of the instances by tag, initializing a new one if needed.
   initialize({topic, payload, hashtag, tag, agent, issuedTime, ...rest}) { // Make appropriate instance for a new individual tag, or update aggregate.
-    // Subscribed events come in for individual tags, and are managed by Conversation#ensure() to destroy if no payload, etc. and calls here if new by that tag.
 
     if (!Hashtags.isSubscribed(hashtag)) return null; // A subscribed event may have been in flight while unsubscribing. Caller destroys instance.
     const now = Date.now(),
@@ -200,38 +169,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
     alert.showNotification({agent, issuedTime});
     return keep;
   }
-  becomeAggregate(eventName, label) { // Make an individual alert be an aggregate
-    //console.error('created aggregate', label, eventName, this.constructor.subscriptions[eventName]);
-    const {tag, marker, hashtag, region} = this;	
-    this.isAggregate = true;
-    marker.getElement().querySelector('.alert-pin').classList.toggle('aggregate', true);
-    marker.unbindPopup();
-    marker.on('click', event => this.logAlert('FIXME go down one level'));
-    tooltip(marker.getElement(), Int`Zoom in on multiple ${hashtag} alerts.`); // fixme Int.
-    this.tag = this.eventName = eventName;
-    // fixme: conditionalize these two if (tag !== eventName)
-    networkPromise.then(async contact => { // Unsubscribe from replies.
-      contact.subscribe({eventName: tag, region, handler: null});
-    });
-    this.constructor.removeItem(tag);
-    this.constructor.setItem(eventName, this);
+  update({topic, ts, ...rest}) { // Called when handling an existing Conversation. super confirms that nothing immutable has changed.
+    return super.update({...rest}); // topic and ts vary with level, and so must not be part of ensure/update checks.
   }
-  lerp(eventName, additionaLatitude, additionalLongitude) {
-    const count = this.constructor.subscriptions[eventName];
-    const k = 1 / count;
-    const k1 = 1 - k;
-    const {lat, lng} = this;
-    this.reposition(k1 * lat + k * additionaLatitude,
-		    k1 * lng + k * additionalLongitude);
-  }
-  reposition(lat, lng) {
-    this.lat = lat;
-    this.lng = lng;
-    this.marker.setLatLng([lat, lng]);
-    this.startExpiration('.alert-pin', Date.now() + ttl);
-  }
-  destroy() { // Remove this Alert pin entirely.
-    // Bug: What to do about count? Sometimes we want to decrement and sometimes not. And then there's rollover.
+  destroy() { // Remove this Alert pin entirely, either through unpublish, expiration, or conversion of a cell to aggregate.
+    // We do not decrement Alert.subscriptions[this.eventName] and unaggregate into individual markers.
+    // That won't happen until the user completely unsubscribes from this cell and resubscribes (by toggle or map movement).
     this.marker.removeFrom(map);
     clearInterval(this['.alert-pin']);
     clearInterval(this['.alert-commented']);
@@ -242,33 +185,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     super.destroy();
   }
 
-  // We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
-  static lastLevel9Cell = null; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
-  static subscriptionFromMap() { // Generate {eventName => count} for current map bounds.
-    const center = map.getCenter();
-    const bounds = map.getBounds();
-    const northEast = bounds.getNorthEast();
-    const southWest = bounds.getSouthWest();
-    const zoom = map.getZoom();
-    const newCells = findCoverCellsByMinMaxLatLng({
-      full: zoom <= map.options.minZoom,
-      minLat: southWest.lat,
-      maxLat: northEast.lat,
-      minLng: southWest.lng,
-      maxLng: northEast.lng
-    });
-    if (!newCells) return null;
-    const newKeys = {};
-    newCells.forEach(cell => Hashtags.getSubscribe().forEach(hash => { // Populate count with existing count (exctly carried over cell sizes), else 0.
-      const eventName = alertTopic(cell, hash);
-      newKeys[eventName] = this.subscriptions[eventName] || 0;
-    }));
-    // Record a zoomed-out cell id in case next session does not have geolocation services.
-    let level9Cell = getSmallestCellId(center.lat, center.lng, 9);
-    if (level9Cell !== this.lastLevel9Cell) localStorage.setItem('level9Cell', this.lastLevel9Cell = level9Cell);
-    return newKeys;
-  }
-  static subscriptionQueue = Promise.resolve();
+  static subscriptionQueue = Promise.resolve(); // Serialize updates so they don't overlap each other.
   static async updateSubscriptions({newKeys, oldKeys, throttleMS = 20} = {}) { // Update current subscriptions.
     // A value of {} passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
     return this.subscriptionQueue = this.subscriptionQueue.then(async () => {
@@ -295,6 +212,73 @@ export class Alert extends Conversation { // A wrapper around L.marker
       for (const key of dropped) await subscribe(key, null);
     });
   }
+
+  // Instance Management Internals
+  // In general here, a key is an eventName - i.e., a string <mumble>:<cellID>:<hashtag>.
+  // newKeys/oldKeys are a map of the currently subscribed eventName and the count of events for that cell+hashtag
+  static subscriptions = {}; // maps currently active eventNames (<mumble>:<cellID>:<hashtag>) to count of event received for it.
+  static get aggregateLimit() { // How many individuals are allowed before we aggregate.
+    return parseInt(minAggregate.value);
+  }
+  static cellCountOverLimit(eventName, countsDictionary = this.subscriptions) { // Have we received enough that we must show an aggregate?
+    return countsDictionary[eventName] >= this.aggregateLimit;
+  }
+  static getAggregate(eventName) { // Answer the existing aggregate for this cell, if any.
+    return this.getItem(eventName); // While individual Alerts are stored in items/conversations by tag, the tag for aggregate is the eventName.
+  }
+  logAlert(label = '') { // For debugging, when an individual or aggregate marker is clicked, show the alert, cell, and count in console.
+    const {lat, lng, eventName} = this;
+    console.warn(`${label} lat: ${lat}, lng: ${lng}, ${eventName}: ${this.constructor.subscriptions[eventName]}`);
+  }
+  static forEachAlertOf(eventName, callback, alerts = this.items) { // Apply callback to each of alerts matching eventName.
+    // TODO? Record a cell's Alert's more efficiently, so that we don't have to cycle through everything.
+    alerts.forEach((alert, index, alerts) => (alert.eventName === eventName) && callback(alert, index, alerts));
+  }
+  static clearEventMarkers(eventName, aggregate = null, alerts = this.items) { // destroy each, but
+    // if aggregate is specified, keep the aggregate and average the destroyed individual's positions for the aggregate.
+    // FIXME: should we always start with aggregate position, and count it as one? Maybe we need to lerp?
+    let lat = aggregate?.lat, lng = aggregate?.lng, count = 1;
+    this.forEachAlertOf(eventName, alert => {
+      if (!aggregate) return;
+      lat += alert.lat;
+      lng += alert.lng;
+      count++;
+      alert.destroy();
+    }, alerts);
+    if (aggregate) {
+      aggregate.reposition(lat / count, lng / count);
+    } else {
+      this.getAggregate(eventName)?.destroy();
+    }
+  }
+  // FIXME: positioning of aggregate
+  static ensureAggregate(addedEventName, droppedEventName, alerts) { // Clear alerts from droppedEventName, creating an aggregate from one of them if the added does not already have one.
+    let aggregate = this.getAggregate(addedEventName);
+    if (!aggregate) { // If no existing aggregate:
+      aggregate = alerts.find(alert => alert.eventName === droppedEventName); // Pick a dropped individual to become aggregate. There will be one, by construction.
+      if (!aggregate) Object.assign(globalThis, {addedEventName, droppedEventName});
+      this.forEachAlertOf(addedEventName, alert => (alert === aggregate) || alert.destroy()); // Kill any others already added.
+      aggregate.becomeAggregate(addedEventName, 'transfer');
+      console.log('created aggregate', aggregate.eventName, aggregate.isAggregate, this.getAggregate(addedEventName));
+      //this.clearEventMarkers(addedEventName, null, alerts); // Kill those already added.
+    }
+    this.clearEventMarkers(droppedEventName, aggregate, alerts); // Kill those being dropped, adding their positions to the aggregate.
+  }
+  becomeAggregate(eventName, label) { // Make an individual alert be an aggregate
+    const {tag, marker, hashtag, region} = this;
+    this.isAggregate = true;
+    marker.getElement().querySelector('.alert-pin').classList.toggle('aggregate', true);
+    marker.unbindPopup();
+    marker.on('click', event => this.logAlert('FIXME go down one level'));
+    tooltip(marker.getElement(), Int`Zoom in on multiple ${hashtag} alerts.`); // fixme Int.
+    this.tag = this.eventName = eventName;
+    // fixme: conditionalize these two if (tag !== eventName)
+    networkPromise.then(async contact => { // Unsubscribe from replies.
+      contact.subscribe({eventName: tag, region, handler: null});
+    });
+    this.constructor.removeItem(tag);
+    this.constructor.setItem(eventName, this);
+  }
   static transferOrClearEventMarkers(added, dropped, newCounts, oldCounts) { // Clear dropped alerts as necessary,
     // but try to preserve (individual and aggregated) alerts so that the markers don't flash.
     const addedCells = added.map(topicCell); // List of BigInt, in same order as added eventNames.
@@ -312,7 +296,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	newCounts[addedContainingEventName] += oldCounts[eventName]; // It all goes to the container, which may have already started filling.
 	if (this.cellCountOverLimit(addedContainingEventName, newCounts)) { // We're now over (maybe already was).
 	  console.log(eventName, oldCounts[eventName], '=>', addedContainingEventName, newCounts[addedContainingEventName], this.getAggregate(addedContainingEventName));
-	  globalThis.oldCounts = oldCounts; //fixme remove
 	  this.ensureAggregate(addedContainingEventName, eventName, alerts);
 	  return;
 	}
@@ -354,22 +337,59 @@ export class Alert extends Conversation { // A wrapper around L.marker
       this.clearEventMarkers(eventName); // Before subscribing to added, as that that may bring in an alert with the same tag as one being cleared.
     });
   }
-  // FIXME: positioning of aggregate
-  static ensureAggregate(addedEventName, droppedEventName, alerts) { // Clear alerts from droppedEventName, creating an aggregate from one of them if the added does not already have one.
-    let aggregate = this.getAggregate(addedEventName);
-    if (!aggregate) { // If no existing aggregate:
-      aggregate = alerts.find(alert => alert.eventName === droppedEventName); // Pick a dropped individual to become aggregate. There will be one, by construction.
-      if (!aggregate) Object.assign(globalThis, {addedEventName, droppedEventName});
-      this.forEachAlertOf(addedEventName, alert => (alert === aggregate) || alert.destroy()); // Kill any others already added.
-      aggregate.becomeAggregate(addedEventName, 'transfer');
-      console.log('created aggregate', aggregate.eventName, aggregate.isAggregate, this.getAggregate(addedEventName));
-      //this.clearEventMarkers(addedEventName, null, alerts); // Kill those already added.
-    }
-    this.clearEventMarkers(droppedEventName, aggregate, alerts); // Kill those being dropped, adding their positions to the aggregate.
+  lerp(eventName, additionaLatitude, additionalLongitude) { // Move this Alert towards this location, inversely weight by count in cell.
+    const count = this.constructor.subscriptions[eventName];
+    const k = 1 / count;
+    const k1 = 1 - k;
+    const {lat, lng} = this;
+    this.reposition(k1 * lat + k * additionaLatitude,
+		    k1 * lng + k * additionalLongitude);
   }
+  reposition(lat, lng) { // Update the marker's position for new data.
+    this.lat = lat;
+    this.lng = lng;
+    this.marker.setLatLng([lat, lng]);
+    this.startExpiration('.alert-pin', Date.now() + ttl);
+  }
+
+  // We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
+  static lastLevel9Cell = null; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
+  static subscriptionFromMap() { // Generate new subscriptions list ({eventName => count}) for current map bounds.
+    const center = map.getCenter();
+    const bounds = map.getBounds();
+    const northEast = bounds.getNorthEast();
+    const southWest = bounds.getSouthWest();
+    const zoom = map.getZoom();
+    const newCells = findCoverCellsByMinMaxLatLng({
+      full: zoom <= map.options.minZoom,
+      minLat: southWest.lat,
+      maxLat: northEast.lat,
+      minLng: southWest.lng,
+      maxLng: northEast.lng
+    });
+    if (!newCells) return null;
+    const newKeys = {};
+    newCells.forEach(cell => Hashtags.getSubscribe().forEach(hash => { // Populate count with existing count (exctly carried over cell sizes), else 0.
+      const eventName = alertTopic(cell, hash);
+      newKeys[eventName] = this.subscriptions[eventName] || 0;
+    }));
+    // Record a zoomed-out cell id in case next session does not have geolocation services.
+    let level9Cell = getSmallestCellId(center.lat, center.lng, 9);
+    if (level9Cell !== this.lastLevel9Cell) localStorage.setItem('level9Cell', this.lastLevel9Cell = level9Cell);
+    return newKeys;
+  }
+
+  // PUBLISHING NEW ALERTS
+  // Each map click publishes to that point at each supported S2 level that contains it, so that any map display of
+  // non-overlapping cells will catch it. (Network subscriptions are much more expensive than publishing, and the app
+  // users watch more than they publish, so we minimize the number of subscriptions that a user has at any moment.)
+
+  // The app (not the network) restricts the user to publish up to maxPublish alerts over the last maxPublish minutes.
+  // I.e., one / minute, but allowing bursts up to maxPublish. After that, one can still publish, but kill the oldest.
+  // We keep enough data in memory that we can reproduce what to kill,m even if Alert has since scrolled off the map and been destroyed.
   static maxPublish = 5;
   static publishing = false;
-  static lastPublished = []; // Last published lat, lng, tag
+  static lastPublished = []; // Last published lat, lng, hashtag
   // Publish an alert to all applicable eventNames, canceling as required. Promises tag (msgId).
   static async publish({lat, lng,
 			originalPosting = undefined,
