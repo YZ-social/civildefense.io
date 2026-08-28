@@ -171,7 +171,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   update({topic, ts, ...rest}) { // Called when handling an existing Conversation. super confirms that nothing immutable has changed.
     return super.update({...rest}); // topic and ts vary with level, and so must not be part of ensure/update checks.
   }
-  async destroy(markerDelayMS = 0) { // Remove this Alert pin entirely, either through unpublish, expiration, or conversion of a cell to aggregate.
+  async destroy(markerDelayMS = 400) { // Remove this Alert pin entirely, either through unpublish, expiration, or conversion of a cell to aggregate.
     // We do not decrement Alert.subscriptions[this.eventName] and unaggregate into individual markers.
     // That won't happen until the user completely unsubscribes from this cell and resubscribes (by toggle or map movement).
     clearInterval(this['.alert-pin']);
@@ -183,6 +183,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
     if (!isAggregate) networkPromise?.then(async contact => contact.subscribe({eventName: tag, region, handler: null}));
     super.destroy();
     if (markerDelayMS) {
+      marker.closePopup();
+      marker.unbindPopup(); // It would be confusing if it happens to be open, or clicked on while being removed.
       marker.setOpacity(0);
       await P2PWebNetwork.delay(markerDelayMS);
     }
@@ -265,7 +267,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     lng /= count;
     return this.forEachAlertOf(eventName, alert => {
       alert.reposition(lat, lng);
-      if (alert !== aggregate) alert.destroy(400); // Half the translation transition time.
+      if (alert !== aggregate) alert.destroy(400); // May or may not be default. Half the translation transition time.
     }, alerts);
   }
   becomeAggregate(eventName) { // Make an individual alert be an aggregate
