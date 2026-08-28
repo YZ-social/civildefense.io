@@ -140,8 +140,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       let {lat, lng, originalPosting} = payload;
       lat = parseFloat(lat);
       lng = parseFloat(lng);
-      // If this event pushes us over; treat this marker as an aggregate.
-      if (this.constructor.cellCountOverLimit(eventName)) aggregate = this;
+      if (this.constructor.cellCountOverLimit(eventName)) aggregate = this; // If now over, treat this marker as an aggregate.
       const icon = this.constructor.makeIcon(hashtag, tag, aggregate);
       const marker = this.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
       const region = P2PWebNetwork.regionCode(lat, lng);
@@ -150,8 +149,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
       this.eventName = eventName;
       if (aggregate) {
 	// Destroy existing eventName markers and add their positions to the aggregate we are creating.
-	this.constructor.clearEventMarkers(eventName, aggregate); // Does not include the alert we just made as it is not in Alert.items yet.
-	this.becomeAggregate(eventName, 'initialize');
+	this.becomeAggregate(eventName);
+	this.constructor.clearEventMarkers(eventName, aggregate);
       } else {
 	marker.bindPopup('', {className: 'alert'}).on('popupopen', event => this.ensureContent(event.popup));
 	tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
@@ -207,9 +206,21 @@ export class Alert extends Conversation { // A wrapper around L.marker
       for (const key in oldKeys) newKeys.hasOwnProperty(key) || dropped.push(key);
       console.log('updating subscriptions', {added, dropped, newKeys, oldKeys});
 
-      if (this.aggregateLimit) this.transferOrClearEventMarkers(added, dropped, newKeys, oldKeys);
+      // Before subscribing, as that that may bring in an alert with the same tag as one being cleared.
+      if (this.aggregateLimit) this.transferOrClearEventMarkers(added, dropped, newKeys, oldKeys); 
+
       for (const key of added) await subscribe(key, data => Alert.ensure(data));
       for (const key of dropped) await subscribe(key, null);
+
+      for (const alert of this.items) { // fixme remove
+	if (this.subscriptions[alert.eventName] == undefined) {
+	  let kind = added.includes(alert.eventName) && 'added';
+	  kind ||= dropped.includes(alert.eventName) && 'dropped';
+	  kind ||= Object.keys(newKeys).includes(alert.eventName) && 'new';
+	  kind ||= Object.keys(oldKeys).includes(alert.eventName) && 'old';
+	  throw new Error(`${kind} ${alert.eventName} has no count after subscription update.`);
+	}
+      }
     });
   }
 
@@ -235,57 +246,56 @@ export class Alert extends Conversation { // A wrapper around L.marker
     alerts.forEach((alert, index, alerts) => (alert.eventName === eventName) && callback(alert, index, alerts));
   }
   static clearEventMarkers(eventName, aggregate = null, alerts = this.items) { // destroy each, but
-    // if aggregate is specified, keep the aggregate and average the destroyed individual's positions for the aggregate.
-    // FIXME: should we always start with aggregate position, and count it as one? Maybe we need to lerp?
-    let lat = aggregate?.lat, lng = aggregate?.lng, count = 1;
+    // if aggregate is specified, keep the aggregate and average all position into the aggregate.
+    let lat = 0, lng = 0, count = 0;
+    if (aggregate && (aggregate.eventName != eventName)) { // Loading from another eventName. Keep existing weight.
+      count = this.subscriptions[aggregate.eventName];
+      lat = aggregate.lat * count;
+      lng = aggregate.lng * count;
+    }
     this.forEachAlertOf(eventName, alert => {
-      if (!aggregate) return;
-      lat += alert.lat;
-      lng += alert.lng;
-      count++;
-      alert.destroy();
+      if (aggregate) {
+	lat += alert.lat;
+	lng += alert.lng;
+	count++;
+      }
+      if (alert !== aggregate) alert.destroy();
     }, alerts);
-    if (aggregate) {
-      aggregate.reposition(lat / count, lng / count);
-    } else {
-      this.getAggregate(eventName)?.destroy();
-    }
+    if (aggregate) aggregate.reposition(lat / count, lng / count);
   }
-  // FIXME: positioning of aggregate
-  static ensureAggregate(addedEventName, droppedEventName, alerts) { // Clear alerts from droppedEventName, creating an aggregate from one of them if the added does not already have one.
-    let aggregate = this.getAggregate(addedEventName);
-    if (!aggregate) { // If no existing aggregate:
-      aggregate = alerts.find(alert => alert.eventName === droppedEventName); // Pick a dropped individual to become aggregate. There will be one, by construction.
-      if (!aggregate) Object.assign(globalThis, {addedEventName, droppedEventName});
-      this.forEachAlertOf(addedEventName, alert => (alert === aggregate) || alert.destroy()); // Kill any others already added.
-      aggregate.becomeAggregate(addedEventName, 'transfer');
-      console.log('created aggregate', aggregate.eventName, aggregate.isAggregate, this.getAggregate(addedEventName));
-      //this.clearEventMarkers(addedEventName, null, alerts); // Kill those already added.
-    }
-    this.clearEventMarkers(droppedEventName, aggregate, alerts); // Kill those being dropped, adding their positions to the aggregate.
-  }
-  becomeAggregate(eventName, label) { // Make an individual alert be an aggregate
+  becomeAggregate(eventName) { // Make an individual alert be an aggregate
     const {tag, marker, hashtag, region} = this;
     this.isAggregate = true;
     marker.getElement().querySelector('.alert-pin').classList.toggle('aggregate', true);
     marker.unbindPopup();
+    marker.off('click');
     marker.on('click', event => this.logAlert('FIXME go down one level'));
     tooltip(marker.getElement(), Int`Zoom in on multiple ${hashtag} alerts.`); // fixme Int.
     this.tag = this.eventName = eventName;
-    // fixme: conditionalize these two if (tag !== eventName)
-    networkPromise.then(async contact => { // Unsubscribe from replies.
-      contact.subscribe({eventName: tag, region, handler: null});
-    });
-    this.constructor.removeItem(tag);
+    if (tag !== eventName) {
+      networkPromise.then(async contact => contact.subscribe({eventName: tag, region, handler: null})); // Unsubscribe from replies.
+      this.constructor.removeItem(tag);
+    }
     this.constructor.setItem(eventName, this);
+  }
+  static handleAggregation(droppedEventName, addedEventName, newCounts, alerts) { // Return aggregate if over limit, setting it up if necessary. Else null.
+    // If over limit, converts an addedEventName Alert if needed and clears the rest, and then clears all droppedEventName Alerts.
+    if (!this.cellCountOverLimit(addedEventName, newCounts)) return null;
+    let aggregate = this.getAggregate(addedEventName);
+    if (!aggregate) { // If no existing aggregate:
+      aggregate = alerts.find(alert => alert.eventName === droppedEventName); // Pick a dropped individual to become aggregate. There will be one, by construction.
+      aggregate.becomeAggregate(addedEventName);
+      this.clearEventMarkers(addedEventName, aggregate, alerts); // Kill the rest, adding their positions to the aggregate.
+    }
+    return aggregate;
   }
   static transferOrClearEventMarkers(added, dropped, newCounts, oldCounts) { // Clear dropped alerts as necessary,
     // but try to preserve (individual and aggregated) alerts so that the markers don't flash.
     const addedCells = added.map(topicCell); // List of BigInt, in same order as added eventNames.
     const alerts = this.items;
     dropped.sort((a, b) => oldCounts[b] - oldCounts[a]);  // So that we always process aggregates before related individuals.
-    dropped.forEach(eventName => {
-      const droppedCell = topicCell(eventName);
+    dropped.forEach(droppedEventName => {
+      const droppedCell = topicCell(droppedEventName);
       // Whether zooming in or out, each dropped cell may have added cells that contain it, or vice versa.
       // We don't have to worry about cells that are neither added nor dropped, because those will not overlap added or dropped.
 
@@ -293,17 +303,17 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const containerIndex = addedCells.findIndex(added => cellContains(added, droppedCell));
       if (containerIndex >= 0) {
 	const addedContainingEventName = added[containerIndex];
-	newCounts[addedContainingEventName] += oldCounts[eventName]; // It all goes to the container, which may have already started filling.
-	if (this.cellCountOverLimit(addedContainingEventName, newCounts)) { // We're now over (maybe already was).
-	  console.log(eventName, oldCounts[eventName], '=>', addedContainingEventName, newCounts[addedContainingEventName], this.getAggregate(addedContainingEventName));
-	  this.ensureAggregate(addedContainingEventName, eventName, alerts);
+	newCounts[addedContainingEventName] += oldCounts[droppedEventName]; // It all goes to the container, which may have already started filling.
+	const aggregate = this.handleAggregation(droppedEventName, addedContainingEventName, newCounts, alerts);
+	if (aggregate) {
+	  this.clearEventMarkers(droppedEventName, aggregate, alerts); // Absorb the discarded. Their distinctiveness will be added to our own.
 	  return;
 	}
-	this.forEachAlertOf(eventName, alert => alert.eventName = addedContainingEventName); // Label the dropped individual alerts for new container.
+	this.forEachAlertOf(droppedEventName, alert => alert.eventName = addedContainingEventName); // Label the dropped individual alerts for new container.
 	return;
       }
 
-      const aggregate = this.getAggregate(eventName);
+      const aggregate = this.getAggregate(droppedEventName);
       if (aggregate) { // We don't know how mucch of this will be included in any added subregion, and cannot reconstruct where they were.
 	aggregate.destroy();
 	return;
@@ -314,17 +324,14 @@ export class Alert extends Conversation { // A wrapper around L.marker
       // We don't know how many oldCounts to distribute to each subcell, so we have to work with each dropped alert's location.
       if (addedSubCells.length) {
 	const addedS2Cells = addedSubCells.map(cellFromCellID);
-	this.forEachAlertOf(eventName, alert => {
+	this.forEachAlertOf(droppedEventName, alert => {
 	  const point = pointFromLatLng(alert.lat, alert.lng);
 	  const addedS2Cell = addedS2Cells.find(cell => cell.containsPoint(point));
 	  if (addedS2Cell) {
 	    const includedIndex = addedCells.indexOf(addedS2Cell.id);
 	    const addedIncludedEventName = added[includedIndex];
 	    newCounts[addedIncludedEventName] += 1;
-	    if (this.cellCountOverLimit(addedIncludedEventName, newCounts)) {
-	      this.ensureAggregate(addedIncludedEventName, eventName);
-	      return;
-	    }
+	    if (this.handleAggregation(droppedEventName, addedIncludedEventName, newCounts, alerts)) return;
 	    alert.eventName = addedIncludedEventName; // Leave this alert in place, but label where it belongs.
 	  } else {
 	    alert.destroy(); // This alert is not within an added subcell.
@@ -334,7 +341,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       }
 
       // Otherwise, no overlap, so clear the (individual and aggregate) markers of the dropped cell.
-      this.clearEventMarkers(eventName); // Before subscribing to added, as that that may bring in an alert with the same tag as one being cleared.
+      this.clearEventMarkers(droppedEventName);
     });
   }
   lerp(eventName, additionaLatitude, additionalLongitude) { // Move this Alert towards this location, inversely weight by count in cell.
