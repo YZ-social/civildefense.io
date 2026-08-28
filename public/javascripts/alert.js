@@ -299,42 +299,29 @@ export class Alert extends Conversation { // A wrapper around L.marker
     // but try to preserve (individual and aggregated) alerts so that the markers don't flash.
     const addedCells = added.map(topicCell); // List of BigInt, in same order as added eventNames.
     const alerts = this.items;
-    if (newCounts !== this.subscriptions) console.error('wtf', newCounts, this.subscriptions);
-    const biggestCount = (a, b) => oldCounts[b] - oldCounts[a];  // So that we always process aggregates before related individuals.
-    dropped.sort(biggestCount);
-    added.sort(biggestCount);
+    dropped.sort((a, b) => oldCounts[b] - oldCounts[a]);  // So that we always process aggregates before related individuals.
     dropped.forEach(eventName => {
       const droppedCell = topicCell(eventName);
       // Whether zooming in or out, each dropped cell may have added cells that contain it, or vice versa.
       // We don't have to worry about cells that are neither added nor dropped, because those will not overlap added or dropped.
 
       // Find the one added cell (if any) that contains the dropped cell. (Typically when zooming out.)
-      if (oldCounts[eventName] === undefined) console.error(`missing oldCounts for ${eventName}`);
       const containerIndex = addedCells.findIndex(added => cellContains(added, droppedCell));
       if (containerIndex >= 0) {
 	const addedContainingEventName = added[containerIndex];
-	if (newCounts[addedContainingEventName] === undefined) console.error(`missing newCounts for ${addedContainingEventName}`);
-	// If ANY of the dropped under the container contain an aggregate, then we have to bring ONE of them forward and delete everything else.
-	// Otherwise, if still over, we need to make one of them be the aggregate and delete everything else.
-	newCounts[addedContainingEventName] += oldCounts[eventName];
+	newCounts[addedContainingEventName] += oldCounts[eventName]; // It all goes to the container, which may have already started filling.
 	if (this.cellCountOverLimit(addedContainingEventName, newCounts)) { // We're now over (maybe already was).
+	  console.log(eventName, oldCounts[eventName], '=>', addedContainingEventName, newCounts[addedContainingEventName], this.getAggregate(addedContainingEventName));
+	  globalThis.oldCounts = oldCounts; //fixme remove
 	  this.ensureAggregate(addedContainingEventName, eventName, alerts);
-	  // let aggregate = this.getAggregate(addedContainingEventName);
-	  // if (!aggregate) { // If no existing aggregate:
-	  //   console.log('creating aggregate for', eventName, oldCounts[eventName], '=>', addedContainingEventName, newCounts[addedContainingEventName]);
-	  //   aggregate = alerts.find(alert => alert.eventName === eventName); // Pick a dropped individual to become aggregate. There will be one, by construction.
-	  //   aggregate.becomeAggregate(addedContainingEventName, 'transfer');
-	  // } else console.log('existing aggregate', eventName, oldCounts[eventName], '=>', addedContainingEventName, newCounts[addedContainingEventName]);
-	  // this.clearEventMarkers(eventName, aggregate, alerts);
 	  return;
-	}// else { 
-	//console.log(eventName, oldCounts[eventName], '=>', addedContainingEventName, newCounts[addedContainingEventName]);
-	this.forEachAlertOf(eventName, alert => alert.eventName = addedContainingEventName); // reset the dropped individual alerts to addedContainingEventName
+	}
+	this.forEachAlertOf(eventName, alert => alert.eventName = addedContainingEventName); // Label the dropped individual alerts for new container.
 	return;
       }
 
       const aggregate = this.getAggregate(eventName);
-      if (aggregate) { // We don't know how mucch of this will be included in any added subregions, and cannot reconstruct where they were.
+      if (aggregate) { // We don't know how mucch of this will be included in any added subregion, and cannot reconstruct where they were.
 	aggregate.destroy();
 	return;
       }
@@ -367,14 +354,18 @@ export class Alert extends Conversation { // A wrapper around L.marker
       this.clearEventMarkers(eventName); // Before subscribing to added, as that that may bring in an alert with the same tag as one being cleared.
     });
   }
+  // FIXME: positioning of aggregate
   static ensureAggregate(addedEventName, droppedEventName, alerts) { // Clear alerts from droppedEventName, creating an aggregate from one of them if the added does not already have one.
     let aggregate = this.getAggregate(addedEventName);
     if (!aggregate) { // If no existing aggregate:
-      //console.log('creating aggregate for', eventName, oldCounts[eventName], '=>', addedContainingEventName, newCounts[addedContainingEventName]);
       aggregate = alerts.find(alert => alert.eventName === droppedEventName); // Pick a dropped individual to become aggregate. There will be one, by construction.
+      if (!aggregate) Object.assign(globalThis, {addedEventName, droppedEventName});
+      this.forEachAlertOf(addedEventName, alert => (alert === aggregate) || alert.destroy()); // Kill any others already added.
       aggregate.becomeAggregate(addedEventName, 'transfer');
-    }// else console.log('existing aggregate', eventName, oldCounts[eventName], '=>', addedContainingEventName, newCounts[addedContainingEventName]);
-    this.clearEventMarkers(droppedEventName, aggregate, alerts);
+      console.log('created aggregate', aggregate.eventName, aggregate.isAggregate, this.getAggregate(addedEventName));
+      //this.clearEventMarkers(addedEventName, null, alerts); // Kill those already added.
+    }
+    this.clearEventMarkers(droppedEventName, aggregate, alerts); // Kill those being dropped, adding their positions to the aggregate.
   }
   static maxPublish = 5;
   static publishing = false;
