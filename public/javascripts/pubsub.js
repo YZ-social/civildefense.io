@@ -55,25 +55,34 @@ function normalizeTopic({name, region, owner, write = 'open'} = {}) {
 function deriveTopicId(topic) {
   return JSON.stringify(normalizeTopic(topic)); // No need to hash in this implementation.
 }
+function delay(ms = 0) {
+  return ms && new Promise(resolve => setTimeout(resolve, ms));
+}
 
 let invoke;
 export function setReceiver(receiver) {
   invoke = receiver;
 }
+const throttleMS = 30; // Just to yield to other stuff.
+async function pauseInvoke(...rest) {
+  invoke(...rest);
+  await new Promise(resolve => setTimeout(resolve, throttleMS));
+}
 
-export function subscribe(topicName, nodeTag, {since = 'all'}) {
+export async function subscribe(topicName, nodeTag, {since = 'all'}) {
   // Axona allows multiple handlers on the same topic, but we don't use that in civildefense, and do not implement it here.
   const topicId = deriveTopicId(topicName);
   const id = uuidv4();
   cancel('sub', topicId, id);
   expire('sub', topicId, id, () => deleteSub(topicId, id), SUBSCRIPTION_TIMEOUT);
   setBucket(data, 'sub', topicId, nodeTag, id);
-  if (since) setTimeout(() => { // invoke handler on any sticky data, but only after we have told client the subscription id.
+  if (since) { // invoke handler on any sticky data, but only after we have told client the subscription id.
+    await delay(100);
     let lastEnvelope = null, lastTime = 0;
     for (const envelope of getDataValues('pub', topicId)) {
       switch (since) {
       case 'all':
-	invoke(nodeTag, id, envelope);
+	await pauseInvoke(nodeTag, id, envelope);
 	break;
       case 'latest':
 	if (envelope.ts > lastTime) {
@@ -82,11 +91,11 @@ export function subscribe(topicName, nodeTag, {since = 'all'}) {
 	}
 	break;
       default: // Must be a timestamp
-	if (envelope.ts === since) invoke(nodeTag, id, envelope);
+	if (envelope.ts === since) await pauseInvoke(nodeTag, id, envelope);
       }
     }
     if (lastEnvelope) invoke(nodeTag, id, lastEnvelope);
-  }, 100);
+  }
   return {topicName, topicId, id};
 }
 
@@ -118,19 +127,19 @@ export async function publish(topic, message, {signWith}) {
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
   const msgId = toHex(new Uint8Array(hash));
   const envelope = {msgId, topic, ts: Date.now(), message, signerPubkey};
-  for (const [nodeTag, id] of getDataEntries('sub', topicId)) invoke(nodeTag, id, envelope);
+  for (const [nodeTag, id] of getDataEntries('sub', topicId)) await pauseInvoke(nodeTag, id, envelope);
   setBucket(data, 'pub', topicId, msgId, envelope);
   expire('pub', topicId, msgId, () => removeBucket(data, 'pub', topicId, msgId), PUBLISH_TIMEOUT);
   return msgId;
 }
 
-export function unpublish(topic, msgId, {signWith}) {
+export async function unpublish(topic, msgId, {signWith}) {
   const topicId = deriveTopicId(topic);  
   cancel('pub', topicId, msgId);
   const envelope = removeBucket(data, 'pub', topicId, msgId);
   if (!envelope) return {ok: false}; // we didn't have it.
   envelope.deleted = true;
   envelope.message = null;
-  for (const [nodeTag, id] of getDataEntries('sub', topicId)) invoke(nodeTag, id, envelope);
+  for (const [nodeTag, id] of getDataEntries('sub', topicId)) await pauseInvoke(nodeTag, id, envelope);
   return {ok: true};
 }
