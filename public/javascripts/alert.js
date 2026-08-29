@@ -146,12 +146,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const region = P2PWebNetwork.regionCode(lat, lng);
       hashtag = Hashtags.add(hashtag); // We already have it and are subscribing, but this updates our extended form if needed.
       super.initialize({payload, hashtag, tag, agent, lat, lng, issuedTime, originalPosting, ...rest});
-      this.eventName = eventName;
       if (aggregate) {
 	// Destroy existing eventName markers and add their positions to the aggregate we are creating.
 	this.becomeAggregate(eventName);
 	this.constructor.clearEventMarkers(eventName, aggregate);
       } else {
+	this.noteEventName(eventName);
 	marker.bindPopup('', {className: 'alert'}).on('popupopen', event => this.ensureContent(event.popup));
 	tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
 	if (tag === openOnReceive) { // Bug! How can we handle URLs to an alert that has been aggregated?
@@ -181,6 +181,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const {isAggregate, marker, tag, region} = this;
     // Unsubscribe from replies.
     if (!isAggregate) networkPromise?.then(async contact => contact.subscribe({eventName: tag, region, handler: null}));
+    this.cellBorder?.removeFrom(map);
     super.destroy();
     if (markerDelayMS) {
       marker.closePopup();
@@ -248,6 +249,21 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const {lat, lng, eventName} = this;
     console.warn(`${label} lat: ${lat}, lng: ${lng}, ${eventName}: ${this.constructor.subscriptions[eventName]}`);
   }
+  noteEventName(eventName) { // Be a part of the specified grouping.
+    if (this.eventName === eventName) return;
+    this.eventName = eventName;
+    if (!this.isAggregate) return;
+    this.cellBorder?.removeFrom(map);
+    const cell = cellFromCellID(topicCell(eventName));
+    const radiansToDegrees = 180 / Math.PI;
+    const corners = Array.from({ length: 4 }, (_, i) => {
+      const point = cell.vertex(i);
+      const latLng = s2.LatLng.fromPoint(point);
+      return [latLng.lat * radiansToDegrees, latLng.lng * radiansToDegrees];
+    });
+    const border = this.cellBorder = L.polygon(corners, {color: 'red'});
+    border.addTo(map);
+  }
   static forEachAlertOf(eventName, callback, alerts = this.items) { // Apply callback to each of alerts matching eventName.
     // TODO? Record a cell's Alert's more efficiently, so that we don't have to cycle through everything.
     alerts.forEach((alert, index, alerts) => (alert.eventName === eventName) && callback(alert, index, alerts));
@@ -281,7 +297,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     marker.off('click');
     marker.on('click', event => this.logAlert('FIXME go down one level'));
     tooltip(element, Int`Zoom in on multiple ${hashtag} alerts.`); // fixme Int.
-    this.tag = this.eventName = eventName;
+    this.noteEventName(this.tag = eventName);
     if (tag !== eventName) {
       networkPromise.then(async contact => contact.subscribe({eventName: tag, region, handler: null})); // Unsubscribe from replies.
       this.items = [];
@@ -322,7 +338,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	  this.clearEventMarkers(droppedEventName, aggregate, alerts); // Absorb the discarded. Their distinctiveness will be added to our own.
 	  return;
 	}
-	this.forEachAlertOf(droppedEventName, alert => alert.eventName = addedContainingEventName); // Label the dropped individual alerts for new container.
+	this.forEachAlertOf(droppedEventName, alert => alert.noteEventName(addedContainingEventName)); // Label the dropped individual alerts for new container.
 	return;
       }
 
@@ -345,7 +361,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	    const addedIncludedEventName = added[includedIndex];
 	    newCounts[addedIncludedEventName] += 1;
 	    if (this.handleAggregation(droppedEventName, addedIncludedEventName, newCounts, alerts)) return;
-	    alert.eventName = addedIncludedEventName; // Leave this alert in place, but label where it belongs.
+	    alert.noteEventName(addedIncludedEventName); // Leave this alert in place, but label where it belongs.
 	  } else {
 	    alert.destroy(); // This alert is not within an added subcell.
 	  }
