@@ -129,7 +129,8 @@ async function cacheFirst({request, event}) {
     // Put clone of response in cache (so that original can be returned.
     // Tell event to keep worker open while we put it, even though we return response immediately.
     const cache = await caches.open(serviceVersion);
-    event.waitUntil(cache.put(request, responseFromNetwork.clone()));
+    event.waitUntil(cache.put(request, responseFromNetwork.clone())
+		    .catch(error => console.error(request.url, mime, error)));
     return responseFromNetwork;
   } catch (error) {
     console.error(request.url, error);
