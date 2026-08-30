@@ -158,6 +158,7 @@ export const Hashtags = {
     newtag.removeAttribute('aria-activedescendant');
     newtag.value = '';
     this.activeIndex = -1;
+    this.selectors = [];
   },
   openSelector() { // Open the autocomplete tag selector
     const { listbox, newtag } = this;
@@ -226,16 +227,8 @@ export const Hashtags = {
       item.toLowerCase().includes(matchString)
     );
 
-    if (matchString) {
-      const li = document.createElement('li');
-      li.className = 'combobox-empty combobox-option';
-      li.textContent = `Create tag "${query}"`;
-      li.onpointerdown = event => {
-	event.preventDefault();
-	event.stopPropagation();
-	this.acceptTag();
-      };
-      listbox.appendChild(li);
+    if (matchString && !this.selectors.includes(query)) {
+      this.selectors.unshift(query);
     }
     this.selectors.forEach((item, i) => {
       const li = document.createElement('li');
@@ -360,6 +353,8 @@ export const Hashtags = {
 	if (this.activeIndex < 0) this.setActive(0);
 	else this.selectValue(this.selectors[this.activeIndex]); // Otherwise select what is active.
         break;
+      default:
+	this.activeIndex = -1;
       }
     };
     newtag.oninput = () => this.renderSelector(newtag.value);
