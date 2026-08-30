@@ -69,7 +69,7 @@ async function pauseInvoke(...rest) {
   await new Promise(resolve => setTimeout(resolve, throttleMS));
 }
 
-export async function subscribe(topicName, nodeTag, {since = 'all'}) {
+export function subscribe(topicName, nodeTag, {since = 'all'}) {
   // Axona allows multiple handlers on the same topic, but we don't use that in civildefense, and do not implement it here.
   const topicId = deriveTopicId(topicName);
   const id = uuidv4();
@@ -77,24 +77,25 @@ export async function subscribe(topicName, nodeTag, {since = 'all'}) {
   expire('sub', topicId, id, () => deleteSub(topicId, id), SUBSCRIPTION_TIMEOUT);
   setBucket(data, 'sub', topicId, nodeTag, id);
   if (since) { // invoke handler on any sticky data, but only after we have told client the subscription id.
-    await delay(100);
-    let lastEnvelope = null, lastTime = 0;
-    for (const envelope of getDataValues('pub', topicId)) {
-      switch (since) {
-      case 'all':
-	await pauseInvoke(nodeTag, id, envelope);
-	break;
-      case 'latest':
-	if (envelope.ts > lastTime) {
-	  lastTime = envelope.ts;
-	  lastEnvelope = envelope;
+    setTimeout(async () => {
+      let lastEnvelope = null, lastTime = 0;
+      for (const envelope of getDataValues('pub', topicId)) {
+	switch (since) {
+	case 'all':
+	  await pauseInvoke(nodeTag, id, envelope);
+	  break;
+	case 'latest':
+	  if (envelope.ts > lastTime) {
+	    lastTime = envelope.ts;
+	    lastEnvelope = envelope;
+	  }
+	  break;
+	default: // Must be a timestamp
+	  if (envelope.ts === since) await pauseInvoke(nodeTag, id, envelope);
 	}
-	break;
-      default: // Must be a timestamp
-	if (envelope.ts === since) await pauseInvoke(nodeTag, id, envelope);
       }
-    }
-    if (lastEnvelope) invoke(nodeTag, id, lastEnvelope);
+      if (lastEnvelope) invoke(nodeTag, id, lastEnvelope);
+    }, 100);
   }
   return {topicName, topicId, id};
 }
