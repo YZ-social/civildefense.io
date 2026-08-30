@@ -236,9 +236,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // In general here, a key is an eventName - i.e., a string <mumble>:<cellID>:<hashtag>.
   // newKeys/oldKeys are a map of the currently subscribed eventName and the count of events for that cell+hashtag
   static subscriptions = {}; // maps currently active eventNames (<mumble>:<cellID>:<hashtag>) to count of event received for it.
-  static get aggregateLimit() { // How many individuals are allowed before we aggregate.
-    return parseInt(minAggregate.value);
-  }
+  static aggregateLimit = parseInt(new URLSearchParams(location.search).get('max') || 100);  // How many individuals are allowed before we aggregate.
   static cellCountOverLimit(eventName, countsDictionary = this.subscriptions) { // Have we received enough that we must show an aggregate?
     return countsDictionary[eventName] >= this.aggregateLimit;
   }
