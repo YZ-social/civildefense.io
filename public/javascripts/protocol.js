@@ -6,7 +6,7 @@ let connect, createAuthorIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNE
 // dht 1  -> Axona
 // dht 0  -> server
 // dht -1 -> in-memory on client only
-const defaultDHT = 1;
+const defaultDHT = globalThis.process ? 1 : 0; // Browser defaults to no Axona. Server nodes and alert-bot default to Axona.
 export const dht = parseInt((globalThis.process ?
 			     globalThis.process.env.DHT :
 			     new URL(globalThis.location).searchParams.get('dht')) ?? defaultDHT);
