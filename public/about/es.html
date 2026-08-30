@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>La Aplicación de Defensa Civil</title>
+  <title>La App de Civil Defense</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -15,8 +15,10 @@
 <!-- ── HERO ──────────────────────────────────────────────────── -->
 <header class="hero">
   <div class="hero-inner">
-    <img class="hero-logo" src="civil-defense.png" alt="Logo de Defensa Civil">
-    <h1>La Aplicación de <span>Defensa Civil</span></h1>
+    <img class="hero-logo" src="civil-defense.png" alt="Logotipo de Civil Defense">
+    <h1>La App de <span>Civil Defense</span></h1>
+  <!--   <div class="hero-divider"></div> -->
+  <!--   <p class="hero-tagline">Realtime crowdmapping that is resistant to tracking, censorship, and takedown</p> -->
   </div>
   <div class="language-selector">
     <label for="language">Idioma:</label>
@@ -28,7 +30,7 @@
 </header>
 
 <!-- ── CAROUSEL ──────────────────────────────────────────────── -->
-<section class="carousel-section" aria-label="Capturas de pantalla de la aplicación">
+<section class="carousel-section" aria-label="Capturas de pantalla de la app">
 
   <div class="carousel-wrap">
     <div class="carousel-track-outer">
@@ -36,34 +38,43 @@
 
         <div class="carousel-slide">
           <img src="broadcast.png" alt="Una aplicación móvil mostrando alertas">
-          <div class="carousel-caption">Mapeo colaborativo en tiempo real resistente al rastreo, la censura y el bloqueo.</div>
+          <div class="carousel-caption">Mapeo colectivo en tiempo real, resistente al rastreo, la censura y la eliminación.</div>
         </div>
 
         <div class="carousel-slide">
-          <img src="flood-fire-ice.png" alt="Vista del mapa con marcadores de alerta dispersos por un vecindario">
+          <a href="/?tags=%F0%9F%A9%B7%20community%20support%20DEMO,%F0%9F%91%81%EF%B8%8F%20observer%20corps%20DEMO,%F0%9F%A7%B0%20utility%20repairs%20DEMO&lat=44.942473404432015&lng=-93.26251878766926&z=14" target="civildefense"><img src="streets-of-minneapolis.jpg" alt="Vista de mapa que muestra marcadores de alerta dispersos por un vecindario"></a>
           <div class="carousel-caption">Como en Twitter, tú creas los temas.<br>Pero solo recibes alertas según tu mapa actual.<br>Como en Snapchat, las alertas desaparecen después de 24 horas.</div>
         </div>
 
         <div class="carousel-slide">
-          <img src="conversation-and-image.png" alt="Mapa con una ventana emergente de alerta abierta mostrando una foto y comentarios">
-          <div class="carousel-caption">Haz clic en un marcador para leer y añadir comentarios y archivos adjuntos.</div>
+          <a href="/?tags=%F0%9F%91%81%EF%B8%8F%20observer%20corps%20DEMO&lat=44.942473404432015&lng=-93.26251878766926&z=14&alert=995e2f0e09cacd9ebee4b34d738d507117f8ff163db89580985f931c8aaaaa5d" target="civildefense"><img src="checkpoint.jpg" alt="Mapa con una ventana de alerta abierta que muestra una foto y un hilo de comentarios"></a>
+          <div class="carousel-caption">Haz clic en un marcador para leer y agregar comentarios y archivos adjuntos.</div>
         </div>
 
         <div class="carousel-slide">
-          <img src="streaming-radio.png" alt="Mapa de Norteamérica con marcadores de estaciones de radio en streaming reproducibles">
-          <div class="carousel-caption">Las personas controlan los temas, y no tienen que ser sobre seguridad. Aquí hay estaciones de radio en streaming reproducibles por categoría.</div>
+          <a href="/?tags=%F0%9F%8E%BC%20classical,%F0%9F%8E%A7%20edm,%F0%9F%8E%A4%20hiphop,%F0%9F%8E%99%EF%B8%8F%20news,%F0%9F%8E%B5%20pop&lat=47.51951505778901&lng=1.6779639902073742&z=6" target="civildefense"><img src="radio-europe.jpg" alt="Mapa de Europa Occidental con marcadores de estaciones de radio en streaming reproducibles"></a>
+          <div class="carousel-caption">Las personas controlan los temas, y no tienen que tratar sobre seguridad. Aquí hay estaciones de radio en streaming reproducibles por categoría.</div>
         </div>
 
         <div class="carousel-slide">
           <video controls src="CivilDefense.mp4"></video>
-          <div class="carousel-caption">Un video de presentación de 30 segundos generado con IA. (En Inglés.)</div>
+          <div class="carousel-caption">Un video de 30 segundos con ambientación generada por IA.</div>
         </div>
+
+        <!-- <div class="carousel-slide"> -->
+        <!--   <img src="hero.png" alt="One man with shoping bags in Tiananmen Square, facing an enormous column of tanks."> -->
+        <!--   <div class="carousel-caption">Bear witness.</div> -->
+        <!-- </div> -->
+
+        <!-- <div class="carousel-slide"> -->
+        <!--   <img src="nazis.png" alt="WWII-style poster exhorting the public to use Civil Defense in case of Nazi attack."> -->
+        <!-- </div> -->
 
       </div>
     </div>
 
     <button class="carousel-btn prev" id="prevBtn" aria-label="Diapositiva anterior">&#8249;</button>
-    <button class="carousel-btn next" id="nextBtn" aria-label="Diapositiva siguiente">&#8250;</button>
+    <button class="carousel-btn next" id="nextBtn" aria-label="Siguiente diapositiva">&#8250;</button>
 
     <div class="carousel-dots" id="carouselDots" role="tablist" aria-label="Posición del carrusel"></div>
   </div>
@@ -75,67 +86,71 @@
   <h1>Qué Puedes Hacer Con Ella</h1>
 
   <ul>
-    <li>Advertir a otros sobre peligros tocando el mapa.</li>
-    <li>Añadir comentarios, fotos, videos u otros archivos adjuntos.</li>
-    <li>Recibir notificaciones de nuevas alertas cerca de ti o en tu mapa actual.</li>
-    <li>Compartir en redes sociales, por mensaje de texto o correo electrónico.</li>
-    <li>Discutir una alerta mediante videoconferencia segura. (Disponible este invierno.)</li>
+    <li>Advierte a otros sobre un peligro tocando el mapa.</li>
+    <li>Agrega comentarios, fotos, videos u otros archivos adjuntos.</li>
+    <li>Recibe notificaciones de nuevas alertas cerca de ti o en tu mapa actual.</li>
+    <li>Comparte en redes sociales, mensaje de texto o correo electrónico.</li>
+    <li>Discute una alerta mediante videoconferencia segura. (Disponible este otoño.)</li>
+    <!-- <li>Alerts disappear after 24 hours—this is not an archive or long-term storage system. (This Winter, users will be able to download tamper-evident reports for use in other systems.)</li> -->
   </ul>
 
-  <a href="/?lang=es" class="launch-btn" target="civildefense">
+  <a href="/?tags=%F0%9F%8E%B8%20classic%20rock,%F0%9F%8E%BC%20classical,%F0%9F%A4%A0%20country,%F0%9F%8E%B7%20jazz,%F0%9F%8E%99%EF%B8%8F%20news,%F0%9F%8E%B5%20pop&z=5&lang=es" class="launch-btn" target="civildefense">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
     ¡Pruébala!
   </a>
 
-  <h1>Transmite con Seguridad</h1>
+  <!-- <hr class="rule"> -->
+
+  <h1>Difunde de Forma Segura</h1>
 
   <h2>Resiste el Rastreo</h2>
   <ul>
-    <li>No puedes ser identificado como persona porque no hay inicio de sesión, registro ni cuentas. No se utiliza número de teléfono ni correo electrónico. No hay tienda de aplicaciones que registre las descargas. Los usuarios pueden optar por permitir que otros los reconozcan en múltiples interacciones, sin revelar su identidad real.</li>
-    <li>Es extremadamente difícil identificar tu dirección IP o los patrones de red, porque las alertas se distribuyen de teléfono a teléfono a través de una red entre pares.</li>
-    <li>Las notificaciones se envían directamente a través de la aplicación en primer plano en tu teléfono, sin pasar por el servicio de mensajería de Apple o Google. (Las notificaciones con la aplicación en segundo plano estarán disponibles este invierno.)</li>
-    <li>Cada alerta desaparece de toda la red después de 24 horas. No se recopilan registros de mensajes, comentarios ni temas solicitados, y este no es un sistema de archivo ni de almacenamiento a largo plazo.</li>
+    <li>No puedes ser identificado como persona porque no hay inicio de sesión, registro ni cuentas. No se usa ningún número de teléfono ni correo electrónico. Ninguna tienda de aplicaciones registra las descargas. Los usuarios pueden optar por dejar que otros los reconozcan en múltiples interacciones — sin revelar su identidad real.</li>
+    <li>Es extremadamente difícil identificar tu dirección IP o tus patrones de red, porque las alertas se distribuyen de teléfono a teléfono a través de una red entre pares (peer-to-peer).</li>
+    <li>Las notificaciones se envían directamente a través de la app en primer plano en tu teléfono, sin pasar por el servicio de mensajería de Apple o Google. (Las notificaciones en segundo plano estarán disponibles este invierno.)</li>
+    <li>Cada alerta desaparece de toda la red después de 24 horas. No se recopilan registros de mensajes, comentarios o temas solicitados, y este no es un sistema de archivo ni de almacenamiento a largo plazo.</li>
   </ul>
 
   <h2>Resiste la Censura</h2>
   <ul>
-    <li>Ningún usuario puede ser censurado porque no hay cuentas. Nadie puede robar la información de tu cuenta porque no existe.</li>
-    <li>Ningún contenido puede ser censurado; no hay una organización central que controle la red o tenga poder para modificar el contenido.</li>
+    <li>Ningún usuario puede ser censurado porque no existen cuentas. Nadie puede robar la información de tu cuenta porque no la hay.</li>
+    <li>Ningún contenido puede ser censurado; no existe una organización central que controle la red o tenga poder para alterar el contenido.</li>
   </ul>
 
-  <h2>Resiste el Bloqueo</h2>
+  <h2>Resiste el Cierre</h2>
   <ul>
-    <li>Ninguna tienda de aplicaciones puede bloquear Defensa Civil: la aplicación es simplemente una página web.</li>
-    <li>Bloquear servidores web o nombres de dominio no puede impedir el acceso a quienes ya la tienen, porque la aplicación guarda en caché todo lo que necesita en el primer uso. El <a href="https://github.com/yz-social/civildefense.io" target="yz.other" rel="noopener">código fuente abierto</a> está disponible para que cualquiera pueda alojar un espejo alternativo.</li>
-    <li>No hay servidor de back-end ni centro de datos que bloquear. Todos los datos de alertas son completamente entre pares. Todos los espejos comparten esta red: una publicación en <a href="https://civildefense.io" target="civildefense">civildefense.io</a> aparece en el espejo de <a href="https://ki1r0y.com" target="ki1r0y" rel="noopener">ki1r0y.com</a> y viceversa.</li>
-    <li>Bloquear el tráfico de red es extremadamente difícil porque los datos de bajo nivel son idénticos al tráfico de videoconferencia.</li>
-    <li>Defensa Civil es muy resistente a los ataques de denegación de servicio. Sin embargo, requiere una conexión a Internet funcional y, por sí sola, no ofrece protección contra un corte completo de Internet.</li>
+    <li>Ninguna tienda de aplicaciones puede bloquear Civil Defense — la app es solo una página web.</li>
+    <li>Cerrar servidores web o nombres de dominio no puede bloquear el acceso de quienes ya lo tienen, porque la app almacena en caché todo lo que necesita desde el primer uso. El <a href="https://github.com/yz-social/civildefense.io" target="yz.other" rel="noopener">código de código abierto</a> está disponible para que cualquiera pueda alojar un espejo alternativo.</li>
+    <li>No existe un servidor backend ni un centro de datos que se pueda derribar. Todos los datos de las alertas son completamente peer-to-peer. Todos los espejos comparten esta red: una publicación en <a href="https://civildefense.io" target="civildefense">civildefense.io</a> aparece en el espejo <a href="https://ki1r0y.com" target="ki1r0y" rel="noopener">ki1r0y.com</a>, y viceversa.</li>
+    <li>Bloquear el tráfico de la red es extremadamente difícil, porque los datos de bajo nivel son idénticos al tráfico de videoconferencias.</li>
+    <li>Civil Defense es altamente resistente a los ataques de denegación de servicio (DoS). Sin embargo, sí requiere una conexión a Internet funcional, y por sí sola no ofrece ninguna protección contra un cierre total de Internet.</li>
   </ul>
+  <!-- <hr class="rule"> -->
 
   <h1>El Panorama General</h1>
-  <p>La Defensa Civil opera en la <a href="https://github.com/axona-net/axona-protocol" target="yz.other" rel="noopener">red Axona</a>. Ambos son gratuitos y de código abierto.</p>
-  <p>Axona es un descendiente moderno de las antiguas <a href="https://en.wikipedia.org/wiki/Peer-to-peer" target="yz.other" rel="noopener">redes entre pares</a> como <a href="https://en.wikipedia.org/wiki/Napster">Napster</a>. Tiene un mecanismo único de enrutamiento autocurativo que utiliza técnicas de aprendizaje neuronal para encontrar la mejor manera de distribuir alertas. Es análogo a <a href="https://en.wikipedia.org/wiki/Tor_(network)" target="yz.other" rel="noopener">TOR</a> (The Onion Router), pero diseñado desde cero para funcionar en navegadores móviles y de escritorio.</p>
-  <p>También estamos desarrollando un sistema integral de criptografía preparado para la era cuántica que añadirá grupos privados para Defensa Civil y cualquier software en la red. Creemos que hay muchas aplicaciones en las que los desarrolladores, los usuarios y el público en general se benefician del software abierto y las redes seguras y descentralizadas, sin tiendas de aplicaciones, servidores ni centros de datos. Más allá de Defensa Civil, también estamos desarrollando <a href="https://en.wikipedia.org/wiki/Distributed_computing" target="yz.other" rel="noopener">colaboración multiusuario a gran escala</a> y <a href="https://poverty-action.org/inclusive-instant-payment-systems-evidence-based-approach-design-impact" target="yz.other" rel="noopener">Sistemas de Pago Instantáneo Inclusivos</a>.</p>
+  <p>Civil Defense funciona sobre la red <a href="https://github.com/axona-net/axona-protocol" target="yz.other" rel="noopener">Axona</a>. Ambos son gratuitos y de código abierto.</p>
+  <p>Axona es un descendiente moderno de las antiguas <a href="https://en.wikipedia.org/wiki/Peer-to-peer" target="yz.other" rel="noopener">redes peer-to-peer</a>, como <a href="https://en.wikipedia.org/wiki/Napster">Napster</a>. Cuenta con un mecanismo único de enrutamiento autorreparable que utiliza técnicas de aprendizaje neuronal para encontrar la mejor forma de distribuir las alertas. Es análogo a <a href="https://en.wikipedia.org/wiki/Tor_(network)" target="yz.other" rel="noopener">TOR</a> (The Onion Router), pero diseñado desde cero para funcionar en navegadores móviles y de escritorio.</p>
+  <p>También estamos desarrollando un completo sistema de criptografía preparado para la era cuántica, que añadirá grupos privados para Civil Defense y para cualquier software de la red. Creemos que existen muchas aplicaciones en las que los desarrolladores, los usuarios y el público en general se benefician de un software abierto y de redes descentralizadas y seguras — sin tiendas de aplicaciones, servidores ni centros de datos. Más allá de Civil Defense, también estamos desarrollando <a href="https://en.wikipedia.org/wiki/Distributed_computing" target="yz.other" rel="noopener">colaboración multiusuario</a> a gran escala y <a href="https://poverty-action.org/inclusive-instant-payment-systems-evidence-based-approach-design-impact" target="yz.other" rel="noopener">Sistemas de Pago Instantáneo Inclusivos</a>.</p>
+
 
 <div class="centered">
-  <img src="serving-you.jpg" alt="Cartel de la Semana de la Defensa Civil: A su servicio en caso de emergencia">
+  <img src="serving-you.jpg" alt="Cartel de la Semana de la Defensa Civil - Sirviéndote en tiempos de emergencia">
 </div>
 
 <div class="centered">
-  <img src="prevail.jpg" alt="Póster de Defensa Civil de la Guerra Fría: Preparar, proteger, prevalecer">
+  <img src="prevail.jpg" alt="Cartel de Defensa Civil de la Guerra Fría - Prepárate, Protege, Prevalece">
 </div>
 
 <div class="centered">
-  <img src="nazis.png" alt="Póster de estilo de la Segunda Guerra Mundial que exhorta al público a usar Defensa Civil en caso de ataque nazi.">
+  <img src="nazis.png" alt="Cartel estilo Segunda Guerra Mundial que exhorta al público a usar la Defensa Civil en caso de ataque nazi.">
 </div>
 
 </main>
 
-
 <!-- ── FOOTER ─────────────────────────────────────────────────── -->
 <footer>
-  <p><a href="/?lang=es" target="civildefense">civildefense.io</a> &mdash; Mapeo colaborativo seguro y gratuito para poblaciones vulnerables.<br>
-  Usamos con gratitud software abierto de:
+  <p><a href="/?lang=es" target="civildefense">civildefense.io</a> &mdash; Mapeo colectivo seguro y gratuito para poblaciones vulnerables.<br>
+  Agradecemos el uso de software abierto de:
             <a href="https://leafletjs.com/" target="yz.other" rel="noopener">Leaflet</a>,
             <a href="https://www.openstreetmap.org/" target="yz.other" rel="noopener">OpenStreetMap</a>,
             <a href="http://s2geometry.io" target="yz.other" rel="noopener">S2Geometry</a>,
