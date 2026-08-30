@@ -547,6 +547,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 
   needsRedisplay = true;
   ensureContent(popup = this.marker.getPopup()) { // Set content and handlers in popup if/as needed.
+    if (!popup) return;
     if (!popup.isOpen()) return;
     this.logAlert();
     if (!this.needsRedisplay) {
