@@ -6,7 +6,7 @@ CivilDefense.io lets you report an immediate concern to the public by tapping it
 The locations are shared over anonymous p2p with other users in your area, then fade away over 24 hours.
 There is no login and no global tracking of your Internet address or physical location.
 
-See [here](https://civildefense.io/about/TheCivilDefenseApp.html).
+See [Overview](https://civildefense.io/about/en.html), [Functional Spec](https://docs.google.com/document/d/1Y621bToMLHyyx6gp4YK8C17jSejMoqpkNQ-R1EZdrEA/edit?usp=sharing), and [Roadmap](https://docs.google.com/document/d/1vwS_oQ6pYw-dn05nsaXi-bda1j-wVVqRdqr7IHnIaf4/edit?usp=sharing).
 
 
 ## The Implementation
