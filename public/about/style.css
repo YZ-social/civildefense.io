@@ -155,6 +155,7 @@ a:hover { color: var(--red); }
     border-top: 2px solid var(--red);
     min-height: 3.4rem;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
 }
