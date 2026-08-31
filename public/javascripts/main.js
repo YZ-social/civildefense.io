@@ -24,6 +24,8 @@ var inactivityTimer = null, reconnectCountdown, networkPromise = null;
 export { networkPromise };
 export async function resetInactivityTimer(clearMessage = true) { // if !network, initialize(false), else disconnect after INACTIVITY_SECONDSif not restarted
   //console.log('resetInactivityTimer, networkPromise:', networkPromise);
+  document.body.classList.toggle('firstConversation', false);
+  document.body.classList.toggle('firstPublish', false);
   if (clearMessage) showMessage('');
   clearTimeout(inactivityTimer);
   clearInterval(reconnectCountdown);

@@ -563,7 +563,14 @@ export class Alert extends Conversation { // A wrapper around L.marker
     delay(100).then(() => {
       this.marker.getPopup().update();
       this.initializeHandlers(popup);
+      this.teach('firstConversation');
+      if (Agent.isMine(this.agent)) this.teach('firstPublish');
     });
+  }
+  teach(classname) {
+    if (localStorage.getItem(classname)) return;
+    localStorage.setItem(classname, '1');
+    document.body.classList.toggle(classname, true);
   }
   clearAvatars(popup = this.marker?.getPopup()) {
     popup?.getElement()?.querySelectorAll('.correspondent[data-tag]')

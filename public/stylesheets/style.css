@@ -434,9 +434,93 @@ md-menu {
     display: flex;
     align-items: center;
 }
+
+.teach {
+    position: absolute;
+    z-index: 1000;
+    background: linear-gradient(color-mix(in srgb, var(--md-sys-color-primary), white 40%), var(--md-sys-color-primary));
+    color: white;
+    padding: 10px;
+    border-radius: 12px;
+}
+.changeHashtag {
+    anchor-name: --changeHashtag;
+}
+.correspondent.avatar {
+    anchor-name: --correspondentAvatar;
+}
+.attribution > .share {
+    anchor-name: --share;
+}
+.reply-input [slot="leading-icon"] {
+    anchor-name: --attach;
+}
+md-filter-chip[label="🆘 help"], md-filter-chip[label="🆘 ayuda"] {
+    anchor-name: --topicToggle;
+}
+.leaflet-popup-content-wrapper {
+    anchor-name: --popup;
+}
+body.firstPublish.firstConversation .firstConversation .correspondent,
+body:not(.firstPublish) .firstPublish,
+body:not(.firstConversation) .firstConversation {
+    display: none;
+}
+.teach.share {
+    position-anchor: --share;
+    bottom: calc(anchor(top) + 60px);
+    left: anchor(--popup left);
+    max-width: min(45vw, 310px);
+}
+.teach.correspondent {
+    position-anchor: --correspondentAvatar;
+    bottom: calc(anchor(top) + 15px);
+    left: anchor(left);
+}
+.teach.changeHashtag {
+    position-anchor: --changeHashtag;
+    bottom: calc(anchor(top) + 60px);
+    right: anchor(--popup right);
+    width: min(45vw, 310px);
+}
+.teach.attach {
+    position-anchor: --attach;
+    top: calc(anchor(bottom) + 15px);
+    left: anchor(--popup left);
+    background: linear-gradient(var(--md-sys-color-primary), color-mix(in srgb, var(--md-sys-color-primary), white 40%));
+}
+.teach:after {
+    content: "";
+    position: absolute;
+    display: block;
+    width: 0;
+    border-style: solid;
+    border-color: var(--md-sys-color-primary) transparent;
+}
+.teach.share:after {
+    bottom: -60px;
+    left: 30px;
+    border-width: 60px 15px 0;
+}
+.teach.correspondent:after {
+    bottom: -13px;
+    left: 6px;
+    border-width: 15px 15px 0;
+}
+.teach.changeHashtag:after {
+    bottom: -60px;
+    right: 45px;
+    border-width: 60px 15px 0;
+}
+.teach.attach:after {
+    top: -15px;
+    left: 32px;
+    border-width: 0 15px 15px;
+}
 md-outlined-button {
     padding: 10px;
 }
+
 /* .attribution > div:last-child > span { */
 /*     text-wrap: nowrap; */
 /* } */
