@@ -361,6 +361,7 @@ export const Hashtags = {
     // When we click on the listbox, the browser will first blur newtag, and then
     // we would not get the click! So here we delay closing a bit.
     newtag.onblur = () => setTimeout(() => this.closeSelector(), 200);
+    newtag.onfocus = () => resetInactivityTimer();
     newtag.onchange = () => this.acceptTag();
   },
   remove(chip, redisplaySubscribers = false) { // Remove this topic, persistently.

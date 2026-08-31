@@ -582,6 +582,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const replyButton = replyInput.querySelector('md-filled-icon-button');
     const replyAttachButton = replyInput.querySelector('md-tonal-icon-button');
     const fileChooser = popupElement.querySelector('input[type="file"]');
+    replyInput.onfocus = event => resetInactivityTimer();
     replyInput.oninput = event => {
       replyButton.removeAttribute('disabled');
       const input = event.currentTarget;
