@@ -7,12 +7,15 @@ import { consume } from './display.js';
 import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
 import { Conversation, Reply } from './conversation.js';
-import { alertTopic, topicRegion, cellHex, topicCell } from './versions.js';
+import { alertTopic, topicRegion, cellHex, topicCell, topicTag } from './versions.js';
 import { getContainingCells, getSmallestCellId, getSubdivision, findCoverCellsByMinMaxLatLng, cellContains, pointFromLatLng, cellFromCellID } from './s2.js';
 const { localStorage, getComputedStyle, URL, URLSearchParams, domtoimage } = globalThis;
 
 
 export function getShareableURL(tag = null, tags = Hashtags.getSubscribe()) { // Answer a url that reflects application state.
+  // Regardless of whether an alert tag is given, the receiving user is always given a lat/lng:
+  // - To position their map with the same coverage as the sender
+  // - In case the alert has expired, rolled over, or included in an aggregate.
   const params = new URLSearchParams(location.search);
   const zoom = map.getZoom();
   const { lat, lng } = map.getCenter();
@@ -118,20 +121,22 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // Conversation.ensure is the subscription handler, and it keeps track of the instances by tag, initializing a new one if needed.
   initialize({topic, payload, hashtag, tag, agent, issuedTime, ...rest}) { // Make appropriate instance for a new individual tag, or update aggregate.
 
+    const eventName = topic.name;
+    const subscriptions = this.constructor.subscriptions;
     if (!Hashtags.isSubscribed(hashtag)) return null; // A subscribed event may have been in flight while unsubscribing. Caller destroys instance.
+    if (!subscriptions.hasOwnProperty(eventName)) return null; // An event may have been in flight while zooming or panning.
     const now = Date.now(),
 	  expiration = issuedTime + ttl,
           remaining = expiration - now;
     if (remaining < 0) return null;  // Network shouldn't send us expired, but if it does, let its instance be destroyed.
 
-    const eventName = topic.name;
     let keep = this; // Instance to be kept as marker.
     let aggregate = this.constructor.getAggregate(eventName); // If we already have one for this eventName
 
     // Each new initialization gets counted, which may be more than the network rollover.
     // We do not "back up" for deletions and expirations - i.e., subtract and possibly go back to individual alerts.
     // Note that initialize() will not be called for an event handler that has a tag (msgId) the same as one we have already seen for a different cell scale.
-    this.constructor.subscriptions[eventName]++;
+    subscriptions[eventName]++;
     
     if (aggregate) {
       keep = null; // This new instance is superfluous. Tell ensure() to destroy it...
@@ -215,20 +220,16 @@ export class Alert extends Conversation { // A wrapper around L.marker
       console.log('updating subscriptions', {added, dropped, newKeys, oldKeys});
 
       // Before subscribing, as that that may bring in an alert with the same tag as one being cleared.
-      if (this.aggregateLimit) this.transferOrClearEventMarkers(added, dropped, newKeys, oldKeys); 
+      if (this.aggregateLimit) {
+	// TODO: more efficient way?
+	new Set(added.map(topicTag)).forEach(tag => {
+	  const hasTag = topicName => topicTag(topicName) === tag;
+	  this.transferOrClearEventMarkers(added.filter(hasTag), dropped.filter(hasTag), newKeys, oldKeys);
+	});
+      }
 
       for (const key of added) await subscribe(key, data => Alert.ensure(data));
       for (const key of dropped) await subscribe(key, null);
-
-      // for (const alert of this.items) { // fixme remove
-      // 	if (this.subscriptions[alert.eventName] == undefined) {
-      // 	  let kind = added.includes(alert.eventName) && 'added';
-      // 	  kind ||= dropped.includes(alert.eventName) && 'dropped';
-      // 	  kind ||= Object.keys(newKeys).includes(alert.eventName) && 'new';
-      // 	  kind ||= Object.keys(oldKeys).includes(alert.eventName) && 'old';
-      // 	  throw new Error(`${kind} ${alert.eventName} has no count after subscription update.`);
-      // 	}
-      // }
     });
   }
 
@@ -259,9 +260,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const latLng = s2.LatLng.fromPoint(point);
       return [latLng.lat * radiansToDegrees, latLng.lng * radiansToDegrees];
     });
-    const border = this.cellBorder = L.polygon(corners, {color: 'red'});
+    const border = this.cellBorder = L.polygon(corners, {color: this.constructor.md_sys_color_secondary, fillOpacity: 0.1});
     border.addTo(map);
   }
+  static md_sys_color_secondary = '#BD2E2F';
   static forEachAlertOf(eventName, callback, alerts = this.items) { // Apply callback to each of alerts matching eventName.
     // TODO? Record a cell's Alert's more efficiently, so that we don't have to cycle through everything.
     alerts.forEach((alert, index, alerts) => (alert.eventName === eventName) && callback(alert, index, alerts));
@@ -293,8 +295,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
     setTimeout(() => pin.classList.toggle('starting', false), 100);
     marker.unbindPopup();
     marker.off('click');
-    marker.on('click', event => this.logAlert('FIXME go down one level'));
-    tooltip(element, Int`Zoom in on multiple ${hashtag} alerts.`); // fixme Int.
+    marker.on('click', event => this.logAlert());
+    tooltip(element, Int`Zoom in on multiple alerts in this area.`);
     this.noteEventName(this.tag = eventName);
     if (tag !== eventName) {
       networkPromise.then(async contact => contact.subscribe({eventName: tag, region, handler: null})); // Unsubscribe from replies.

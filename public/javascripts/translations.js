@@ -77,6 +77,7 @@ const translations = {
   ['#downloadDefer']: {en: "no, not yet", es: "No, todavía no."},
   ['No update at']: {es: "No hay actualizaciones a las"},
   ['is available']: {es: "está disponible"},
+  ['Zoom in on multiple alerts in this area.']: {es: "Amplía la vista sobre varias alertas en esta zona."},
 
   ['.firstConversation .teach.correspondent']: {en: "Change how you label this correspondent.", es: "Cambia la forma en que etiquetas a este corresponsal."},
   ['.firstPublish .teach.correspondent']: {en: "Change how you label yourself.", es: "Cambia la forma en que te etiquetas."},
