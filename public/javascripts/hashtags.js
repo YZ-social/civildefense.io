@@ -314,6 +314,7 @@ export const Hashtags = {
     clickTip(newtag, Int`Add a new topic for which the map should show any alerts.`, event => { // Focusing "add topic".
       event.stopPropagation();
       Alert.closePopup();
+      resetInactivityTimer();
       this.renderSelector('');
       if (navigator.maxTouchPoints <= 1) { // Only when no multi-touch. On-screen keyboard makes it shoot off the top.
 	showMessage(Int`Type a new topic name to see any alerts on the map with this topic.`, 'instructions');
@@ -361,8 +362,6 @@ export const Hashtags = {
     // When we click on the listbox, the browser will first blur newtag, and then
     // we would not get the click! So here we delay closing a bit.
     newtag.onblur = () => setTimeout(() => this.closeSelector(), 200);
-    newtag.onfocus = () => resetInactivityTimer();
-    newtag.onchange = () => this.acceptTag();
   },
   remove(chip, redisplaySubscribers = false) { // Remove this topic, persistently.
     delete this.hashtags[chip.label];
