@@ -48,6 +48,11 @@ export function clickTip(elementOrQuerySelector, text, clickHandler) { // toolti
   tooltip(element, text);
   element.onclick = clickHandler;
 }
+export function getText(querySelector) {
+  const element = document.querySelector(querySelector);
+  if (!element) throw new Error(`No element found for getText('${querySelector}').`);
+  return element.textContent;
+}
 
 function isWebView() { return /CriOS|(WebView|wv|(iPhone|iPod|iPad)(?!.*Safari))/.test(navigator.userAgent); }
 function isApple() { return navigator.platform.startsWith('Mac') || ['iPhone', 'iPad'].includes(navigator.platform); }
@@ -394,6 +399,11 @@ initText('#describePublic');
 initText('#describeSystem');
 initText('#pickLabels');
 initText('#wipe');
+initText('.firstConversation .teach.correspondent');
+initText('.firstPublish .teach.correspondent');
+initText('.teach.share');
+initText('.teach.attach');
+initText('.teach.changeHashtag');
 
 tooltip('#learnMore', Int`Click to see more information in another tab about what you can do with this app and how it is resistant to tracking, censorship, and takedown.`);
 tooltip('#aboutAnyone2', Int`Click to see the source code and documentation for serving copies of this app in another tab.`);

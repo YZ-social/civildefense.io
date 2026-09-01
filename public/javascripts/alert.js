@@ -2,7 +2,7 @@ import * as L from 'leaflet';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { Int } from './translations.js';
 import { map, trackMap, showMessage } from './map.js';
-import { networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, clickTip, openAbout, delay, osName } from './main.js';
+import { networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, clickTip, getText, openAbout, delay, osName } from './main.js';
 import { consume } from './display.js';
 import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
@@ -591,7 +591,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       input.rows = internalHighWater;
     };
     clickTip(replyButton, Int`Post your reply.`, event => this.postReply(event));
-    clickTip(replyAttachButton, Int`Attach a file to your reply.`, event => { resetInactivityTimer(); fileChooser.click(); });
+    clickTip(replyAttachButton, getText('.teach.attach'), event => { resetInactivityTimer(); fileChooser.click(); });
     fileChooser.onchange = event => {
       resetInactivityTimer();
       replyButton.removeAttribute('disabled');
@@ -606,9 +606,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const isAvatar = correspondent.classList.contains('avatar');
       if (agent.addElement(correspondent, 'mixed', isAvatar ? 'avatar' : 'handle')) {
 	const isMine = Agent.isMine(tag);
-	clickTip(correspondent, isMine ?
-		 Int`Control how others see me.` :
-		 Int`Control how this person is labeled on my device.`,
+	clickTip(correspondent, getText((isMine ? '.firstPublish' : '.firstConversation') + ' .teach.correspondent'),
 		 event => {
 		   if (isMine) openAbout(event);
 		   else agent.describe(event);
@@ -627,14 +625,14 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const shareable = popupElement.querySelectorAll('.share');
     for (const element of shareable) clickTip(element, element.closest('.reply') ?
 					      Int`Share though ${osName()} the text and attachments of this reply, with a link to open this alert.` :
-					      Int`Share through ${osName()} a link to open this alert.`, event => this.share(event));
+					      getText('.teach.share'), event => this.share(event));
   }
   initChangeHashtag(someParent) { // Init handler on the menu button, if any, as (re-) init of menu for open popup
     const changeHashtag = someParent.querySelector('.changeHashtag');
     if (!changeHashtag) return;
     const menu = document.getElementById('popoverMenu');
     menu.anchorElement = changeHashtag;
-    clickTip(changeHashtag, Int`Change the topic or delete your alert.`, event => {
+    clickTip(changeHashtag, getText('.teach.changeHashtag'), event => {
       consume(event);
       menu.open = !menu.open;
       menu.onclick = consume; // Must be onlick rather than addEventListener.
