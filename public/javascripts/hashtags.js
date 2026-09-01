@@ -187,8 +187,9 @@ export const Hashtags = {
   acceptTag() { // Add the new hashtag.
     resetInactivityTimer();
     let tag = this.newtag?.value  // Get into standard form, but do not strip emoji or case into canonical yet.
-	.replace(/^#/, '')       // No leading hash
-	.replace(/\s+/g, ' ')    // Replace multiple spaces with a single space
+	.replace(/^#/, '')        // No leading hash
+	.replace(':', '.')        // Replace colon with some other separator.
+	.replace(/\s+/g, ' ')     // Replace multiple spaces with a single space
 	.normalize('NFD');        // Standardize different ways of making accents into decomposed form - but do not remove them.
     Alert.closePopup();
     if (!tag) return;
