@@ -245,8 +245,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
     return this.getItem(eventName); // While individual Alerts are stored in items/conversations by tag, the tag for aggregate is the eventName.
   }
   logAlert(label = '') { // For debugging, when an individual or aggregate marker is clicked, show the alert, cell, and count in console.
-    const {lat, lng, eventName} = this;
-    console.warn(`${label} lat: ${lat}, lng: ${lng}, ${eventName}: ${this.constructor.subscriptions[eventName]}`);
+    const {lat, lng, tag, eventName} = this;
+    console.warn(`${label} lat: ${lat}, lng: ${lng}, ${eventName}: ${this.constructor.subscriptions[eventName]}, ${tag}`);
   }
   noteEventName(eventName) { // Be a part of the specified grouping.
     if (this.eventName === eventName) return;

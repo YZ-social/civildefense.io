@@ -76,16 +76,18 @@ export const Hashtags = {
     }
     return extended;
   },
-  getAll() { // List of all the user's hashtags.
+  getAll() { // List of all the user's extended hashtags.
     return Object.keys(this.hashtags);
   },
   getSubscribe() { // Return a list of the hashtags to which the user intendeds to subscribe.
     return this.getAll().filter(tag => this.hashtags[tag]);
   },
-  isSubscribed(key) {
-    return this.hashtags[key];
+  isSubscribed(key) { // Is this user subscribed to some form of this key.
+    const canonical = canonicalTag(key);                   // no emoji, lower case.
+    const ourExtended = this.canonical2extended[canonical];  // our current version, if any
+    return this.hashtags[ourExtended];
   },
-  isPublish(key) {
+  isPublish(key) { // Is this extended tag (in the user's preferred presentation) the user's current publishing tag?
     return this.hashtags[key] === 'pub';
   },
   backupPublisher: false,
@@ -123,7 +125,7 @@ export const Hashtags = {
     if (resetSubscriptions) {
       // We destroy unsubscribed markers right away, because we don't want the user to have to wait and wonder why they're still displayed.
       // If there are alerts in flight, they will be rejected by Alert initialize because we will have already turned off the sub.
-      Object.values(Alert.items).forEach(wrapper => this.hashtags[wrapper.hashtag] || wrapper.destroy());
+      Alert.items.forEach(wrapper => this.isSubscribed(wrapper.hashtag) || wrapper.destroy());
       Alert.updateSubscriptions();
     }
   },
