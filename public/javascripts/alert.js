@@ -297,7 +297,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     marker.off('click');
     marker.on('click', event => {
       this.logAlert();
-      this.constructor.zoomOn(this.lat, this.lng);
+      this.constructor.zoomOn(this.lat, this.lng, hashtag);
     });
     tooltip(element, Int`Zoom in on multiple alerts in this area.`);
     this.noteEventName(this.tag = eventName);
@@ -450,7 +450,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const eventNames = cells.map(cell => alertTopic(cell, hashtag));
       if (payload && eventNames.some(eventName => this.getAggregate(eventName))) { // Attemtpt to publish where we are showing an aggregate.
 	// There could already be an alert there, so zoom instead.
-	this.zoomOn(lat, lng);
+	this.zoomOn(lat, lng, hashtag);
 	return null;
       }
 
@@ -508,7 +508,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
       this.publishing = false;
     }
   }
-  static zoomOn(lat, lng, zoom = map.getZoom() + 1) {
+  static zoomOn(lat, lng, hashtag = '', zoom = map.getZoom() + 1) {
+    if (hashtag) showMessage(Int`There are already at least ${this.aggregateLimit} alerts of type "${hashtag}" in the colored region. Zooming in to get a better look.`);
     map.setZoomAround([lat, lng], zoom);
   }
   

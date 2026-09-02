@@ -77,7 +77,7 @@ const translations = {
   ['#downloadDefer']: {en: "no, not yet", es: "No, todavía no."},
   ['No update at']: {es: "No hay actualizaciones a las"},
   ['is available']: {es: "está disponible"},
-  ['Zoom in on multiple alerts in this area.']: {es: "Amplía la vista sobre varias alertas en esta zona."},
+  ['>Zoom in on multiple alerts in this area.']: {es: "Amplía la vista sobre varias alertas en esta zona."},
 
   ['.firstConversation .teach.correspondent']: {en: "Change how you label this correspondent.", es: "Cambia la forma en que etiquetas a este corresponsal."},
   ['.firstPublish .teach.correspondent']: {en: "Change how you label yourself.", es: "Cambia la forma en que te etiquetas."},
@@ -134,6 +134,9 @@ const translations = {
   ['Choose the picture you want to appear for alerts and replies by this user.']: {es: "Elige la imagen que quieras que aparezca para las alertas y respuestas de este usuario."},
   ['Enable local ']: {es: "Habilita notificaciones locales de "},
   [' notifcations for map alerts, without going through any servers. Requires that the app be running.']: {es: " para alertas del mapa, sin pasar por ningún servidor. Requiere que la aplicación esté en ejecución."},
+  ['There are already at least ']: {es: "Ya hay al menos "},
+  [' alerts of type "']: {es: ' alertas de tipo "'},
+  ['" in the colored region. Zooming in to get a better look.']: {es: '" en la región coloreada. Ampliando la imagen para verla mejor.'},
 
 
   ['Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.']: {es: "Demasiadas publicaciones. (Se permiten 5 cada 5 minutos). Eliminando las más antiguas de este período."},
