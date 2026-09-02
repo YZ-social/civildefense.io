@@ -97,9 +97,9 @@ if (dht < 1) {
 	  const subHandler = handlers[tag];
 	  const inFlightResolver = inFlight[tag];
 
-	  if ((!subHandler && !inFlightResolver) || // debug
-	      ((typeof(subHandler) !== 'function') && (typeof(inFlightResolver) !== 'function')))
-	    console.warn('no handler or request', {tag, rest, subHandler, inFlightResolver, handlers, inFlight});
+	  // if ((!subHandler && !inFlightResolver) || // debug
+	  //     ((typeof(subHandler) !== 'function') && (typeof(inFlightResolver) !== 'function')))
+	  //   console.warn('no handler or request', {tag, rest, subHandler, inFlightResolver, handlers, inFlight});
 
 	  if (subHandler) return subHandler(...rest);
 	  delete inFlight[tag];

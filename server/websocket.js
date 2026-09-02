@@ -5,7 +5,7 @@ import * as operator from '../public/javascripts/pubsub.js';
 const sockets = {};
 operator.setReceiver((nodeId, id, envelope) => {
   const socket = sockets[nodeId];
-  socket.send(JSON.stringify([id, envelope]));
+  socket?.send(JSON.stringify([id, envelope]));
 });
 
 function heartbeat() {
@@ -22,7 +22,7 @@ export function configureWebsocket(server) {
     ws.on('message', async message => {
       const [id, methodName, ...rest] = JSON.parse(message);
       const result = await operator[methodName](...rest);
-      ws.send(JSON.stringify([id, result]));
+      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify([id, result]));
     });
 
     ws.isAlive = true;
@@ -39,6 +39,7 @@ export function configureWebsocket(server) {
   const interval = setInterval(function ping() { // Keep-alive ping/pong on interval
     wss.clients.forEach(function each(ws) {
       if (!ws.isAlive) return ws.terminate();
+      if (ws.readyState !== WebSocket.OPEN) return ws.terminate();
       ws.isAlive = false;
       ws.ping();
       return null;
