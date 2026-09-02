@@ -238,8 +238,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // newKeys/oldKeys are a map of the currently subscribed eventName and the count of events for that cell+hashtag
   static subscriptions = {}; // maps currently active eventNames (<mumble>:<cellID>:<hashtag>) to count of event received for it.
   static aggregateLimit = parseInt(new URLSearchParams(location.search).get('max') || 100);  // How many individuals are allowed before we aggregate.
+  static MAX_MAP_ZOOM = 19; // If the map is already zoomed to this, there's no place else to go.
   static cellCountOverLimit(eventName, countsDictionary = this.subscriptions) { // Have we received enough that we must show an aggregate?
-    return countsDictionary[eventName] >= this.aggregateLimit;
+    return (countsDictionary[eventName] >= this.aggregateLimit) && (map.getZoom() < this.MAX_MAP_ZOOM);
   }
   static getAggregate(eventName) { // Answer the existing aggregate for this cell, if any.
     return this.getItem(eventName); // While individual Alerts are stored in items/conversations by tag, the tag for aggregate is the eventName.
