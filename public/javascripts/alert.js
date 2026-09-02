@@ -295,7 +295,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
     setTimeout(() => pin.classList.toggle('starting', false), 100);
     marker.unbindPopup();
     marker.off('click');
-    marker.on('click', event => this.logAlert());
+    marker.on('click', event => {
+      this.logAlert();
+      this.constructor.zoomOn(this.lat, this.lng);
+    });
     tooltip(element, Int`Zoom in on multiple alerts in this area.`);
     this.noteEventName(this.tag = eventName);
     if (tag !== eventName) {
@@ -443,6 +446,13 @@ export class Alert extends Conversation { // A wrapper around L.marker
     if (this.publishing) { console.log('skiping overlapping publish'); return null; } // do not stack them up.
     try {
       this.publishing = true;
+      const cells = getContainingCells(lat, lng);
+      const eventNames = cells.map(cell => alertTopic(cell, hashtag));
+      if (payload && eventNames.some(eventName => this.getAggregate(eventName))) { // Attemtpt to publish where we are showing an aggregate.
+	// There could already be an alert there, so zoom instead.
+	this.zoomOn(lat, lng);
+	return null;
+      }
 
       const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
       let oldCells = null, oldHash, oldTag = null; // Recorded for logging, below.
@@ -470,10 +480,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	}
       }
 
-      const cells = getContainingCells(lat, lng);
       const region = P2PWebNetwork.regionCode(lat, lng);
-      for (const cell of cells) {
-	const eventName = alertTopic(cell, hashtag);
+      for (const eventName of eventNames) {
 	if (payload) {
 	  // The Axona message will be {hashtag, issuedTime, payload:{lat, lng, originalPosting}}
 	  // and when combined with the publisher's authorId will be unique to this user/time/hashtag,
@@ -499,6 +507,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
     } finally {
       this.publishing = false;
     }
+  }
+  static zoomOn(lat, lng, zoom = map.getZoom() + 1) {
+    map.setZoomAround([lat, lng], zoom);
   }
   
   static noMessage = Int`No additional information.`;
