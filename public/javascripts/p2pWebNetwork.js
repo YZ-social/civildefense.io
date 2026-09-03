@@ -45,6 +45,8 @@ export class P2PWebNetwork {
       onDisconnect: network.detached,
       author: false
     });
+    infoLogger ||= null;
+    debugLogger ||= null;
     Object.assign(network, {infoLogger, debugLogger, disconnector: disconnect, transport, nodeIdentity, peer});
 
     network.info(`Created network node for kernel ${this.kernelVersion} region 0x${this.regionCode(location.lat, location.lng).toString(16)}.`);
@@ -65,7 +67,7 @@ export class P2PWebNetwork {
   async disconnect(debugLogger = this.debugLogger) { // Politely close network connection.
     const health = this.peer.health();
     await this.disconnector();
-    if (debugLogger) debugLogger(health);
+    if (debugLogger) this.debug('health at disconnect', health);
     else this.shortHealth(health);
     this.resetStatePromises();
   }
