@@ -7,10 +7,10 @@ import { resolve } from './dirname.js';
 const filename = './location.json';
 export const data = await import(filename, {with: { type: 'json' }})
   .catch(async error => {
-    console.log(error);
+    console.log("Unable to get location.json");
     const response = await fetch('https://ipinfo.io/json');
     const string = await response.text();
-    console.log('Estimating location as', string);
+    console.log("Estimating location as", string);
     await fs.writeFile(resolve(filename), string, 'utf8');
     return {default: JSON.parse(string)};
   });
