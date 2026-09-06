@@ -447,7 +447,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
 			payload = {lat, lng, originalPosting}, // If payload is null (cancels tag), lat & lng are still used to generate eventNames.
 			cancel = undefined, // First unpublish the specified data, if any. Complicated default.
 			issuedTime = Date.now(), tag,
-			throttleMS = 0,
 			...rest
 		       }) {
     // We call all the publishing at once and return tag, without waiting for each to occur.
@@ -483,30 +482,15 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	oldCells = getContainingCells(lat, lng);
 	oldHash = hashtag; oldTag = tag;
 	const region = P2PWebNetwork.regionCode(lat, lng);
-	for (const cell of oldCells) {
-	  const eventName = alertTopic(cell, hashtag);
-	  // Note: we cannot unpublish replies by others, but they expire after a while anyway.
-	  await contact.publish({eventName, region, killTag: tag, payload: null});
-	  throttleMS && await P2PWebNetwork.delay(throttleMS);
-	}
+	await Promise.all(oldCells.map(cell => contact.publish({eventName: alertTopic(cell, hashtag), region, killTag: tag, payload: null})));
       }
 
       const region = P2PWebNetwork.regionCode(lat, lng);
-      for (const eventName of eventNames) {
-	if (payload) {
-	  // The Axona message will be {hashtag, issuedTime, payload:{lat, lng, originalPosting}}
-	  // and when combined with the publisher's authorId will be unique to this user/time/hashtag,
-	  // and yet the same for each of the individual publications at the different s2 scales.
-	  tag = lastFillIn.tag = await contact.publish({eventName, region, payload, issuedTime, hashtag, ...rest});
-	} else {
-	  await contact.publish({eventName, region, killTag: tag, payload: null});
-	}
-	throttleMS && await P2PWebNetwork.delay(throttleMS);
-      }
-      if (!payload) {
-	const index = this.lastPublished.findIndex(past => past.tag === tag);
-	if (index >= 0) this.lastPublished.splice(index, 1);
-      }
+      const pubs = await Promise.all(eventNames.map(eventName =>
+	contact.publish({eventName, region, killTag: tag, payload: tag ? null : payload, issuedTime, hashtag, ...rest})));
+      if (payload) tag = lastFillIn.tag = pubs[0];
+      else this.lastPublished = this.lastPublished.filter(past => past.tag !== tag);
+
       console.log('Published', {cells, n: cells.length, region, hashtag, tag, payload, oldCells, oldHash, oldTag});
       return tag;
     } finally {
