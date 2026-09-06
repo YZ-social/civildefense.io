@@ -53,7 +53,7 @@ async function set(type, topicId, subject, value, ttlMs) {
 async function remove(type, topicId, subject) { // Returns old value, or null.
   const idxKey = indexKey(type, topicId);
   const key = itemKey(type, topicId, subject);
-  const raw = await client.get(key);
+  const raw = await client.get(key); // TODO: consider pipelining this and next to be atomic.
   await client.del(key);
   await client.zRem(idxKey, subject);
   return raw == null ? null : JSON.parse(raw);
@@ -61,7 +61,7 @@ async function remove(type, topicId, subject) { // Returns old value, or null.
 
 async function entries(type, topicId) {
   const idxKey = indexKey(type, topicId);
-  const subjects = await client.zRange(idxKey, 0, -1);
+  const subjects = await client.zRange(idxKey, 0, -1); // TODO: consider pipelining this and following to be atomic.
   if (!subjects.length) return [];
   const raws = await client.mGet(subjects.map(subject => itemKey(type, topicId, subject)));
   const result = [];

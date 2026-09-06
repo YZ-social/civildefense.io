@@ -201,6 +201,11 @@ export class Alert extends Conversation { // A wrapper around L.marker
   static async updateSubscriptions({newKeys, oldKeys, throttleMS = 20} = {}) { // Update current subscriptions.
     // A value of {} passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
     return this.subscriptionQueue = this.subscriptionQueue.then(async () => {
+      if (oldKeys && !Object.keys(oldKeys).length) { // This was a reset for a new node.
+	// The bookkeeping gets complicated with alerts that might still be valid, but with no triggering event to subscribe to replies.
+	// Best to kill 'em all.
+	this.items.forEach(alert => alert.destroy());
+      }
       oldKeys ||= this.subscriptions;
       newKeys ||= this.subscriptionFromMap();
 
