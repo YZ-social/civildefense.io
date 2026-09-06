@@ -9,9 +9,7 @@
 //   restart of this process.
 // - A per-(type, topicId) sorted set (`idx:...`) tracks which subjects exist,
 //   scored by insertion time. This gives real, correctly-ordered "oldest
-//   first" eviction for the publication rollover limit (the original code's
-//   `// TODO: rotate out the earliest received` -- ZSET makes that exact,
-//   not approximate).
+//   first" eviction for the publication rollover limit.
 // - Reads (`values`/`entries`) tolerate the index referencing an item that
 //   has since expired: they filter it out and lazily prune the index entry.
 // - This intentionally avoids Redis 7.4+'s per-hash-field TTL (HEXPIRE), so
@@ -29,15 +27,18 @@ client.on('error', err => console.error('Redis client error', err));
 await client.connect();
 
 function itemKey(type, topicId, subject) {
-  return `item:${type}:${topicId}:${subject}`;
+  return `civildefense.io:${type}:${topicId}:${subject}`;
+}
+function indexPrefix(type) {
+  return `civildefense.io:idx:${type}:`;
 }
 function indexKey(type, topicId) {
-  return `idx:${type}:${topicId}`;
+  return `civildefense.io:idx:${type}:${topicId}`;
 }
 
 async function set(type, topicId, subject, value, ttlMs) {
   const idxKey = indexKey(type, topicId);
-  if (type === 'pub') {
+  if (type === 'pub') { // Limit pubs to rollover limit.
     const size = await client.zCard(idxKey);
     if (size >= publicationRolloverLimit) {
       console.warn('Over pub limit on topic', topicId, size);
@@ -49,7 +50,7 @@ async function set(type, topicId, subject, value, ttlMs) {
   await client.zAdd(idxKey, { score: Date.now(), value: subject });
 }
 
-async function remove(type, topicId, subject) {
+async function remove(type, topicId, subject) { // Returns old value, or null.
   const idxKey = indexKey(type, topicId);
   const key = itemKey(type, topicId, subject);
   const raw = await client.get(key);
@@ -78,7 +79,7 @@ async function values(type, topicId) {
 }
 
 async function topics(type) {
-  const prefix = `idx:${type}:`;
+  const prefix = indexPrefix(type);
   const ids = [];
   // scanIterator yields batches (arrays of keys), not individual keys, on
   // this client version -- normalize so this works across client versions.

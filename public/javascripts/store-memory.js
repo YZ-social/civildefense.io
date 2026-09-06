@@ -36,7 +36,7 @@ function set(type, topicId, subject, value, ttlMs) {
   if (type === 'pub') {
     const keys = Object.keys(bucket);
     if (keys.length >= publicationRolloverLimit) {
-      console.warn('Over pub limit on topic', topicId, keys.length); // TODO: rotate out the earliest received.
+      console.warn('Over pub limit on topic', topicId, keys.length);
       delete bucket[keys[0]];
     }
   }
