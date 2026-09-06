@@ -157,7 +157,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	this.constructor.clearEventMarkers(eventName, aggregate);
       } else {
 	this.noteEventName(eventName);
-	marker.bindPopup('', {className: 'alert'}).on('popupopen', event => this.ensureContent(event.popup));
+	marker.bindPopup('', {className: 'alert'})
+	  .on('popupopen', event => this.ensureContent(event.popup))
+	  .on('popupclose', () => {
+	    document.body.classList.toggle('firstConversation', false);
+	    document.body.classList.toggle('firstPublish', false);
+	  });
 	tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
 	if (tag === openOnReceive) { // Bug! How can we handle URLs to an alert that has been aggregated?
 	  openOnReceive = false;
