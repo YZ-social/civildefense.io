@@ -4,9 +4,13 @@ const { TextEncoder, crypto, Buffer } = globalThis;
 
 // All storage (the type -> topicId -> subject -> value buckets, and their
 // expiry) lives behind this interface. Swap the import below for a
-// Redis-backed (or other) implementation of the same interface when the
-// data no longer fits in memory; nothing else in this file needs to change.
-import { store } from './store-memory.js';
+// different implementation of the same interface (e.g. store-memory.js for
+// local testing) -- nothing else in this file needs to change. Every store
+// call is awaited: that's a no-op for a synchronous backend and required
+// for an async one like Redis, so the same file works with either.
+const storeSource = globalThis.process?.env.REDIS_URL ? './store-redis.js' : './store-memory.js';
+const { store } = await import(storeSource);
+console.log('store source', storeSource);
 
 const SUBSCRIPTION_TIMEOUT = 0; // No need, because we run deleteSubscriber on disconnect.
 const PUBLISH_TIMEOUT = 24 * 60 * 60e3;      // Delete after 24 hours.
@@ -32,15 +36,15 @@ async function pauseInvoke(...rest) {
   await new Promise(resolve => setTimeout(resolve, throttleMS));
 }
 
-export function subscribe(topicName, nodeTag, {since = 'all'}) {
+export async function subscribe(topicName, nodeTag, {since = 'all'}) {
   // Axona allows multiple handlers on the same topic, but we don't use that in civildefense, and do not implement it here.
   const topicId = deriveTopicId(topicName);
   const id = uuidv4();
-  store.set('sub', topicId, nodeTag, id, SUBSCRIPTION_TIMEOUT);
+  await store.set('sub', topicId, nodeTag, id, SUBSCRIPTION_TIMEOUT);
   if (since) { // invoke handler on any sticky data, but only after we have told client the subscription id.
     setTimeout(async () => {
       let lastEnvelope = null, lastTime = 0;
-      for (const envelope of store.values('pub', topicId)) {
+      for (const envelope of await store.values('pub', topicId)) {
 	switch (since) {
 	case 'all':
 	  await pauseInvoke(nodeTag, id, envelope);
@@ -61,17 +65,17 @@ export function subscribe(topicName, nodeTag, {since = 'all'}) {
   return {topicName, topicId, id};
 }
 
-export function unsubscribe(topic, nodeTag, options) {
+export async function unsubscribe(topic, nodeTag, options) {
   const topicId = deriveTopicId(topic);
-  const id = store.remove('sub', topicId, nodeTag);
+  const id = await store.remove('sub', topicId, nodeTag);
   return {ok: true, id}; // Axona doesn't return the id(s) of the subscription(s), but it is convenient for us to do so.
 }
 
-export function deleteSubscriber(nodeTag) {
-  for (const topicId of store.topics('sub')) {
-    for (const [subject] of store.entries('sub', topicId)) {
-      if (nodeTag === subject) store.remove('sub', topicId, subject);
-    }
+export async function deleteSubscriber(nodeTag) {
+  // subject === nodeTag for 'sub' entries, so we can remove directly rather
+  // than fetching and filtering every topic's entries.
+  for (const topicId of await store.topics('sub')) {
+    await store.remove('sub', topicId, nodeTag);
   }
 }
 
@@ -84,17 +88,17 @@ export async function publish(topic, message, {signWith}) {
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
   const msgId = toHex(new Uint8Array(hash));
   const envelope = {msgId, topic, ts: Date.now(), message, signerPubkey};
-  for (const [nodeTag, id] of store.entries('sub', topicId)) await pauseInvoke(nodeTag, id, envelope);
-  store.set('pub', topicId, msgId, envelope, PUBLISH_TIMEOUT);
+  for (const [nodeTag, id] of await store.entries('sub', topicId)) await pauseInvoke(nodeTag, id, envelope);
+  await store.set('pub', topicId, msgId, envelope, PUBLISH_TIMEOUT);
   return msgId;
 }
 
 export async function unpublish(topic, msgId, {signWith}) {
   const topicId = deriveTopicId(topic);
-  const envelope = store.remove('pub', topicId, msgId);
+  const envelope = await store.remove('pub', topicId, msgId);
   if (!envelope) return {ok: false}; // we didn't have it.
   envelope.deleted = true;
   envelope.message = null;
-  for (const [nodeTag, id] of store.entries('sub', topicId)) await pauseInvoke(nodeTag, id, envelope);
+  for (const [nodeTag, id] of await store.entries('sub', topicId)) await pauseInvoke(nodeTag, id, envelope);
   return {ok: true};
 }
