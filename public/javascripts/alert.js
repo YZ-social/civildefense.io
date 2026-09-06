@@ -467,9 +467,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
 
       const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
       let oldCells = null, oldHash, oldTag = null; // Recorded for logging, below.
-      let lastFillIn;
+      let lastFillIn = {lat, lng, hashtag, issuedTime};
       if (payload) {
-	lastFillIn = {lat, lng, hashtag, issuedTime};
 	this.lastPublished.push(lastFillIn); // Capture the added data.
 	const periodStart = Date.now() - (this.maxPublish * 60e3); // maxPublish minutes ago.
 	this.lastPublished = this.lastPublished.filter(past => past.issuedTime >= periodStart);
@@ -498,17 +497,11 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	  // The Axona message will be {hashtag, issuedTime, payload:{lat, lng, originalPosting}}
 	  // and when combined with the publisher's authorId will be unique to this user/time/hashtag,
 	  // and yet the same for each of the individual publications at the different s2 scales.
-	  const msgId = await contact.publish({eventName, region, payload, issuedTime, hashtag, ...rest});
-	  if (tag && tag !== msgId) throw new Error(`msgId is drifting: ${tag} => ${msgId}`);
-	  tag = msgId;
-	  if (lastFillIn) {
-	    lastFillIn.tag = tag;
-	    lastFillIn = null;
-	  }
+	  tag = lastFillIn.tag = await contact.publish({eventName, region, payload, issuedTime, hashtag, ...rest});
 	} else {
 	  await contact.publish({eventName, region, killTag: tag, payload: null});
-	  throttleMS && await P2PWebNetwork.delay(throttleMS);
 	}
+	throttleMS && await P2PWebNetwork.delay(throttleMS);
       }
       if (!payload) {
 	const index = this.lastPublished.findIndex(past => past.tag === tag);
