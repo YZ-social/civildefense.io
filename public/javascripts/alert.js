@@ -474,7 +474,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	const periodStart = Date.now() - (this.maxPublish * 60e3); // maxPublish minutes ago.
 	this.lastPublished = this.lastPublished.filter(past => past.issuedTime >= periodStart);
 	if (cancel === undefined && this.lastPublished.length > this.maxPublish) { // Unless specified otherwise, cancel oldest over maxPublish.
-	  showMessage(Int`Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.`, 'instructions');
+	  setTimeout(() => showMessage(Int`Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.`),
+		     3e3); // If immediate, it will get covered by instructions on the new alert.
 	  cancel = this.lastPublished.shift();
 	}
       }
@@ -684,7 +685,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 `;
     return `<md-outlined-button class="changeHashtag">${pubtag}</md-outlined-button>`;
   }
-  formatAttributionActions({agent, hashtag}) { // Anser div HTML containing: [deleter] sharer [hashtag]
+  formatAttributionActions({agent, hashtag}) { // Answer div HTML containing: [deleter] sharer [hashtag]
     // Where deletere appears if it our reply (no hashtag), and hashtag if present is a button if ours (and otherwise just text).
     const isOurs = agent === Agent.tag;
     const deleter = !hashtag && isOurs ? `<md-outlined-icon-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-icon-button>` : '';
