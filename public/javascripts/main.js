@@ -274,7 +274,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
 	  delay(2e3).then(() => initMap());
 	} else {
 	  showMessage(Int`Unable to get location.`, 'error', error);
-	  delay(4e3).then(() => initializeGeolocation(subscribe));
+	  delay(2e3).then(() => initMap());
 	}
       } else {
 	showMessage(Int`No network connection.`, 'error');
