@@ -203,8 +203,41 @@ async function cacheSource(version, event) { // Cache source in the given versio
   return version;
 }
 
+const issued = new Set();
+function showNotification({lat, lng, issuedTime, hashtag, alert, body}) { // Promise to show a platform notification. There are two paths to here:
+  // 1. The app handles data from network connections, and determines that it should alert the user.
+  //    In this case, the app sends the data to this service worker.
+  // 2. An upstream node would like to send the data over the network, but finds that we are not connected,
+  //    and so pushes the the network envelope directly to the service worker.
+  // Abstractly, this function could be in either app or service worker, but the app might not be running
+  // in path 2, so it has to be here if we want to have the code in just one place.
+  // Any filtering (e.g., do not show notifications for one's own alerts) happens upstream of here. (We don't know the Agent.current and the sender isn't in the notification.)
+  const seenKey = alert + body;  // If we click on a notification for an off-screen alert, we may process the alert again and try to notify again.
+  if (issued.has(seenKey)) return null;
+  issued.add(seenKey);
+  const base = location.href;
+  const timestamp = issuedTime;
+  const icon = new URL('./images/civil-defense-192.png', base).href;
+  const queryString = `./?tags=${encodeURIComponent(hashtag)}&lat=${lat}&lng=${lng}&alert=${alert}`;
+  const url = new URL(queryString, base).href; // For opening page when it has been closed.
+  const data = {lat, lng, url};
+  // It appears that on 8/14/26:
+  // Safari ignores tag/renotify, and ALWAYS tells the user and displays each notification separately, without consolidating by tag.
+  // Chrome ignores renotify, and ALWAYS consolidates by tag, replacing old body with new, and NEVER renotifies the user (for the same tag).
+  // So... we could get uniform behavior by skipping the tag, but for now we'll try using it as intended, in case the browsers ever start to comply.
+  const options = {icon, timestamp, tag: alert, body, data, renotify: true};
+  console.log('showNotification', hashtag, options);
+  return self.registration.showNotification(hashtag, options);
+}
 
-self.addEventListener('message', async event => {
+function showNotificationFromPush({message, msgId}) { // We get the generic, application-independent envelope.
+  const {issuedTime, hashtag, payload} = message;
+  let {lat, lng, message:body, name} = payload;
+  body ||= name;
+  return showNotification({alert: msgId, lat, lng, issuedTime, hashtag, body});
+}
+
+self.addEventListener('message', event => {
   const {method, params} = event.data;
   switch (method) {
   case 'version':
@@ -214,10 +247,15 @@ self.addEventListener('message', async event => {
     event.waitUntil(cacheSource(params, event)
 		    .then(version => event.source.postMessage({method: 'cached', params: version})));
     break;
+  case 'notify':
+    event.waitUntil(showNotification(params));
+    break;
   default:
     console.warn(`Unrecognized service worker message: "${event.data}".`);
   }
 });
+
+self.addEventListener('push', event => event.waitUntil(showNotificationFromPush(event.data)));
 
 self.addEventListener('notificationclick', event => {
   const {notification} = event;

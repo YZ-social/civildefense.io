@@ -164,7 +164,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	    document.body.classList.toggle('firstPublish', false);
 	  });
 	tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
-	if (tag === openOnReceive) { // Bug! How can we handle URLs to an alert that has been aggregated?
+	if (tag === openOnReceive) {
 	  openOnReceive = false;
 	  this.openPopup();
 	}
@@ -730,8 +730,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
     event.stopPropagation();
     const button = event.target;
     const inputElement = button.parentElement;
-    let payload = inputElement.value.trim();
     const {tag, hashtag, lat, lng} = this;
+    let payload = {message: inputElement.value.trim(), lat, lng};
     const region = P2PWebNetwork.regionCode(lat, lng);
     const files = inputElement.parentElement.querySelector('input[type="file"]').files;
     if (!payload && !files.length) return;
@@ -740,9 +740,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const contact = await networkPromise;
     if (files.length) {
       const {topic:file, msgIds} = await contact.chunkifyBlob({blob: files[0], region});
-      payload = {message: payload, file};
+      payload.file = file;
     }
-    await contact.publish({eventName: tag, region, payload}); // Publish the new reply.
+    // Users won't subscribe to tag unless the alert itself has already landed, and that has lat/lng/hashtag.
+    // However, these must be included anyway in case the receiving user clicks on an out-of-band
+    // notification at a later time, without the alert being on the map at that moment.
+    await contact.publish({eventName: tag, region, payload, hashtag}); // Publish the new reply.
     Agent.current.persistPublicMetadata();
   }
   deleteReply(replyElement) {
@@ -769,17 +772,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     // All notifications on the same alert (e.g., the post and each reply) have the same tag, so OS can collapse them.
     if (agent === Agent.tag || !notificationsAllowed()) return;
     navigator.serviceWorker.ready.then(registration => {
-      const timestamp = issuedTime;
-      const icon = new URL('./images/civil-defense-192.png', location.href).href;
-      const url = getShareableURL(alert, [hashtag]).href; // For opening page when it has been closed.
-      const data = {lat, lng, url};
-      // It appears that on 8/14/26:
-      // Safari ignores tag/renotify, and ALWAYS tells the user and displays each notification separately, without consolidating by tag.
-      // Chrome ignores renotify, and ALWAYS consolidates by tag, replacing old body with new, and NEVER renotifies the user (for the same tag).
-      // So... we could get uniform behavior by skipping the tag, but for now we'll try using it as intended, in case the browsers ever start to comply.
-      const options = {icon, timestamp, tag: alert, body, data, renotify: true};
-      console.log('showNotification', hashtag, options);
-      registration.showNotification(hashtag, options);
+      registration.active.postMessage({method: 'notify', params: {lat, lng, issuedTime, hashtag, alert, body}});
     });
   }
   // Each reply element is a DIV.reply with data-tag and data-text attributes that are used in sharing.
@@ -787,7 +780,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // If present the attachment will be an A element with download attribute, surrounding either an IMG, A/V player, or an attachment icon followed by the file name.
   formatReplies() { // Answer HTML for the replies and input box.
     const { items, agent, originalPosting } = this;
-    const formatReply = ({tag, payload, ...rest}) => {
+    const formatReply = ({tag, payload, hashtag, ...rest}) => {
       const {message = payload, file, name} = payload || {}; // Message text converts recognized urls to A/V players or links.
       let text = message
 	  .replace(/https?:\/\/\S+\.(mp3|aac|ogg|oga|opus|m4a|m3u8|m3u|mpu|mpd)$/ig, url => `<audio controls src="${url}" crossorigin="anonymous"></audio>`) // show audio urls as players
