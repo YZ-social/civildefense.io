@@ -15,7 +15,7 @@ console.log('store source', storeSource);
 const SUBSCRIPTION_TIMEOUT = 0; // No need, because we run deleteSubscriber on disconnect.
 const PUBLISH_TIMEOUT = 24 * 60 * 60e3;      // Delete after 24 hours.
 
-function normalizeTopic({name, region, owner, write = 'open'} = {}) {
+function normalizeTopic({name, region, owner = null, write = owner ? 'owner' : 'open'} = {}) {
   if (typeof(region) === 'string') region = parseInt(region);;
   return {name, region, owner, write};
 }
@@ -30,9 +30,17 @@ let invoke;
 export function setReceiver(receiver) {
   invoke = receiver;
 }
+async function straightInvoke(...rest) {
+  try {
+    invoke(...rest);
+  } catch (error) { // Error sending, e.g., nodeTag is gone.
+    const [nodeTag, id, envelope] = rest;
+    await deleteSubscriber(nodeTag);
+  }
+}
 const throttleMS = 30; // Just to yield to other stuff.
 async function pauseInvoke(...rest) {
-  invoke(...rest);
+  await straightInvoke(...rest);
   await new Promise(resolve => setTimeout(resolve, throttleMS));
 }
 
@@ -59,7 +67,7 @@ export async function subscribe(topicName, nodeTag, {since = 'all'}) {
 	  if (envelope.ts === since) await pauseInvoke(nodeTag, id, envelope);
 	}
       }
-      if (lastEnvelope) invoke(nodeTag, id, lastEnvelope);
+      if (lastEnvelope) straightInvoke(nodeTag, id, lastEnvelope);
     }, 100);
   }
   return {topicName, topicId, id};
@@ -68,7 +76,7 @@ export async function subscribe(topicName, nodeTag, {since = 'all'}) {
 export async function unsubscribe(topic, nodeTag, options) {
   const topicId = deriveTopicId(topic);
   const id = await store.remove('sub', topicId, nodeTag);
-  return {ok: true, id}; // Axona doesn't return the id(s) of the subscription(s), but it is convenient for us to do so.
+  return {ok: !!id, id}; // Axona doesn't return the id(s) of the subscription(s), but it is convenient for us to do so.
 }
 
 export async function deleteSubscriber(nodeTag) {
@@ -88,8 +96,11 @@ export async function publish(topic, message, {signWith}) {
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
   const msgId = toHex(new Uint8Array(hash));
   const envelope = {msgId, topic, ts: Date.now(), message, signerPubkey};
-  for (const [nodeTag, id] of await store.entries('sub', topicId)) await pauseInvoke(nodeTag, id, envelope);
   await store.set('pub', topicId, msgId, envelope, PUBLISH_TIMEOUT);
+  const subs = await store.entries('sub', topicId);
+  await Promise.all(subs.map(([tag, handlerInfo]) => {
+    return pauseInvoke(tag, handlerInfo, envelope);
+  }));
   return msgId;
 }
 
