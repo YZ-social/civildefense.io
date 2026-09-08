@@ -36,6 +36,10 @@ function indexKey(type, topicId) {
   return `civildefense.io:idx:${type}:${topicId}`;
 }
 
+function get(type, topicId, subject) {
+  return client.get(itemKey(type, topicId, subject));
+}
+
 async function set(type, topicId, subject, value, ttlMs) {
   const idxKey = indexKey(type, topicId);
   if (type === 'pub') { // Limit pubs to rollover limit.
@@ -89,7 +93,7 @@ async function topics(type) {
   return ids;
 }
 
-export const store = { set, remove, values, entries, topics };
+export const store = { get, set, remove, values, entries, topics };
 
 // Not part of the shared interface -- useful for tests/graceful shutdown.
 export async function close() {

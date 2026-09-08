@@ -15,8 +15,8 @@
 
 const publicationRolloverLimit = 1000;
 
-const data = {pub: {}, sub: {}};
-const timers = {pub: {}, sub: {}};
+const data = {pub: {}, sub: {}, track: {}};
+const timers = {pub: {}, sub: {}, track: {}};
 
 function bucketFor(collection, type, topicId) {
   return collection[type][topicId] ||= {};
@@ -30,6 +30,9 @@ function cancelTimer(type, topicId, subject) {
   if (!Object.keys(bucket).length) delete timers[type][topicId];
 }
 
+function get(type, topicId, subject) {
+  return bucketFor(data, type, topicId)?.[subject];
+}
 function set(type, topicId, subject, value, ttlMs) {
   cancelTimer(type, topicId, subject); // replacing a value resets its expiry
   const bucket = bucketFor(data, type, topicId);
@@ -68,4 +71,4 @@ function topics(type) {
   return Object.keys(data[type]);
 }
 
-export const store = {set, remove, values, entries, topics};
+export const store = {set, get, remove, values, entries, topics};
