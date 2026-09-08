@@ -219,11 +219,15 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const dropped = [], added = [];
       if (!contact) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
       this.subscriptions = newKeys; // Before subscribing.
-      const subscribe = async (eventName, handler) => {
+      const subscribe = (eventName, handler) => {
 	if (!eventName) console.log('sub to no eventName', {oldKeys, newKeys, dropped, added, handler});
 	const region = topicRegion(eventName);
 	if (handler) Agent.current?.trackPublicChanges(region); // Background. No need to await.
-	await contact.subscribe({eventName, region, handler}).then(() => throttleMS && P2PWebNetwork.delay(throttleMS));
+	return contact.subscribe({eventName, region, handler})
+	  .then(sub => {
+	    throttleMS && P2PWebNetwork.delay(throttleMS);
+	    return sub;
+	  });
       };
       for (const key in newKeys) oldKeys.hasOwnProperty(key) || added.push(key);
       for (const key in oldKeys) newKeys.hasOwnProperty(key) || dropped.push(key);
@@ -238,8 +242,14 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	});
       }
 
-      for (const key of added) await subscribe(key, data => Alert.ensure(data));
+      const addedSubscriptions = [];
+      for (const key of added) addedSubscriptions.push(await subscribe(key, data => Alert.ensure(data)));
       for (const key of dropped) await subscribe(key, null);
+      for (const subscription of addedSubscriptions) {
+	const signingKey = await subscription.pushPubkey;
+	const pushSubscription = await {signingKey, foo: 'bar'};
+	await subscription.addPushData(pushSubscription);
+      }
     });
   }
 
