@@ -194,9 +194,9 @@ export class P2PWebNetwork {
 	}
 	handler({...message, agent: signerPubkey, tag: msgId, topic, ts});
       };
-      await this.peer.sub(topic, callback, {since});
+      return this.peer.sub(topic, callback, {since});
     } else {
-      await this.peer.unsub(topic, {});
+      return this.peer.unsub(topic, {});
     }
   }
   static currentPublishIdentity = null;

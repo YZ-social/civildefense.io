@@ -139,9 +139,9 @@ if (dht < 1) {
 	disconnect();
       },
       async sub(topic, handler, options) {
-	const result = await send('subscribe', topic, nodeTag, options);
-	handlers[result.id] = handler;
-	return result;
+	const { topicName, topicId, id, pushPubkey } = await send('subscribe', topic, nodeTag, options);
+	handlers[id] = handler;
+	return {topicName, topicId, id, pushPubkey, addPushData: data => send('track', topicName, nodeTag, data)};
       },
       async unsub(topic, options) {
 	const result = await send('unsubscribe', topic, nodeTag, options);
