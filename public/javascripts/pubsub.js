@@ -35,7 +35,7 @@ let invoke;
 export function setReceiver(receiver) {
   invoke = receiver;
 }
-async function straightInvoke(...rest) {
+async function fireEvent(...rest) {
   try {
     invoke(...rest);
   } catch (error) { // Error sending, e.g., nodeTag is gone.
@@ -46,8 +46,8 @@ async function straightInvoke(...rest) {
   }
 }
 const throttleMS = 30; // Just to yield to other stuff.
-async function pauseInvoke(...rest) {
-  await straightInvoke(...rest);
+async function fireThrottledEvent(...rest) {
+  await fireEvent(...rest);
   await new Promise(resolve => setTimeout(resolve, throttleMS));
 }
 
@@ -64,7 +64,7 @@ export async function subscribe(topic, nodeTag, {since = 'all'}) {
       for (const envelope of await store.values('pub', topicId)) {
 	switch (since) {
 	case 'all':
-	  await pauseInvoke(nodeTag, id, envelope);
+	  await fireThrottledEvent(nodeTag, id, envelope);
 	  break;
 	case 'latest':
 	  if (envelope.ts > lastTime) {
@@ -73,10 +73,10 @@ export async function subscribe(topic, nodeTag, {since = 'all'}) {
 	  }
 	  break;
 	default: // Must be a timestamp
-	  if (envelope.ts === since) await pauseInvoke(nodeTag, id, envelope);
+	  if (envelope.ts === since) await fireThrottledEvent(nodeTag, id, envelope);
 	}
       }
-      if (lastEnvelope) straightInvoke(nodeTag, id, lastEnvelope);
+      if (lastEnvelope) fireEvent(nodeTag, id, lastEnvelope);
     }, 100);
   }
   return { topicName, topicId, id, pushPubkey };
@@ -127,7 +127,7 @@ export async function publish(topic, message, {signWith}) {
   const subs = await store.entries('sub', topicId);
   await Promise.all(subs.map(([tag, handlerInfo]) => {
     if ('string' === typeof(handlerInfo)) { // nodeId
-      return pauseInvoke(tag, handlerInfo, envelope);
+      return fireThrottledEvent(tag, handlerInfo, envelope);
     } else { // An activated push subscription.
       return push(envelope, handlerInfo);
     }
@@ -141,6 +141,6 @@ export async function unpublish(topic, msgId, {signWith}) {
   if (!envelope) return {ok: false}; // we didn't have it.
   envelope.deleted = true;
   envelope.message = null;
-  for (const [nodeTag, id] of await store.entries('sub', topicId)) await pauseInvoke(nodeTag, id, envelope);
+  for (const [nodeTag, id] of await store.entries('sub', topicId)) await fireThrottledEvent(nodeTag, id, envelope);
   return {ok: true};
 }
