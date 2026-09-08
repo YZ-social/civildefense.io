@@ -5,7 +5,7 @@ import * as operator from '../public/javascripts/pubsub.js';
 const sockets = {};
 operator.setReceiver((nodeId, id, envelope) => {
   const socket = sockets[nodeId];
-  socket?.send(JSON.stringify([id, envelope]));
+  socket.send(JSON.stringify([id, envelope])); // We want an error if socket is gone, closed, etc.
 });
 
 function heartbeat() {
@@ -20,9 +20,13 @@ export function configureWebsocket(server) {
     sockets[nodeTag] = ws;
 
     ws.on('message', async message => {
-      const [id, methodName, ...rest] = JSON.parse(message);
-      const result = await operator[methodName](...rest);
-      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify([id, result]));
+      try {
+	const [id, methodName, ...rest] = JSON.parse(message);
+	const result = await operator[methodName](...rest);
+	if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify([id, result]));
+      } catch (error) {
+	console.error(`Incomming ${error.message}: ${message}\n${error.stack}`);
+      }
     });
 
     ws.isAlive = true;
