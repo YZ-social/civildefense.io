@@ -221,20 +221,16 @@ function showNotification({lat, lng, issuedTime, hashtag, alert, body = ''}) { /
   const queryString = `./?tags=${encodeURIComponent(hashtag)}&lat=${lat}&lng=${lng}&alert=${alert}`;
   const url = new URL(queryString, base).href; // For opening page when it has been closed.
   const data = {lat, lng, url};
-  // It appears that on 8/14/26:
-  // Safari ignores tag/renotify, and ALWAYS tells the user and displays each notification separately, without consolidating by tag.
-  // Chrome ignores renotify, and ALWAYS consolidates by tag, replacing old body with new, and NEVER renotifies the user (for the same tag).
-  // So... we could get uniform behavior by skipping the tag, but for now we'll try using it as intended, in case the browsers ever start to comply.
   const options = {icon, timestamp, body, data, tag: alert, renotify: true};
   console.log('showNotification', {seenKey, hashtag, options});
   return self.registration.showNotification(hashtag, options);
 }
 
 function showNotificationFromEnvelope({message, msgId}) { // We get the generic, application-independent envelope.
-  const {issuedTime, hashtag, payload} = message;
+  const {issuedTime, hashtag, payload, alert = msgId} = message;
   let {lat, lng, message:body, name = ''} = payload;
   body ||= name;
-  return showNotification({alert: msgId, lat, lng, issuedTime, hashtag, body});
+  return showNotification({alert, lat, lng, issuedTime, hashtag, body});
 }
 
 self.addEventListener('message', event => {

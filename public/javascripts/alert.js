@@ -91,7 +91,7 @@ class AlertReply extends Reply {
     // and contents, and then have ensureContent() arrange in its delayed followup to replace the placeholder when the promise
     // resolves.
     await super.initialize(properties);
-    const {container, agent, issuedTime, payload} = properties;
+    const {container, agent, issuedTime, payload, alert} = properties;
     const {file:attachmentTopic} = payload;
     if (attachmentTopic) {
       const contact = await networkPromise;
@@ -99,7 +99,7 @@ class AlertReply extends Reply {
       const {dataURL:file, name, msgIds} = await contact.assembleChunkedDataURL(attachmentTopic);
       Object.assign(payload, {file, name, attachmentTopic, msgIds});
     }
-    container.showNotification({agent, issuedTime, body: payload.message || payload.name || payload});
+    container.showNotification({agent, issuedTime, body: payload.message || payload.name || payload, alert});
     return this;
   }
   update() { } // TODO: are we really getting multiple reply events for the same data?
@@ -587,12 +587,15 @@ export class Alert extends Conversation { // A wrapper around L.marker
     let content = this.formatAttribution({agent, issuedTime, originalPosting, hashtag});
     content += this.formatReplies();
     popup.setContent(content);
-    delay(100).then(() => {
-      this.marker.getPopup().update();
+    const onFirstNewPopup = () => {
+      const popup = this.marker.getPopup();
+      if (!popup) delay(50).then(onFirstNewPopup);
+      popup.update();
       this.initializeHandlers(popup);
       this.teach('firstConversation');
       if (Agent.isMine(this.agent)) this.teach('firstPublish');
-    });
+    };
+    onFirstNewPopup();
   }
   teach(classname) {
     if (localStorage.getItem(classname)) return;
@@ -769,7 +772,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     // Users won't subscribe to tag unless the alert itself has already landed, and that has lat/lng/hashtag.
     // However, these must be included anyway in case the receiving user clicks on an out-of-band
     // notification at a later time, without the alert being on the map at that moment.
-    await contact.publish({eventName: tag, region, payload, hashtag}); // Publish the new reply.
+    await contact.publish({eventName: tag, region, payload, hashtag, alert: tag}); // Publish the new reply.
     Agent.current.persistPublicMetadata();
   }
   deleteReply(replyElement) {
