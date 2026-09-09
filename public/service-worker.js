@@ -225,8 +225,8 @@ function showNotification({lat, lng, issuedTime, hashtag, alert, body = ''}) { /
   // Safari ignores tag/renotify, and ALWAYS tells the user and displays each notification separately, without consolidating by tag.
   // Chrome ignores renotify, and ALWAYS consolidates by tag, replacing old body with new, and NEVER renotifies the user (for the same tag).
   // So... we could get uniform behavior by skipping the tag, but for now we'll try using it as intended, in case the browsers ever start to comply.
-  const options = {icon, timestamp, tag: alert, body, data, renotify: true};
-  //console.log('showNotification', {hashtag, options, seenKey});
+  const options = {icon, timestamp, body, data, tag: alert, renotify: true};
+  console.log('showNotification', {seenKey, hashtag, options});
   return self.registration.showNotification(hashtag, options);
 }
 

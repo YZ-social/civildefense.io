@@ -169,7 +169,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	  this.openPopup();
 	}
 	networkPromise.then(async contact => { // Subscribe to replies to this tag, now that we have an alert for them to go to.
-	  contact.subscribe({eventName: tag, region, handler: data => this.ensure(data)});
+	  await contact.subscribe({eventName: tag, region, handler: data => this.ensure(data),
+				   pushData: await this.constructor.pushData});
 	});
       }
     }
@@ -219,11 +220,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const dropped = [], added = [];
       if (!contact) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
       this.subscriptions = newKeys; // Before subscribing.
-      const subscribe = (eventName, handler) => {
+      const subscribe = async (eventName, handler) => {
 	if (!eventName) console.log('sub to no eventName', {oldKeys, newKeys, dropped, added, handler});
 	const region = topicRegion(eventName);
+	const pushData = handler && await this.pushData;
 	if (handler) Agent.current?.trackPublicChanges(region); // Background. No need to await.
-	return contact.subscribe({eventName, region, handler})
+	return await contact.subscribe({eventName, region, handler, pushData})
 	  .then(sub => {
 	    throttleMS && P2PWebNetwork.delay(throttleMS);
 	    return sub;
@@ -242,19 +244,22 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	});
       }
 
-      const addedSubscriptions = [];
-      for (const key of added) addedSubscriptions.push(await subscribe(key, data => Alert.ensure(data)));
+      for (const key of added) await subscribe(key, data => Alert.ensure(data));
       for (const key of dropped) await subscribe(key, null);
-      // fixme: skip if no notifications (or service worker). see about popup indicator.
-      for (const subscription of addedSubscriptions) {
-	const signingKey = await subscription.pushPubkey;
-	const registration = await navigator.serviceWorker.ready;
-	const data = await registration.pushManager.subscribe({
-	  userVisibleOnly: true,
-	  applicationServerKey: signingKey
-	});
-	await subscription.addPushData(data);
-      }
+    });
+  }
+  static get pushData() {
+    // FIXME if (!await navigator.serviceWorker.getRegistration()) return;
+    // FIXME if (!notificationsAllowed()) return;
+    if (this._pushData) return this._pushData;
+    return this._pushData = new Promise(async resolve => {
+      const applicationServerKey = 'BA22Zv8AFTM2V8myHKhvxYHHKxKb90BPJz-OkLYwBSwOH-i6mELc9gm6FJcIKUbZXbpPoYGrZi-y0vEE03k9PTQ';
+      const applicationId = 'nvyIJA3UH4Y8C0Ak65_eIb3dzv9ivQCLBRTStKpHRdY';
+      const registration = await navigator.serviceWorker.ready;
+      const data = await registration.pushManager.subscribe({userVisibleOnly: true, applicationServerKey});
+      const json = data.toJSON();
+      console.log('pushData', {registration, data, json});
+      resolve({...json, applicationId, applicationServerKey});
     });
   }
 

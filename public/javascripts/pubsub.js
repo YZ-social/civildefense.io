@@ -19,16 +19,26 @@ const SUBSCRIPTION_TIMEOUT = 0; // No need, because we run deleteSubscriber on d
 const PUBLISH_TIMEOUT = 24 * 60 * 60e3;      // Delete after 24 hours.
 const TRACK_TIMEOUT = PUBLISH_TIMEOUT;
 
-const vapidKeys = generateVAPIDKeys?.() || {};
-setVapidDetails?.(
-  'mailto:example@yourdomain.org',
-  vapidKeys.publicKey,
-  vapidKeys.privateKey
-);
-function push(envelope, subscription) {
+// const vapidKeys = generateVAPIDKeys?.() || {};
+// console.log({vapidKeys});
+// setVapidDetails?.(
+//   'mailto:example@yourdomain.org',
+//   vapidKeys.publicKey,
+//   vapidKeys.privateKey
+// );
+function push(envelope, {applicationServerKey, applicationId, ...subscription}) {
   const options = {
+    // It would be nice to include topic, but that is application-specific.
+    // Maybe it could be specified by pub options, but that's getting a bit weird.
+    // Besides, I bet some services don't even use it.
     TTL: PUBLISH_TIMEOUT,
+    vapidDetails: {
+      subject: 'mailto:example@yourdomain.org',
+      publicKey: applicationServerKey,
+      privateKey: applicationId
+    }
   };
+  console.log('push', envelope, subscription, options);
   return sendNotification?.(subscription, JSON.stringify(envelope), options);
 }
 
@@ -63,13 +73,14 @@ async function fireThrottledEvent(...rest) {
   await new Promise(resolve => setTimeout(resolve, throttleMS));
 }
 
-export async function subscribe(topic, nodeTag, {since = 'all'}) {
+export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}) {
   // Axona allows multiple handlers on the same topic, but we don't use that in civildefense, and do not implement it here.
   const topicName = normalizeTopic(topic);
   const topicId = deriveTopicId(topicName);
   const id = uuidv4();
   await store.set('sub', topicId, nodeTag, id, SUBSCRIPTION_TIMEOUT);
-  const pushPubkey = await vapidKeys.publicKey;
+  //const pushPubkey = await vapidKeys.publicKey;
+  if (pushData) await track(topicName, nodeTag, pushData);
   if (since) { // invoke handler on any sticky data, but only after we have told client the subscription id.
     setTimeout(async () => {
       let lastEnvelope = null, lastTime = 0;
@@ -91,17 +102,17 @@ export async function subscribe(topic, nodeTag, {since = 'all'}) {
       if (lastEnvelope) fireEvent(nodeTag, id, lastEnvelope);
     }, 100);
   }
-  return { topicName, topicId, id, pushPubkey };
+  return { topicName, topicId, id/*, pushPubkey*/ };
 }
 
 export async function unsubscribe(topic, nodeTag, {pushId}) {
   const topicName = normalizeTopic(topic);
   const topicId = deriveTopicId(topicName);
   let id = await store.remove('sub', topicId, nodeTag);
-  // Also remove any stick push subscription:
+  // Also remove any sticky push subscription:
   // If not yet promoted to sub, it's in track under our current, protectable nodeTag.
   let push = await store.remove('track', topicId, nodeTag);
-  // Otherwise, it might be activated in sub under pushId.
+  // Otherwise, it might have been activated in sub under pushId.
   if (pushId && !push) push = await store.remove('sub', topicId, pushId);  // pushId must match that returned by track().
   return {ok: !!id, id, push}; // Axona doesn't return the id(s) of the subscription(s), but it is convenient for us to do so.
 }
@@ -112,7 +123,8 @@ export async function track(topicName, nodeTag, pushSubscription) {
   // we then remove it from the temporary storage and install the pushSubscription is a normal sub.
   const topicId = deriveTopicId(topicName);
   await store.set('track', topicId, nodeTag, pushSubscription, TRACK_TIMEOUT);
-  return {topicName, topicId, id: pushSubscription};
+  console.log('track', topicName, nodeTag, pushSubscription);
+  return {topicName, topicId, id: nodeTag};
 }
 
 export async function deleteSubscriber(nodeTag) {
@@ -122,7 +134,10 @@ export async function deleteSubscriber(nodeTag) {
     await store.remove('sub', topicId, nodeTag);
     // Activate pending push subscription, if any.
     const pushSubscription = await store.remove('track', topicId, nodeTag);
-    if (pushSubscription) await store.set('sub', topicId, nodeTag, pushSubscription, TRACK_TIMEOUT);
+    if (pushSubscription) {
+      console.log('activiting', topicId, nodeTag, pushSubscription);
+      await store.set('sub', topicId, nodeTag, pushSubscription, TRACK_TIMEOUT);
+    }
   }
 }
 
