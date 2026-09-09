@@ -8,6 +8,7 @@ import { getPointInCell } from './s2.js';
 import { Alert, getShareableURL, share } from './alert.js';
 import { map, showMessage, updateLocation, recenterMap } from './map.js';
 import './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
+const usingServiceWorker = true;
 window.P2PWebNetwork = P2PWebNetwork;
 
 document.getElementById('appVersion').textContent = appVersion;
@@ -73,7 +74,7 @@ var showNotifications = document.getElementById('showNotifications');
 var showNotificationsLabel = document.getElementById('showNotificationsLabel');
 function disabledNotifications() { return localStorage.getItem('disabledNotifications'); }
 export function disableNotifications(force) { localStorage.setItem('disabledNotifications', force ? '1' : ''); }
-export function notificationsAllowed() { return (Notification?.permission === 'granted') && !disabledNotifications(); }
+export function notificationsAllowed() { return usingServiceWorker && (Notification?.permission === 'granted') && !disabledNotifications(); }
 function noteNotificationPermission(permission) {
   if (isWebView()) {
     showNotifications.indeterminate = true;
@@ -318,7 +319,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
       const {promise, resolve} = Promise.withResolvers();
       networkPromise = promise;
       console.log('Creating node.');
-      resolve(P2PWebNetwork.create({}));
+      resolve(P2PWebNetwork.create({pushPersistor: usingServiceWorker && localStorage}));
       networkPromise.then(contact => {
 	globalThis.contact = contact; // For debugging.
 	// On leaving, we would like to copy stored data and politely say 'bye' (so others can clean up their connections). Alas:

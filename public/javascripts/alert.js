@@ -171,6 +171,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	networkPromise.then(async contact => { // Subscribe to replies to this tag, now that we have an alert for them to go to.
 	  await contact.subscribe({eventName: tag, region, handler: data => this.ensure(data),
 				   pushData: await this.constructor.pushData});
+	  contact.pushPersist();
 	});
       }
     }
@@ -191,7 +192,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
     this.clearAvatars();
     const {isAggregate, marker, tag, region} = this;
     // Unsubscribe from replies.
-    if (!isAggregate) networkPromise?.then(async contact => contact.subscribe({eventName: tag, region, handler: null}));
+    if (!isAggregate) networkPromise?.then(async contact => {
+      contact.subscribe({eventName: tag, region, handler: null});
+      contact.pushPersist();
+    });
     this.cellBorder?.removeFrom(map);
     super.destroy();
     if (markerDelayMS) {
@@ -246,11 +250,11 @@ export class Alert extends Conversation { // A wrapper around L.marker
 
       for (const key of added) await subscribe(key, data => Alert.ensure(data));
       for (const key of dropped) await subscribe(key, null);
+      contact.pushPersist();
     });
   }
   static get pushData() {
-    // FIXME if (!await navigator.serviceWorker.getRegistration()) return;
-    // FIXME if (!notificationsAllowed()) return;
+    if (!notificationsAllowed()) return null;
     if (this._pushData) return this._pushData;
     return this._pushData = new Promise(async resolve => {
       const applicationServerKey = 'BA22Zv8AFTM2V8myHKhvxYHHKxKb90BPJz-OkLYwBSwOH-i6mELc9gm6FJcIKUbZXbpPoYGrZi-y0vEE03k9PTQ';
