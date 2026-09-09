@@ -1,5 +1,8 @@
 // In memory pubsub, for either client-only testing, or server-websocket testing
 const { v4:uuidv4 } = await import('uuid');
+const pushHere = globalThis.process;
+const webpush = pushHere ? await import('web-push') : {default: {}};
+const { generateVAPIDKeys, setVapidDetails, sendNotification } = webpush.default;
 const { TextEncoder, crypto, Buffer } = globalThis;
 
 // All storage (the type -> topicId -> subject -> value buckets, and their
@@ -16,6 +19,19 @@ const SUBSCRIPTION_TIMEOUT = 0; // No need, because we run deleteSubscriber on d
 const PUBLISH_TIMEOUT = 24 * 60 * 60e3;      // Delete after 24 hours.
 const TRACK_TIMEOUT = PUBLISH_TIMEOUT;
 
+const vapidKeys = generateVAPIDKeys?.() || {};
+setVapidDetails?.(
+  'mailto:example@yourdomain.org',
+  vapidKeys.publicKey,
+  vapidKeys.privateKey
+);
+function push(envelope, subscription) {
+  const options = {
+    TTL: PUBLISH_TIMEOUT,
+  };
+  return sendNotification?.(subscription, JSON.stringify(envelope), options);
+}
+
 function normalizeTopic({name, region, owner = null, write = owner ? 'owner' : 'open'} = {}) {
   if (typeof(region) === 'string') region = parseInt(region);;
   return {name, region, owner, write};
@@ -25,10 +41,6 @@ function deriveTopicId(topic) {
 }
 function delay(ms = 0) {
   return ms && new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function push(envelope, subscription) {
-  console.log('fixme push', envelope, subscription);
 }
 
 let invoke;
@@ -57,7 +69,7 @@ export async function subscribe(topic, nodeTag, {since = 'all'}) {
   const topicId = deriveTopicId(topicName);
   const id = uuidv4();
   await store.set('sub', topicId, nodeTag, id, SUBSCRIPTION_TIMEOUT);
-  const pushPubkey = await 'PUSH_PUBKEY';
+  const pushPubkey = await vapidKeys.publicKey;
   if (since) { // invoke handler on any sticky data, but only after we have told client the subscription id.
     setTimeout(async () => {
       let lastEnvelope = null, lastTime = 0;

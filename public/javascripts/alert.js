@@ -245,10 +245,15 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const addedSubscriptions = [];
       for (const key of added) addedSubscriptions.push(await subscribe(key, data => Alert.ensure(data)));
       for (const key of dropped) await subscribe(key, null);
+      // fixme: skip if no notifications (or service worker). see about popup indicator.
       for (const subscription of addedSubscriptions) {
 	const signingKey = await subscription.pushPubkey;
-	const pushSubscription = await {signingKey, foo: 'bar'};
-	await subscription.addPushData(pushSubscription);
+	const registration = await navigator.serviceWorker.ready;
+	const data = await registration.pushManager.subscribe({
+	  userVisibleOnly: true,
+	  applicationServerKey: signingKey
+	});
+	await subscription.addPushData(data);
       }
     });
   }

@@ -204,7 +204,7 @@ async function cacheSource(version, event) { // Cache source in the given versio
 }
 
 const issued = new Set();
-function showNotification({lat, lng, issuedTime, hashtag, alert, body}) { // Promise to show a platform notification. There are two paths to here:
+function showNotification({lat, lng, issuedTime, hashtag, alert, body = ''}) { // Promise to show a platform notification. There are two paths to here:
   // 1. The app handles data from network connections, and determines that it should alert the user.
   //    In this case, the app sends the data to this service worker.
   // 2. An upstream node would like to send the data over the network, but finds that we are not connected,
@@ -226,13 +226,13 @@ function showNotification({lat, lng, issuedTime, hashtag, alert, body}) { // Pro
   // Chrome ignores renotify, and ALWAYS consolidates by tag, replacing old body with new, and NEVER renotifies the user (for the same tag).
   // So... we could get uniform behavior by skipping the tag, but for now we'll try using it as intended, in case the browsers ever start to comply.
   const options = {icon, timestamp, tag: alert, body, data, renotify: true};
-  console.log('showNotification', hashtag, options);
+  //console.log('showNotification', {hashtag, options, seenKey});
   return self.registration.showNotification(hashtag, options);
 }
 
-function showNotificationFromPush({message, msgId}) { // We get the generic, application-independent envelope.
+function showNotificationFromEnvelope({message, msgId}) { // We get the generic, application-independent envelope.
   const {issuedTime, hashtag, payload} = message;
-  let {lat, lng, message:body, name} = payload;
+  let {lat, lng, message:body, name = ''} = payload;
   body ||= name;
   return showNotification({alert: msgId, lat, lng, issuedTime, hashtag, body});
 }
@@ -255,7 +255,7 @@ self.addEventListener('message', event => {
   }
 });
 
-self.addEventListener('push', event => event.waitUntil(showNotificationFromPush(event.data)));
+self.addEventListener('push', event => event.waitUntil(showNotificationFromEnvelope(event.data.json())));
 
 self.addEventListener('notificationclick', event => {
   const {notification} = event;
