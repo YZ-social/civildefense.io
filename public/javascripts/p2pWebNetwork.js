@@ -70,8 +70,7 @@ export class P2PWebNetwork {
 	  .then(registration => registration.pushManager.getSubscription())
 	  .then(subscription => subscription?.unsubscribe()),
 	...topics.map(topic => peer.unsub(topic, {pushId}))
-      ])
-		 );
+      ]);
       network.pushPersist();
     }
     network.attached(network);
