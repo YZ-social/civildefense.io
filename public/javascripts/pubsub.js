@@ -1,18 +1,24 @@
-// In memory pubsub, for either client-only testing, or server-websocket testing
+// Centralized pubsub, for either client-only testing, or server-websocket testing.
 import { v4 as uuidv4 } from 'uuid';
-const pushHere = !!globalThis.process;
-const webpush = pushHere ? await import('web-push') : {default: {}};
-const { generateVAPIDKeys, setVapidDetails, sendNotification } = webpush.default;
+// CivilDefense dht=-1 has no networking at all and loads this in browser, but isn't running when push would fire.
+const { push } = globalThis.process ? await import('./push.js') : {};
 const { TextEncoder, crypto, Buffer } = globalThis;
 
-export const resolveTopic = async descriptor => {
-  if (typeof(descriptor) !== 'object') return descriptor;
+const hasBuffer = typeof Buffer !== 'undefined';
+let toHex = hasBuffer ? u8 => Buffer.from(u8).toString('hex') : u8 => u8.toHex();
+async function hash2Hex(text) { // Promise hex-coded SHA256(text).
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return toHex(new Uint8Array(hash));
+}
+export const resolveTopic = async descriptor => {  // Normalize like axona.
+  if (typeof(descriptor) !== 'object') return {topicId: descriptor};
   let {name, region, owner = null, write = owner ? 'owner' : 'open'} = descriptor;
   if (typeof(region) === 'string') region = parseInt(region);;
   const normalized = {name, region, owner, write};
-  const topicId = JSON.stringify(normalized); // TODO: hash after initial dev/debug
+  const topicId = JSON.stringify(normalized); // TODO: hash2hex after initial dev/debug
   return {name, region, owner, write, topicId};
 };
+// Promise a string.
 export const deriveTopicId = descriptor => resolveTopic(descriptor).then(resolved => resolved.topicId);
 
 
@@ -30,55 +36,24 @@ const SUBSCRIPTION_TIMEOUT = 0; // No need, because we run deleteSubscriber on d
 const PUBLISH_TIMEOUT = 24 * 60 * 60e3;      // Delete after 24 hours.
 const TRACK_TIMEOUT = PUBLISH_TIMEOUT;
 
-// const vapidKeys = generateVAPIDKeys?.() || {};
-// console.log({vapidKeys});
-// setVapidDetails?.(
-//   'mailto:example@yourdomain.org',
-//   vapidKeys.publicKey,
-//   vapidKeys.privateKey
-// );
-function push(envelope, {applicationServerKey, applicationId, ...subscription}) {
-  const options = {
-    // It would be nice to include topic, but that is application-specific.
-    // Maybe it could be specified by pub options, but that's getting a bit weird.
-    // Besides, I bet some services don't even use it.
-    TTL: PUBLISH_TIMEOUT,
-    vapidDetails: {
-      subject: 'mailto:example@yourdomain.org',
-      publicKey: applicationServerKey,
-      privateKey: applicationId
-    }
-  };
-  console.log('push', envelope, subscription, options);
-  return sendNotification?.(subscription, JSON.stringify(envelope), options);
-}
-
-function delay(ms = 0) {
-  return ms && new Promise(resolve => setTimeout(resolve, ms));
-}
-
 let invoke;
-export function setReceiver(receiver) {
-  invoke = receiver;
+export function setReceiver(receiver) { // Set the means by which we fire events over a connection.
+  invoke = receiver; // E.g. (nodeId, handlerId, envelope) => getSocket(nodeId).send(JSON.stringify([handlerId, envelope]));
 }
-async function fireEvent(...rest) {
+async function fireEvent(...rest) { // Send envelope to a subscribed hander.
   try {
     invoke(...rest);
-  } catch (error) { // Error sending, e.g., nodeTag is gone.
+  } catch (error) { // Error sending, e.g., nodeTag is gone and we had not yet noticed.
     const [nodeTag, id, envelope] = rest;
     await deleteSubscriber(nodeTag);
     const subscription = await store.get('sub', await deriveTopicId(envelope.topic), id);
-    if (subscription) push(envelope, subscription);
+    if (subscription) push(envelope, subscription, PUBLISH_TIMEOUT);
   }
-}
-const throttleMS = 30; // Just to yield to other stuff.
-async function fireThrottledEvent(...rest) {
-  await fireEvent(...rest);
-  await new Promise(resolve => setTimeout(resolve, throttleMS));
 }
 
 export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}) {
   // Axona allows multiple handlers on the same topic, but we don't use that in civildefense, and do not implement it here.
+
   const {name, region, owner, write, topicId} = await resolveTopic(topic);
   const id = uuidv4();
   await store.set('sub', topicId, nodeTag, id, SUBSCRIPTION_TIMEOUT);
@@ -90,7 +65,7 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}
       for (const envelope of await store.values('pub', topicId)) {
 	switch (since) {
 	case 'all':
-	  await fireThrottledEvent(nodeTag, id, envelope);
+	  await fireEvent(nodeTag, id, envelope);
 	  break;
 	case 'latest':
 	  if (envelope.ts > lastTime) {
@@ -99,7 +74,7 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}
 	  }
 	  break;
 	default: // Must be a timestamp
-	  if (envelope.ts === since) await fireThrottledEvent(nodeTag, id, envelope);
+	  if (envelope.ts === since) await fireEvent(nodeTag, id, envelope);
 	}
       }
       if (lastEnvelope) fireEvent(nodeTag, id, lastEnvelope);
@@ -109,57 +84,64 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}
 }
 
 export async function unsubscribe(topic, nodeTag, {pushId}) {
+  // Unsubscribe subscription and any unactivated tracking subscription from the specified node.
+  // Additionally, an activated sticky pushId will be removed if specified - it is the nodeTag from a previous session).
+
   const topicId = await deriveTopicId(topic);
   let id = await store.remove('sub', topicId, nodeTag);
   // Also remove any sticky push subscription:
   // If not yet promoted to sub, it's in track under our current, protectable nodeTag.
   await store.remove('track', topicId, nodeTag);
   // Otherwise, it might have been activated in sub under pushId (i.e., a previous session nodeTag).
+  // TODO: pushId should probably be a JWS that was signed in the subscribing node's previous session by the pushId,
+  // thus proving that the request actually came from the succcessor to that node.
   if (pushId) pushId = await store.remove('sub', topicId, pushId);  // pushId must match that used during activation.
   return {ok: !!id, id, pushId}; // Axona doesn't return the id(s) of the subscription(s), but it is convenient for us to do so.
 }
 
 export async function deleteSubscriber(nodeTag) {
-  // subject === nodeTag for 'sub' entries, so we can remove directly rather
-  // than fetching and filtering every topic's entries.
-  for (const topicId of await store.topics('sub')) {
+  // The node is gone: lost connection, or fireEvent failed.
+
+  for (const topicId of await store.topics('sub')) { // Remove in all topics.
     await store.remove('sub', topicId, nodeTag);
-    // Activate pending push subscription, if any.
+    // Activate pending push subscription, if any, by moving it from 'track' to active 'sub'.
     const pushSubscription = await store.remove('track', topicId, nodeTag);
     if (pushSubscription) {
-      console.log('activiting', topicId, nodeTag, pushSubscription);
+      //console.log('activiting', topicId, nodeTag, pushSubscription);
       await store.set('sub', topicId, nodeTag, pushSubscription, TRACK_TIMEOUT);
     }
   }
 }
 
-const hasBuffer = typeof Buffer !== 'undefined';
-let toHex = hasBuffer ? u8 => Buffer.from(u8).toString('hex') : u8 => u8.toHex();
 export async function publish(topic, message, {signWith}) {
+  // Publish message to any existing subscription.
+
   const topicId = await deriveTopicId(topic);
   const signerPubkey = signWith?.authorId || undefined;
   const payload = JSON.stringify({message, publisher: signerPubkey});
-  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
-  const msgId = toHex(new Uint8Array(hash));
+  const msgId = await hash2Hex(payload);
   const envelope = {msgId, topic, ts: Date.now(), message, signerPubkey};
   await store.set('pub', topicId, msgId, envelope, PUBLISH_TIMEOUT);
   const subs = await store.entries('sub', topicId);
+  // Each sub's handlerInfo can be an ordinary subscription nodeId, or a sticky push subscription data.
   await Promise.all(subs.map(([tag, handlerInfo]) => {
     if ('string' === typeof(handlerInfo)) { // nodeId
-      return fireThrottledEvent(tag, handlerInfo, envelope);
-    } else { // An activated push subscription.
-      return push(envelope, handlerInfo);
+      return fireEvent(tag, handlerInfo, envelope);
+    } else { // activated sticky push subscription data object.
+      return push(envelope, handlerInfo, PUBLISH_TIMEOUT);
     }
   }));
   return msgId;
 }
 
 export async function unpublish(topic, msgId, {signWith}) {
+  // Kill a publication by removing it from persistence, and firing removal event for existing subs.
+
   const topicId = await deriveTopicId(topic);
   const envelope = await store.remove('pub', topicId, msgId);
   if (!envelope) return {ok: false}; // we didn't have it.
   envelope.deleted = true;
   envelope.message = null;
-  for (const [nodeTag, id] of await store.entries('sub', topicId)) await fireThrottledEvent(nodeTag, id, envelope);
+  for (const [nodeTag, id] of await store.entries('sub', topicId)) await fireEvent(nodeTag, id, envelope);
   return {ok: true};
 }
