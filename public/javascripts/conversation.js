@@ -23,23 +23,26 @@ export class Tagged { // Maintains cached existence within a (possibly instance-
     }
     return this;
   }
-  destroy() { // Subclasses extend to remove UI.
+  destroy() { // Subclasses extend to remove UI. Clients may call this directly. (Compare delete.)
     // Subclass extensions of ensure may expect this answer falsy, indicating that an item was removed.
     // NOTE: Does not destroy replies, as these may have been published by others.
     this.container.removeItem(this.tag);
     return null;
   }
+  delete() { // Form of destroy called by ensure() with no payload.
+    return this.destroy(); // Hook for recognizing that an item is "un-ensured" rather than destroyed directly.
+  }
 
   static async ensureIn(data, container, kind = container.itemKind) { // update() or initialize() item and remember what those answer. (Falsy is deleted).
     const {tag, payload, ...rest} = data;
     let item = container.getItem(tag); // existing item
-    if (!payload) return item?.destroy();
+    if (!payload) return item?.delete();
 
     // update or create item.
     if (item) item = await item.update(data);
     else item = await (new kind().initialize({...data, container}));
 
-    if (!item) return container.removeItem(tag)?.destroy();
+    if (!item) return container.removeItem(tag)?.delete();
     return container.setItem(item.tag, item); // initialize() may come up with a better tag.
   }
 }

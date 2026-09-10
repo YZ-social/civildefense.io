@@ -6,7 +6,7 @@ import webpush from 'web-push';
 //   vapidKeys.publicKey,
 //   vapidKeys.privateKey
 // );
-export function push(envelope, {applicationServerKey, applicationId, ...subscription}, TTLms) {
+export async function push(envelope, {applicationServerKey, applicationId, ...subscription}, TTLms) {
   // Prepare and post eneelope to the push-service specified in the subscription data.
   const options = {
     // It would be nice to include a topic tag, but that is application-specific.
@@ -19,8 +19,9 @@ export function push(envelope, {applicationServerKey, applicationId, ...subscrip
       privateKey: applicationId
     }
   };
-  console.log('push', {envelope, subscription, options});
-  return webpush.sendNotification?.(subscription, JSON.stringify(envelope), options);
+  const reply = await webpush.sendNotification?.(subscription, JSON.stringify(envelope), options);
+  //console.log('push', {envelope, subscription, options, reply});
+  return reply;
 }
 
 

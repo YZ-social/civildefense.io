@@ -204,7 +204,7 @@ async function cacheSource(version, event) { // Cache source in the given versio
 }
 
 const issued = new Set();
-function showNotification({lat, lng, issuedTime, hashtag, alert, body = ''}) { // Promise to show a platform notification. There are two paths to here:
+function showNotification({lat, lng, issuedTime, hashtag, alert, body = '', force = false}) { // Promise to show a platform notification. There are two paths to here:
   // 1. The app handles data from network connections, and determines that it should alert the user.
   //    In this case, the app sends the data to this service worker.
   // 2. An upstream node would like to send the data over the network, but finds that we are not connected,
@@ -213,7 +213,7 @@ function showNotification({lat, lng, issuedTime, hashtag, alert, body = ''}) { /
   // in path 2, so it has to be here if we want to have the code in just one place.
   // Any filtering (e.g., do not show notifications for one's own alerts) happens upstream of here. (We don't know the Agent.current and the sender isn't in the notification.)
   const seenKey = alert + body;  // If we click on a notification for an off-screen alert, we may process the alert again and try to notify again.
-  if (issued.has(seenKey)) return null;
+  if (!force && issued.has(seenKey)) return null;
   issued.add(seenKey);
   const base = location.href;
   const timestamp = issuedTime;
@@ -226,11 +226,20 @@ function showNotification({lat, lng, issuedTime, hashtag, alert, body = ''}) { /
   return self.registration.showNotification(hashtag, options);
 }
 
-function showNotificationFromEnvelope({message, msgId}) { // We get the generic, application-independent envelope.
+function showNotificationFromEnvelope({deleted, message, msgId}) { // We get the generic, application-independent envelope.
+  console.log('envelope', message, msgId);
+  if (deleted) return cancelNotification(msgId);
   const {issuedTime, hashtag, payload, alert = msgId} = message;
   let {lat, lng, message:body, name = ''} = payload;
   body ||= name;
   return showNotification({alert, lat, lng, issuedTime, hashtag, body});
+}
+
+async function cancelNotification(tag, body = '') { // Cancel those that match tag, and if body, then only those also matching body.
+  for (const notification of await self.registration.getNotifications({tag})) {
+    console.log('cancel', {tag, body, notification});
+    if (!body || (body === notification.body)) notification.close();
+  }
 }
 
 self.addEventListener('message', event => {
@@ -245,6 +254,9 @@ self.addEventListener('message', event => {
     break;
   case 'notify':
     event.waitUntil(showNotification(params));
+    break;
+  case 'cancelNotification':
+    event.waitUntil(cancelNotification(...params));
     break;
   default:
     console.warn(`Unrecognized service worker message: "${event.data}".`);

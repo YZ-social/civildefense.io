@@ -3,7 +3,7 @@ import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { generateVapidKeys } from './browser-push.js';
 import { Int } from './translations.js';
 import { map, trackMap, showMessage } from './map.js';
-import { networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, clickTip, getText, openAbout, delay, osName } from './main.js';
+import { postServiceMessage, networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, clickTip, getText, openAbout, delay, osName } from './main.js';
 import { consume } from './display.js';
 import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
@@ -100,10 +100,28 @@ class AlertReply extends Reply {
       const {dataURL:file, name, msgIds} = await contact.assembleChunkedDataURL(attachmentTopic);
       Object.assign(payload, {file, name, attachmentTopic, msgIds});
     }
-    container.showNotification({agent, issuedTime, body: payload.message || payload.name || payload, alert});
+    this.showNotification();
     return this;
   }
+  get body() {
+    const {payload} = this;
+    const body = payload.message || payload.name || payload;
+    return body;
+  }
   update() { } // TODO: are we really getting multiple reply events for the same data?
+  // We coalesce notifications by tags. If we did not, it would be nice to remove the
+  // notification if the reply is deleted.
+  // Since we do coelesce, that's largely unnecessary. However, there is still the case
+  // of the poster deleting the currently last reply. It would be nice to restore the
+  // previous message in the notification body. We COULD do that in a delete() method
+  // here, but that wouldn't work in a service worker for offline notifications, as it does
+  // not have access to the list of previous messages.
+  // So... for now, we do not remove alerts at all, because in the one case that it matters,
+  // it could result in a user becoming unaware of the remaining messages.
+  showNotification({force = false} = {}) {
+    const {container, agent, issuedTime, body, alert} = this;
+    container.showNotification({agent, issuedTime, body, alert, force});
+  }
 }
 
 import { s2 } from 's2js';
@@ -206,6 +224,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
       await P2PWebNetwork.delay(markerDelayMS);
     }
     marker.removeFrom(map);
+  }
+  delete() { // If ensure gets an empty body, cancel any associated notification.
+    postServiceMessage('cancelNotification', [this.tag]);
+    return super.delete();
   }
 
   static subscriptionQueue = Promise.resolve(); // Serialize updates so they don't overlap each other.
@@ -798,13 +820,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
       }
     });
   }
-  showNotification({issuedTime = this.issuedTime, body = '', agent = this.agent, alert = this.tag, lat = this.lat, lng = this.lng, hashtag = this.hashtag}) {
+  showNotification({issuedTime = this.issuedTime, body = '', agent = this.agent, alert = this.tag, lat = this.lat, lng = this.lng, hashtag = this.hashtag, force = false}) {
     // Give OS notification that comes back to here, unless act is us.
     // All notifications on the same alert (e.g., the post and each reply) have the same tag, so OS can collapse them.
+    console.log('alert showNotification', {lat, lng, hashtag, alert, agent, body, force});
     if (agent === Agent.tag || !notificationsAllowed()) return;
-    navigator.serviceWorker.ready.then(registration => {
-      registration.active.postMessage({method: 'notify', params: {lat, lng, issuedTime, hashtag, alert, body}});
-    });
+    postServiceMessage('notify', {lat, lng, issuedTime, hashtag, alert, body, force});
   }
   // Each reply element is a DIV.reply with data-tag and data-text attributes that are used in sharing.
   // It contains an attribution header with controls, zero or one attachments, and then the message text.

@@ -113,6 +113,21 @@ export async function deleteSubscriber(nodeTag) {
   }
 }
 
+function isConnectedSubscription(handlerInfo) { // True if a it's a direct-connect subscription, false if sticky (push).
+  return 'string' === typeof(handlerInfo);
+}
+async function handleEvents(topicId, envelope)  {
+  const subs = await store.entries('sub', topicId);
+  // Each sub's handlerInfo can be an ordinary subscription nodeId, or a sticky push subscription data.
+  return Promise.all(subs.map(([nodeTag, handlerInfo]) => {
+    if (isConnectedSubscription(handlerInfo)) { // nodeId
+      return fireEvent(nodeTag, handlerInfo, envelope);
+    } else { // activated sticky push subscription data object.
+      return push(envelope, handlerInfo, PUBLISH_TIMEOUT);
+    }
+  }));
+}
+
 export async function publish(topic, message, {signWith}) {
   // Publish message to any existing subscription.
 
@@ -122,15 +137,7 @@ export async function publish(topic, message, {signWith}) {
   const msgId = await hash2Hex(payload);
   const envelope = {msgId, topic, ts: Date.now(), message, signerPubkey};
   await store.set('pub', topicId, msgId, envelope, PUBLISH_TIMEOUT);
-  const subs = await store.entries('sub', topicId);
-  // Each sub's handlerInfo can be an ordinary subscription nodeId, or a sticky push subscription data.
-  await Promise.all(subs.map(([tag, handlerInfo]) => {
-    if ('string' === typeof(handlerInfo)) { // nodeId
-      return fireEvent(tag, handlerInfo, envelope);
-    } else { // activated sticky push subscription data object.
-      return push(envelope, handlerInfo, PUBLISH_TIMEOUT);
-    }
-  }));
+  await handleEvents(topicId, envelope);
   return msgId;
 }
 
@@ -142,6 +149,6 @@ export async function unpublish(topic, msgId, {signWith}) {
   if (!envelope) return {ok: false}; // we didn't have it.
   envelope.deleted = true;
   envelope.message = null;
-  for (const [nodeTag, id] of await store.entries('sub', topicId)) await fireEvent(nodeTag, id, envelope);
+  await handleEvents(topicId, envelope);
   return {ok: true};
 }

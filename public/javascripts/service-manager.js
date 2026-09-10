@@ -43,13 +43,17 @@ import { Int } from './translations.js';
   If the user clears cache and reloads (even if there is no source/worker update, or a stale worker), they get the currently hosted versions.
 */
 
+export async function postServiceMessage(method, params) {
+  const registration = await navigator.serviceWorker.ready;
+  return registration.active.postMessage({method, params});
+}
+
 let resolveCached;
 async function cacheSource(version) {
   console.log(`service-manager ${appVersion} requesting service-worker to cache source in ${version}.`);
   const {promise, resolve} = Promise.withResolvers();
   resolveCached = resolve;
-  const registration = await navigator.serviceWorker.ready;
-  registration.active.postMessage({method: 'cacheSource', params: version});
+  await postServiceMessage('cacheSource', version);
   await promise;
   console.log(`source ${version} is cached.`);
 }
@@ -59,9 +63,9 @@ const updateText = document.getElementById('updateStatus');
 const downloadButton = document.getElementById('downloadUpdates');
 const downloadButton2 = document.getElementById('downloadUpdates2');
 
-function getServiceVersion(registration) { // Ask the service worker to send back it's version, which will trigger a compare.
+function getServiceVersion() { // Ask the service worker to send back it's version, which will trigger a compare.
   console.log('requesting service-worker version');
-  registration.active.postMessage({method: 'version', params: appVersion});
+  postServiceMessage('version', appVersion);
 }
 function newVersionAvailable(newVersion) {
   // Set up all the buttons and displays in case the user declines the popup,
@@ -111,14 +115,14 @@ await navigator.serviceWorker
 	console.log('statechange', newWorker.state, navigator.serviceWorker, navigator.serviceWorker.controller);
 	// We don't want to nag/confuse the user when installing fresh/first-time. There will not be a controller that time.
 	// if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-	//   getServiceVersion(registration);
+	//   getServiceVersion();
 	// }
       };
     };
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       console.log('controllerchange',  navigator.serviceWorker, navigator.serviceWorker.controller);
       if (!navigator.serviceWorker.controller) return;
-      getServiceVersion(registration);
+      getServiceVersion();
     });
     // addEventListener, allowing other code to listen for other messages.
     navigator.serviceWorker.addEventListener('message', async event => {
@@ -143,7 +147,7 @@ await navigator.serviceWorker
 	console.error('Unrecognized message from service worker', event.data);
       }
     });
-    navigator.serviceWorker.ready.then(getServiceVersion);
+    getServiceVersion();
   });
 new BroadcastChannel('site_control').onmessage = event => {
   const {method, params} = event.data;
