@@ -319,7 +319,8 @@ async function initialize(event) { // Ensure there is a network promise and map,
       const {promise, resolve} = Promise.withResolvers();
       networkPromise = promise;
       console.log('Creating node.');
-      resolve(P2PWebNetwork.create({pushPersistor: usingServiceWorker && localStorage}));
+      Alert.clearPushData();
+      resolve(await P2PWebNetwork.create({pushPersistor: usingServiceWorker && localStorage}));
       networkPromise.then(contact => {
 	globalThis.contact = contact; // For debugging.
 	// On leaving, we would like to copy stored data and politely say 'bye' (so others can clean up their connections). Alas:

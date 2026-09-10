@@ -1,5 +1,6 @@
 import * as L from 'leaflet';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
+import { generateVapidKeys } from './browser-push.js';
 import { Int } from './translations.js';
 import { map, trackMap, showMessage } from './map.js';
 import { networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, clickTip, getText, openAbout, delay, osName } from './main.js';
@@ -253,12 +254,14 @@ export class Alert extends Conversation { // A wrapper around L.marker
       contact.pushPersist();
     });
   }
+  static clearPushData() { // Force new push subscription when next asked. Not needed at startup, but when creating a new node.
+    this._pushData = null; // Otherwise, new subscriptions with the old data will be rejected by the service as being for an unsubscribed client.
+  }
   static get pushData() {
     if (!notificationsAllowed()) return null;
     if (this._pushData) return this._pushData;
     return this._pushData = new Promise(async resolve => {
-      const applicationServerKey = 'BA22Zv8AFTM2V8myHKhvxYHHKxKb90BPJz-OkLYwBSwOH-i6mELc9gm6FJcIKUbZXbpPoYGrZi-y0vEE03k9PTQ';
-      const applicationId = 'nvyIJA3UH4Y8C0Ak65_eIb3dzv9ivQCLBRTStKpHRdY';
+      const {publicKey:applicationServerKey, privateKey:applicationId} = await generateVapidKeys();
       const registration = await navigator.serviceWorker.ready;
       const data = await registration.pushManager.subscribe({userVisibleOnly: true, applicationServerKey});
       const json = data.toJSON();
@@ -531,7 +534,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
     map.closePopup();
     Hashtags.closeSelector();
   }
-  static openPopup(alertTag) { // Open the marker specified by tag.
+  static async openPopup(alertTag) { // Open the marker specified by tag.
+    await networkPromise;
     const wrapper = this.getItem(alertTag);
     wrapper?.openPopup() || (openOnReceive = alertTag);
   }

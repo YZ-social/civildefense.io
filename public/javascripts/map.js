@@ -3,6 +3,7 @@ import * as L from 'leaflet';
 import { Int } from './translations.js';
 import { consume } from './display.js';
 import { Agent } from './agent.js';
+import { networkPromise } from './main.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { Alert, go } from './alert.js';
 import { resetInactivityTimer, tooltip } from './main.js';
@@ -142,9 +143,12 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
     resetInactivityTimer();
     map.closePopup(yourLocation.getPopup());
   });
-  map.on('moveend', () => {
-    Alert.updateSubscriptions();
+  map.on('moveend', async () => {
+    console.log('map moveend waiting');
+    await networkPromise;
     updateLocation(lastLatitude, lastLongitude); // Might now be within map.
+    console.log('movend calling updateSubscrptions()');
+    Alert.updateSubscriptions();
   });
 
   // Add click event to note position

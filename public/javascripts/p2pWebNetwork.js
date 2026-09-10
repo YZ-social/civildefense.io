@@ -68,9 +68,10 @@ export class P2PWebNetwork {
       await Promise.all([
 	navigator.serviceWorker.ready
 	  .then(registration => registration.pushManager.getSubscription())
-	  .then(subscription => subscription.unsubscribe()),
+	  .then(subscription => subscription?.unsubscribe()),
 	...topics.map(topic => peer.unsub(topic, {pushId}))
-      ]);
+      ])
+		 );
       network.pushPersist();
     }
     network.attached(network);
