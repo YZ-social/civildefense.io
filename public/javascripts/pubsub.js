@@ -10,12 +10,12 @@ async function hash2Hex(text) { // Promise hex-coded SHA256(text).
   const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return toHex(new Uint8Array(hash));
 }
-export const resolveTopic = async descriptor => {  // Normalize like axona.
+export async function resolveTopic(descriptor) {  // Normalize like axona.
   if (typeof(descriptor) !== 'object') return {topicId: descriptor};
   let {name, region, owner = null, write = owner ? 'owner' : 'open'} = descriptor;
   if (typeof(region) === 'string') region = parseInt(region);;
   const normalized = {name, region, owner, write};
-  const topicId = JSON.stringify(normalized); // TODO: hash2hex after initial dev/debug
+  const topicId = await hash2Hex(JSON.stringify(normalized));
   return {name, region, owner, write, topicId};
 };
 // Promise a string.
