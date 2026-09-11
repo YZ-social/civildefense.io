@@ -218,12 +218,12 @@ export class P2PWebNetwork {
 	handler({...message, agent: signerPubkey, tag: msgId, topic, ts});
       };
       const result = await this.peer.sub(topic, callback, {since, pushData});
-      this.currentTopics.add(result.topicId);
+      this.currentTopics.add(topic); // topic rather than result.topicId. See https://github.com/axona-net/axona-protocol/issues/64
       if (pushPersist) this?.pushPersist();
       return result;
     } else {
-      const result = this.peer.unsub(topic, {pushId});
-      this.currentTopics.delete(result.topicId);
+      const result = this.peer.unsub(topic, {pushId}); // See ticket ref'd above, altough topicId will have to be derived in this case.
+      this.currentTopics.delete(topic);
       if (pushPersist) this?.pushPersist();
       return result;
     }

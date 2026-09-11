@@ -144,10 +144,8 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
     map.closePopup(yourLocation.getPopup());
   });
   map.on('moveend', async () => {
-    console.log('map moveend waiting');
     await networkPromise;
     updateLocation(lastLatitude, lastLongitude); // Might now be within map.
-    console.log('movend calling updateSubscrptions()');
     Alert.updateSubscriptions();
   });
 

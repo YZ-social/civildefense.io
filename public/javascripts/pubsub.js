@@ -59,7 +59,7 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}
   await store.set('sub', topicId, nodeTag, id, SUBSCRIPTION_TIMEOUT);
   // If pushData, store it separately by nodeTag until it needs to be activated.
   if (pushData) await store.set('track', topicId, nodeTag, pushData, TRACK_TIMEOUT);
-  if (since) { // invoke handler on any sticky data, but only after we have told client the subscription id.
+  if (since) { // invoke handler on any sticky data, but only after we have told client the subscription id. TODO: is there a better way?
     setTimeout(async () => {
       let lastEnvelope = null, lastTime = 0;
       for (const envelope of await store.values('pub', topicId)) {
