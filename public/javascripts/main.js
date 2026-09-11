@@ -397,7 +397,7 @@ clickTip('#aboutButton', Int`Information about this app, and options to change n
 });
 
 if (isStandalone()) {
-  document.querySelector('#wipe').textContent = Int('Installed');
+  document.querySelector('#wipe').textContent = Int`Installed`;
 } else {
   initText('#wipe');
   clickTip('#wipe', Int`Wipe from ${osName()} all personal data and source files for this app.`, async event => {
