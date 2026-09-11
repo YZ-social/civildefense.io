@@ -630,6 +630,7 @@ input[type="file"] {
 .pwa {
     display: flex;
     align-items: center;
+    gap: 5px;
 }
 .describe {
     margin-bottom: 5px;

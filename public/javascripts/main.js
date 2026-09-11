@@ -134,17 +134,6 @@ export function openAbout(event) {
 export function closeAbout() {
   document.getElementById('aboutContainer').classList.toggle('hidden', true);
 }
-clickTip('#aboutButton', Int`Information about this app, and options to change notifications or how you appear to others.`, event => { // open about
-  Alert.closePopup();
-  openAbout(event);
-});
-clickTip('#wipe', Int`Wipe from ${osName()} all personal data and source files for this app.`, async event => {
-  await networkPromise?.then(contact => contact.disconnect());
-  localStorage.clear();
-  await caches.keys().then(keys => Promise.all(keys.map(key => caches.delete(key))));
-  await navigator.serviceWorker.getRegistrations().then(registrations => Promise.all(registrations.map(r => r.unregister())));
-  window.location.replace('about/index.html');
-});
 document.getElementById('scriptChooser').onchange = event => { // Run a script module chosen by the user. e.g., for testing.
   const file = event.currentTarget.files[0];
   if (!file) return;
@@ -396,12 +385,29 @@ initText('#describePrivate2');
 initText('#describePublic');
 initText('#describeSystem');
 initText('#pickLabels');
-initText('#wipe');
 initText('.firstConversation .teach.correspondent');
 initText('.firstPublish .teach.correspondent');
 initText('.teach.share');
 initText('.teach.attach');
 initText('.teach.changeHashtag');
+
+clickTip('#aboutButton', Int`Information about this app, and options to change notifications or how you appear to others.`, event => { // open about
+  Alert.closePopup();
+  openAbout(event);
+});
+
+if (isStandalone()) {
+  document.querySelector('#wipe').textContent = Int('Installed');
+} else {
+  initText('#wipe');
+  clickTip('#wipe', Int`Wipe from ${osName()} all personal data and source files for this app.`, async event => {
+    await networkPromise?.then(contact => contact.disconnect());
+    localStorage.clear();
+    await caches.keys().then(keys => Promise.all(keys.map(key => caches.delete(key))));
+    await navigator.serviceWorker.getRegistrations().then(registrations => Promise.all(registrations.map(r => r.unregister())));
+    window.location.replace('about/index.html');
+  });
+}
 
 tooltip('#learnMore', Int`Click to see more information in another tab about what you can do with this app and how it is resistant to tracking, censorship, and takedown.`);
 

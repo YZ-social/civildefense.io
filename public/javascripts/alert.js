@@ -815,7 +815,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   showNotification({issuedTime = this.issuedTime, body = '', agent = this.agent, alert = this.tag, lat = this.lat, lng = this.lng, hashtag = this.hashtag, force = false}) {
     // Give OS notification that comes back to here, unless act is us.
     // All notifications on the same alert (e.g., the post and each reply) have the same tag, so OS can collapse them.
-    console.log('alert showNotification', {lat, lng, hashtag, alert, agent, body, force});
+    //console.log('alert showNotification', {lat, lng, hashtag, alert, agent, body, force});
     if (agent === Agent.tag || !notificationsAllowed()) return;
     postServiceMessage('notify', {lat, lng, issuedTime, hashtag, alert, body, force});
   }
