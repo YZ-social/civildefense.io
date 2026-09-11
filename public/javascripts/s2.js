@@ -55,6 +55,15 @@ export function getSmallestCellId(lat, lng, level = MAX_MAP_LEVEL) { // Answer s
   const userLocCellId = Cell.fromPoint(userPt).id; // This is at MAX_S2_LEVEL
   return cellid.parent(userLocCellId, level);
 }
+export function getCellCorners(cell) { // Corners of BigInt cell, as [...[lat, lng]]
+  const s2cell = cellFromCellID(cell);
+  const radiansToDegrees = 180 / Math.PI;
+  return Array.from({ length: 4 }, (_, i) => {
+    const point = s2cell.vertex(i);
+    const latLng = s2.LatLng.fromPoint(point);
+    return [latLng.lat * radiansToDegrees, latLng.lng * radiansToDegrees];
+  });
+}
 
 // Return a list of the cell ids that contain the point, from region to MAX_S2_LEVEL
 // Note that the first of the cells (the region

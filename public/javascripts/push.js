@@ -19,9 +19,9 @@ export async function push(envelope, {applicationServerKey, applicationId, ...su
       privateKey: applicationId
     }
   };
+  // Consider delaying this by a random amount, to make it that much harder for someone
+  // to correlate known topic activity with someone's push records obtained from the service.
   const reply = await webpush.sendNotification?.(subscription, JSON.stringify(envelope), options);
   //console.log('push', {envelope, subscription, options, reply});
   return reply;
 }
-
-

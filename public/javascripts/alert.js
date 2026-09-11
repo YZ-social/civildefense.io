@@ -9,7 +9,7 @@ import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
 import { Conversation, Reply } from './conversation.js';
 import { alertTopic, topicRegion, cellHex, topicCell, topicTag } from './versions.js';
-import { getContainingCells, getSmallestCellId, getSubdivision, findCoverCellsByMinMaxLatLng, cellContains, pointFromLatLng, cellFromCellID } from './s2.js';
+import { getContainingCells, getSmallestCellId, getSubdivision, findCoverCellsByMinMaxLatLng, cellContains, pointFromLatLng, cellFromCellID, getCellCorners } from './s2.js';
 const { localStorage, getComputedStyle, URL, URLSearchParams, domtoimage } = globalThis;
 
 
@@ -124,7 +124,6 @@ class AlertReply extends Reply {
   }
 }
 
-import { s2 } from 's2js';
 export class Alert extends Conversation { // A wrapper around L.marker
   // For each hashtag, we subscribe to a set of non-overlapping cells at varying S2 levels that cover the current map.
   // An Alert is made when a subscription handler fires, and it keeps information that is (mostly) true regardless of
@@ -311,13 +310,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
     this.eventName = eventName;
     if (!this.isAggregate) return;
     this.cellBorder?.removeFrom(map);
-    const cell = cellFromCellID(topicCell(eventName));
-    const radiansToDegrees = 180 / Math.PI;
-    const corners = Array.from({ length: 4 }, (_, i) => {
-      const point = cell.vertex(i);
-      const latLng = s2.LatLng.fromPoint(point);
-      return [latLng.lat * radiansToDegrees, latLng.lng * radiansToDegrees];
-    });
+    // Draw polygon border from cell corners.
+    const corners = getCellCorners(topicCell(eventName));
     const border = this.cellBorder = L.polygon(corners, {color: this.constructor.md_sys_color_secondary, fillOpacity: 0.1});
     border.addTo(map);
   }
