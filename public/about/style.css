@@ -70,6 +70,8 @@ a:hover { color: var(--red); }
     max-width: 680px;
     margin: 0 auto;
 }
+.button-img { width: 80px; }
+.topics { max-width: 350px; }
 .hero-logo {
     width: 80px;
     height: 80px;
@@ -88,6 +90,10 @@ a:hover { color: var(--red); }
     margin-bottom: 0.75rem;
 }
 .hero h1 span { color: var(--red-light); }
+.cd {
+    color: var(--red);
+    font-weight: 700;
+}
 .hero-tagline {
     font-size: clamp(0.95rem, 2.5vw, 1.1rem);
     color: rgba(255,255,255,0.75);

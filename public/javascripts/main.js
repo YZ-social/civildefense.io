@@ -7,8 +7,8 @@ import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { getPointInCell } from './s2.js';
 import { Alert, getShareableURL, share } from './alert.js';
 import { map, showMessage, updateLocation, recenterMap } from './map.js';
-import {postServiceMessage} from './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
-//const postServiceMessage = null;
+//import {postServiceMessage} from './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
+const postServiceMessage = null;
 export {postServiceMessage};
 window.P2PWebNetwork = P2PWebNetwork;
 
@@ -368,10 +368,11 @@ async function initialize(event) { // Ensure there is a network promise and map,
 document.addEventListener('visibilitychange', initialize);
 window.addEventListener('online', initialize);
 
-const titleElement = document.querySelector('#aboutContainer h1');
-titleElement.textContent = Int([titleElement.textContent]);
-titleElement.textContent += ` @${location.hostname}`;
-document.querySelector('head > title').innerHTML = titleElement.textContent;
+const titleLabel = document.querySelector('#titleLabel');
+titleLabel.textContent = Int([titleLabel.textContent]);
+const titleHostname = document.querySelector('#titleHostname');
+titleHostname.textContent = ` @${location.hostname}`;
+document.querySelector('head > title').innerHTML = titleLabel.textContent + titleHostname.textContent;
 // Set up text for the browser language.
 function initText(selector, content = selector) {
   const element = document.querySelector(selector);
@@ -381,10 +382,6 @@ function initText(selector, content = selector) {
 initText('#aboutReport');
 initText('#aboutShared');
 initText('#aboutFade');
-initText('#aboutAnyone1');
-initText('#aboutAnyone2');
-initText('#aboutAnyone3');
-initText('#learnMore');
 initText('#version');
 initText('#checkForUpdates');
 initText('#downloadUpdates');
@@ -407,6 +404,5 @@ initText('.teach.attach');
 initText('.teach.changeHashtag');
 
 tooltip('#learnMore', Int`Click to see more information in another tab about what you can do with this app and how it is resistant to tracking, censorship, and takedown.`);
-tooltip('#aboutAnyone2', Int`Click to see the source code and documentation for serving copies of this app in another tab.`);
 
 initialize(false);

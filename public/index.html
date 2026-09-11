@@ -78,18 +78,19 @@
 
       <div id="aboutContainer" class="hidden">
 	<div class="display-content">
-          <h1>Civil Defense</h1>
+          <h1><span id="titleLabel">Civil Defense</span><span id="titleHostname"></span>
+	    <a id="learnMore" href="about/index.html" target="yz.sidebar"><md-icon class="material-icons">help</md-icon></a></h1>
           <ul>
             <li id="aboutReport"></li>
             <li id="aboutShared"></li>
             <li id="aboutFade"></li>
           </ul>
-          <p> <a id="learnMore" href="about/index.html" target="yz.sidebar">Learn More</a> </p>
-          <p>
-            <span id="aboutAnyone1"></span>
-            <a id="aboutAnyone2" href="https://github.com/YZ-social/Yz.social" target="yz.sidebar"></a>
-            <span id="aboutAnyone3"></span>
-          </p>
+          <p>  </p>
+          <!-- <p> -->
+          <!--   <span id="aboutAnyone1"></span> -->
+          <!--   <a id="aboutAnyone2" href="https://github.com/YZ-social/Yz.social" target="yz.sidebar"></a> -->
+          <!--   <span id="aboutAnyone3"></span> -->
+          <!-- </p> -->
 	  <hr>
 	  <div>
 	    <label>
@@ -107,12 +108,15 @@
             <md-elevated-button id="downloadUpdates" class="hidden"></md-elevated-button>
             <span id="updateStatus"></span>
           </div>
-	  <p><small>
+	  <p class="pwa">
+	    <a id="learnPWA" href="about/pwa.html" target="yz.sidebar"><md-icon class="material-icons">help</md-icon></a>
+	    <small>
 	      <label for="scriptChooser"> <span id="version">Version</span></label>
 	      <span id="appVersion"></span>,
 	      kernel: <span id="kernelVersion"></span>.
 	    </small>
-	    <small><a id="wipe" href="#"></a></small></p>
+	    <small><a id="wipe" href="#"></a></small>
+	  </p>
 	  <input id="scriptChooser" type="file" accept="text/javascript"></input>
 	</div>
       </div>

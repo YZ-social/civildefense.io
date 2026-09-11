@@ -90,27 +90,60 @@
 <!-- ── CONTENT ───────────────────────────────────────────────── -->
 <main class="content-wrap">
 
-  <h1>What You Do With It</h1>
+  <h1 id="do">What You Do With It</h1>
 
   <ul>
-    <li>Warn others of danger by tapping the map.</li>
-    <li>Add comments, photos, video, or other attachments.</li>
+    <li>Warn others of danger by tapping the map, creating an alert for others to see.</li>
+    <li>Add comments, photos, video, or other attachments by tapping on an alert.</li>
     <li>Get notified of new alerts near you or on your current map.</li>
     <li>Share to social media, text, or email.</li>
-    <li>Discuss an alert by secure video conference. (Coming this Fall.)</li>
+    <!-- <li>Discuss an alert by secure video conference. (Coming this Fall.)</li> -->
     <!-- <li>Alerts disappear after 24 hours—this is not an archive or long-term storage system. (This Winter, users will be able to download tamper-evident reports for use in other systems.)</li> -->
   </ul>
 
+  <p>
   <a href="/?tags=%F0%9F%8E%B8%20classic%20rock,%F0%9F%8E%BC%20classical,%F0%9F%A4%A0%20country,%F0%9F%8E%B7%20jazz,%F0%9F%8E%99%EF%B8%8F%20news,%F0%9F%8E%B5%20pop&z=5&lang=en" class="launch-btn" target="civildefense">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
     Try it!
   </a>
+  </p>
+
+  <h2 id="topics">Topics</h2>
+  <p>Control what topics are shown on the map by simply touching the topic labels to toggle them on and off. Like "hashtags", you add or create new topics by simply typing them - in this case, into the "add topic" box. There is no central list of topics.
+    <ul>
+      <li>If you like, you can begin a topic name with an emoji character, and that is what will be used on the map as a marker. Otherwise, a unique shape will be automatically generated and used until you receive an alert for that topic that <i>does</i> have a leading emoji.</li>
+      <li>You can remove a topic name from your screen altogether by toggling it off, and then touching the "x" that appears. You can add topics back by typing or selecting them from the "add topic" box.</li>
+      <li>The red "radio button" next to a topic name indicates that it will be the initial topic for a new alert you create by touching the map. (You can also change the topic of an alert you create by touching the topic name in the alert-conversation popup.)</li>
+    </ul>
+  </p>
+
+  <div class="centered">
+    <img class="topics" src="topics.png" alt="topic labels">
+  </div>
+
+
+  <h2 id="sharing">Sharing</h2>
+
+  <p>Every alert you make will be immediately visible to anyone with the app who is looking at that point on the map. Every reply you make will be immediately shared with anyone looking at the same alert.</p>
+  <p>You can use the share button to pass a link and message to those that may not yet have the app. The button appears on the map, at the top of an alert-conversation display, and next to each reply, and it shares whatever the button appears with.</p>
+  <div class="centered">
+    <img class="button-img" src="../images/share.svg" alt="share">
+  </div>
+
+  <h2 id="options">Options</h2>
+
+  <p>The app's "<span class="cd">CD</span>" button gives you control over <a href="notification.html">notifications</a>, <a href="identity.html">how you appear to others</a>, and <a href="pwa.html">updates</a>.</p>
+
+  <div class="hero-inner">
+    <img class="hero-logo" src="civil-defense.png" alt="Civil Defense Logo">
+  </div>
+
 
   <!-- <hr class="rule"> -->
 
-  <h1>Broadcast Safely</h1>
+  <h1 id="broadcast">Broadcast Safely</h1>
 
-  <h2>Resist Tracking</h2>
+  <h2 id="tracking">Resist Tracking</h2>
   <ul>
     <li>You cannot be identified as a person because there is no login, sign-up, or accounts. No phone number or email is used. There is no app store logging downloads. Users can choose to let others recognize them over multiple interactions — without divulging their actual identity.</li>
     <li>It is extremely difficult to identify your IP address or network patterns, because alerts are distributed phone-to-phone over a peer-to-peer network.</li>
@@ -118,13 +151,13 @@
     <li>Each alert disappears everywhere on the network after 24 hours. There are no collected records of messages, comments, or requested topics, and this is not an archive or long-term storage system.</li>
   </ul>
 
-  <h2>Resist Censorship</h2>
+  <h2 id="censorship">Resist Censorship</h2>
   <ul>
     <li>No user can be censored because there are no accounts. No one can steal your account information because there isn't any.</li>
     <li>No content can be censored, there is no central organization who controls the network or has power to alter content.</li>
   </ul>
 
-  <h2>Resist Takedown</h2>
+  <h2 id="takedown">Resist Takedown</h2>
   <ul>
     <li>No app store can block Civil Defense — the app is just a web page.</li>
     <li>Taking down web servers or domain names cannot block access for those who already have it, because the app caches everything it needs on first use. The <a href="https://github.com/yz-social/civildefense.io" target="yz.other" rel="noopener">open-source code</a> is available so anyone can host an alternative mirror.</li>
@@ -134,7 +167,7 @@
   </ul>
   <!-- <hr class="rule"> -->
 
-  <h1>The Bigger Picture</h1>
+  <h1 id="more">The Bigger Picture</h1>
   <p>The Civil Defense runs on the <a href="https://github.com/axona-net/axona-protocol" target="yz.other" rel="noopener">Axona network</a>. Both are free and open source.</p>
   <p>Axona is a modern descendant of the old <a href="https://en.wikipedia.org/wiki/Peer-to-peer" target="yz.other" rel="noopener">peer-to-peer networks</a> such as <a href="https://en.wikipedia.org/wiki/Napster">Napster</a>. It has a unique self-healing routing mechanism that uses neuron learning techniques to find the best way to distribute alerts. It is analogous to <a href="https://en.wikipedia.org/wiki/Tor_(network)" target="yz.other" rel="noopener">TOR</a> (The Onion Router), but designed from the ground up to run in mobile and desktop browsers.</p>
   <p>We are also developing a comprehensive quantum-ready cryptography system that will add private-groups for Civil Defense and any software on the network. We believe there are many applications where developers, users, and the public all benefit from open software and secure, decentralized networks — without app stores, servers, or data centers. Beyond Civil Defense, we are also developing large-scale <a href="https://en.wikipedia.org/wiki/Distributed_computing" target="yz.other" rel="noopener">multiuser collaboration</a> and <a href="https://poverty-action.org/inclusive-instant-payment-systems-evidence-based-approach-design-impact" target="yz.other" rel="noopener">Inclusive Instant Payment Systems</a>.</p>

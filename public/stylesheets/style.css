@@ -627,6 +627,10 @@ input[type="file"] {
     padding: 0;
     min-width: unset;
 }
+.pwa {
+    display: flex;
+    align-items: center;
+}
 .describe {
     margin-bottom: 5px;
 }
