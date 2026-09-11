@@ -7,8 +7,8 @@ import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { getPointInCell } from './s2.js';
 import { Alert, getShareableURL, share } from './alert.js';
 import { map, showMessage, updateLocation, recenterMap } from './map.js';
-//import {postServiceMessage} from './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
-const postServiceMessage = null;
+import {postServiceMessage} from './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
+//const postServiceMessage = null;
 export {postServiceMessage};
 window.P2PWebNetwork = P2PWebNetwork;
 

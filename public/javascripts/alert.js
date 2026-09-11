@@ -187,10 +187,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	  openOnReceive = false;
 	  this.openPopup();
 	}
-	networkPromise.then(async contact => { // Subscribe to replies to this tag, now that we have an alert for them to go to.
+	networkPromise.then(async contact => { // Asynchronously subscribe to replies to this tag, now that we have an alert for them to go to.
 	  await contact.subscribe({eventName: tag, region, handler: data => this.ensure(data),
 				   pushData: await this.constructor.pushData});
-	  contact.pushPersist();
 	});
       }
     }
@@ -213,7 +212,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
     // Unsubscribe from replies.
     if (!isAggregate) networkPromise?.then(async contact => {
       contact.subscribe({eventName: tag, region, handler: null});
-      contact.pushPersist();
     });
     this.cellBorder?.removeFrom(map);
     super.destroy();
@@ -226,7 +224,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     marker.removeFrom(map);
   }
   delete() { // If ensure gets an empty body, cancel any associated notification.
-    postServiceMessage('cancelNotification', [this.tag]);
+    if (notificationsAllowed()) postServiceMessage('cancelNotification', [this.tag]);
     return super.delete();
   }
 
@@ -252,7 +250,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	const region = topicRegion(eventName);
 	const pushData = handler && await this.pushData;
 	if (handler) Agent.current?.trackPublicChanges(region); // Background. No need to await.
-	return await contact.subscribe({eventName, region, handler, pushData})
+	return await contact.subscribe({eventName, region, handler, pushData, pushPersist: null})
 	  .then(sub => {
 	    throttleMS && P2PWebNetwork.delay(throttleMS);
 	    return sub;

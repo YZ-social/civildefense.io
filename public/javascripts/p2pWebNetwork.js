@@ -78,7 +78,7 @@ export class P2PWebNetwork {
   }
   static pushPersistKey = 'lastPushed';
   currentTopics = new Set();
-  pushPersist(added, removed) { // Add/remove topics
+  pushPersist() { // Add/remove topics
     if (!this.pushPersistor) return;
     this.pushPersistor.setItem(this.constructor.pushPersistKey, JSON.stringify([this.nodeIdentity.id, ...this.currentTopics]));
   }
@@ -198,7 +198,11 @@ export class P2PWebNetwork {
   // The methods publish/subscribe map from the original civildefense-over-kdht API to Axona, and could be rewritten in the apps.
   // But since we needed this class anyway, it was easiest to retain them.
   // Besides, I don't like to see abbreviations in API names.
-  async subscribe({eventName, region, owner, since = 'all', handler, pushData, pushId}) { // Assign handler for eventName, or remove any handler if falsy.
+  async subscribe({eventName, region, owner, since = 'all',
+		   handler,  // If truthy, associates the handler with topic. If falsy, removes all such handlers from topic.
+		   pushData, // If handler and truthy (a browser subscription object extended with keys), create a sticky subscription with that.
+		   pushId,   // If no handler and truthy (a previous session nodeId), then cancel that session's sticky subscription.
+		   pushPersist = this.pushPersistor}) {  // If non-null, call this.pushPersist to save sticky data for undoing next session. (See lastPushed in create().)
     await this.attachment;
     const topic = {region, name: eventName};
     if (owner) topic.owner = owner;
@@ -215,10 +219,12 @@ export class P2PWebNetwork {
       };
       const result = await this.peer.sub(topic, callback, {since, pushData});
       this.currentTopics.add(result.topicId);
+      if (pushPersist) this?.pushPersist();
       return result;
     } else {
       const result = this.peer.unsub(topic, {pushId});
       this.currentTopics.delete(result.topicId);
+      if (pushPersist) this?.pushPersist();
       return result;
     }
   }
