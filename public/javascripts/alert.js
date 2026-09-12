@@ -284,9 +284,14 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const registration = await navigator.serviceWorker.ready;
       const data = await registration.pushManager.subscribe({userVisibleOnly: true, applicationServerKey});
       const json = data.toJSON();
-      console.log('pushData', {registration, data, json});
+      //console.log('pushData', {registration, data, json});
       resolve({...json, applicationId, applicationServerKey});
     });
+  }
+  static async refreshPushSubscriptions() { // Make sticky subscriptions match a new state.
+    const contact = await networkPromise;
+    await contact.resetPersisted();
+    await this.updateSubscriptions({newKeys: this.subscriptions, oldKeys: {}});
   }
 
   // Instance Management Internals

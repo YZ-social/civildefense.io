@@ -62,17 +62,7 @@ export class P2PWebNetwork {
     peer.onLog('error', (...rest) => network.info('ERROR', ...rest));
     const { peers, ms } = status;
     network.info(`Connected ${peers} connections through ${bridgeUrl} in ${ms.toLocaleString()} ms.`);
-    const lastPushed = pushPersistor && pushPersistor.getItem(this.pushPersistKey);
-    if (lastPushed) {
-      const [pushId, ...topics] = JSON.parse(lastPushed);
-      await Promise.all([
-	navigator.serviceWorker.ready
-	  .then(registration => registration.pushManager.getSubscription())
-	  .then(subscription => subscription?.unsubscribe()),
-	...topics.map(topic => peer.unsub(topic, {pushId}))
-      ]);
-      network.pushPersist();
-    }
+    await network.resetPersisted();
     network.attached(network);
     return network;
   }
@@ -81,6 +71,20 @@ export class P2PWebNetwork {
   pushPersist() { // Add/remove topics
     if (!this.pushPersistor) return;
     this.pushPersistor.setItem(this.constructor.pushPersistKey, JSON.stringify([this.nodeIdentity.id, ...this.currentTopics]));
+  }
+  async resetPersisted() { // Clears any sticky subscriptions in network and for browser's pushManager.
+    const {pushPersistor, peer} = this;
+    const lastPushed = pushPersistor && pushPersistor.getItem(this.constructor.pushPersistKey);
+    if (lastPushed) {
+      const [pushId, ...topics] = JSON.parse(lastPushed);
+      await Promise.all([
+	navigator.serviceWorker.ready
+	  .then(registration => registration.pushManager.getSubscription())
+	  .then(subscription => subscription?.unsubscribe()),
+	...topics.map(topic => peer.unsub(topic, {pushId}))
+      ]);
+      this.pushPersist();
+    }
   }
   
   async disconnect(debugLogger = this.debugLogger) { // Politely close network connection.

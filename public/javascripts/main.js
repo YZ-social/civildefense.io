@@ -76,48 +76,51 @@ var showNotificationsLabel = document.getElementById('showNotificationsLabel');
 function notificationsRequested() { // Explicit choice by user in app, but might be currently denied by OS.
   return !!localStorage.getItem('notificationsRequested');
 }
-export function noteNotificationsRequested(force) { // Record choice.
-  localStorage.setItem('notificationsRequested', force ? '1' : '');
-}
 export function notificationsAllowed() { // Combined result.
   return postServiceMessage && (Notification?.permission === 'granted') && notificationsRequested();
 }
+let notificationsPreviouslyAllowed = notificationsAllowed();
 function noteNotificationPermission(permission) { // Update permission controls/text/persistence.
   // Called when checkbox is toggled, opening dialog, or if platform happens to tell us permission was externally changed (e.g., even if dialog already open).
   if (isWebView()) {
+    showNotifications.checked = false;
     showNotifications.indeterminate = true;
     showNotifications.toggleAttribute('disabled', true);
     showNotificationsLabel.innerHTML = `${mobileVendorName()} ${Int`does not support notifications on WebViews embedded in other programs. Please use CivilDefense.io in native`} ${mobileBrowserName()}.`;
-    return;
-  }
-  if (isMobile() && isApple() && !isStandalone()) {
+  } else if (isMobile() && isApple() && !isStandalone()) {
+    showNotifications.checked = false;
     showNotifications.indeterminate = true;
     showNotifications.toggleAttribute('disabled', true);
     showNotificationsLabel.innerHTML = `${Int`Apple only supports mobile notifications for web pages that have been`} <a href="https://www.google.com/search?q=iphone+install+web+page+to+home+screen" target="yz.sidebar">${Int`installed to the home screen`}</a>.`;
-    return;
+  } else {
+    switch (permission) {
+    case 'default':
+      showNotifications.indeterminate = true;
+      showNotifications.toggleAttribute('disabled', false);
+      showNotificationsLabel.innerHTML = Int`Enable notifications`;
+      break;
+    case 'granted':
+      showNotifications.checked = notificationsRequested();
+      showNotifications.indeterminate = false;
+      showNotifications.toggleAttribute('disabled', false);
+      showNotificationsLabel.innerHTML = Int`Allow notifications`;
+      break;
+    default: // Permission is explicitly not granted.
+      showNotifications.checked = false;
+      showNotifications.indeterminate = false;
+      showNotifications.toggleAttribute('disabled', true);
+      const isApp = isStandalone();
+      const search = isApp ?
+	    `https://www.google.com/search?q=${osName()}+open+app+settings` :
+	    `https://www.google.com/search?q=open+site+settings+${browserName() || `"${navigator.userAgent}"`}`;
+      const label = isApp ? `CivilDefense.io ${Int`app`}` : Int`browser site settings`;
+      showNotificationsLabel.innerHTML = `${Int`Permissions can be re-enabled through the`} <a href="${search}" target="yz.sidebar">${label}</a>.`;
+      break;
+    }
   }
-  switch (permission) {
-  case 'default':
-    showNotifications.indeterminate = true;
-    showNotifications.toggleAttribute('disabled', false);
-    showNotificationsLabel.innerHTML = Int`Enable notifications`;
-    break;
-  case 'granted':
-    showNotifications.checked = notificationsRequested();
-    showNotifications.toggleAttribute('disabled', false);
-    showNotificationsLabel.innerHTML = Int`Allow notifications`;
-    break;
-  default: // Permission is explicitly not granted.
-    showNotifications.checked = false;
-    showNotifications.toggleAttribute('disabled', true);
-    const isApp = isStandalone();
-    const search = isApp ?
-	  `https://www.google.com/search?q=${osName()}+open+app+settings` :
-	  `https://www.google.com/search?q=open+site+settings+${browserName() || `"${navigator.userAgent}"`}`;
-    const label = isApp ? `CivilDefense.io ${Int`app`}` : Int`browser site settings`;
-    showNotificationsLabel.innerHTML = `${Int`Permissions can be re-enabled through the`} <a href="${search}" target="yz.sidebar">${label}</a>.`;
-    break;
-  }
+  if (showNotifications.checked === notificationsPreviouslyAllowed) return;
+  notificationsPreviouslyAllowed = showNotifications.checked;
+  Alert.refreshPushSubscriptions();
 }
 clickTip(showNotifications.parentElement, Int`Enable local ${osName()} notifcations for map alerts, without going through any servers. Requires that the app be running.`, event => {
   resetInactivityTimer();
@@ -125,9 +128,10 @@ clickTip(showNotifications.parentElement, Int`Enable local ${osName()} notifcati
 });
 showNotifications.onchange = () => {
   if (window.Notification?.permission === 'granted') {
-    noteNotificationsRequested(showNotifications.checked);
+    localStorage.setItem('notificationsRequested', showNotifications.checked ? '1' : '');
+    noteNotificationPermission('granted');
   } else {
-    window.Notification?.requestPermission().then(noteNotificationPermission);
+    window.Notification?.requestPermission().then(noteNotificationPermission());
   }
 };
 // Safari never fires 'change': https://webkit.org/b/259432
