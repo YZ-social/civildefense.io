@@ -73,10 +73,17 @@ function browserName() {
 
 var showNotifications = document.getElementById('showNotifications');
 var showNotificationsLabel = document.getElementById('showNotificationsLabel');
-function disabledNotifications() { return localStorage.getItem('disabledNotifications'); }
-export function disableNotifications(force) { localStorage.setItem('disabledNotifications', force ? '1' : ''); }
-export function notificationsAllowed() { return postServiceMessage && (Notification?.permission === 'granted') && !disabledNotifications(); }
-function noteNotificationPermission(permission) {
+function notificationsRequested() { // Explicit choice by user in app, but might be currently denied by OS.
+  return !!localStorage.getItem('notificationsRequested');
+}
+export function noteNotificationsRequested(force) { // Record choice.
+  localStorage.setItem('notificationsRequested', force ? '1' : '');
+}
+export function notificationsAllowed() { // Combined result.
+  return postServiceMessage && (Notification?.permission === 'granted') && notificationsRequested();
+}
+function noteNotificationPermission(permission) { // Update permission controls/text/persistence.
+  // Called when checkbox is toggled, opening dialog, or if platform happens to tell us permission was externally changed (e.g., even if dialog already open).
   if (isWebView()) {
     showNotifications.indeterminate = true;
     showNotifications.toggleAttribute('disabled', true);
@@ -96,11 +103,11 @@ function noteNotificationPermission(permission) {
     showNotificationsLabel.innerHTML = Int`Enable notifications`;
     break;
   case 'granted':
-    showNotifications.checked = !disabledNotifications();
+    showNotifications.checked = notificationsRequested();
     showNotifications.toggleAttribute('disabled', false);
     showNotificationsLabel.innerHTML = Int`Allow notifications`;
     break;
-  default:
+  default: // Permission is explicitly not granted.
     showNotifications.checked = false;
     showNotifications.toggleAttribute('disabled', true);
     const isApp = isStandalone();
@@ -118,7 +125,7 @@ clickTip(showNotifications.parentElement, Int`Enable local ${osName()} notifcati
 });
 showNotifications.onchange = () => {
   if (window.Notification?.permission === 'granted') {
-    disableNotifications(!showNotifications.checked);
+    noteNotificationsRequested(showNotifications.checked);
   } else {
     window.Notification?.requestPermission().then(noteNotificationPermission);
   }
