@@ -356,6 +356,12 @@ async function initialize(event) { // Ensure there is a network promise and map,
 }
 document.addEventListener('visibilitychange', initialize);
 window.addEventListener('online', initialize);
+window.addEventListener("appinstalled", async () => {
+  // It turns out that the same browser that support this push the EXISTING browsing context into their own frame,
+  // rather than starting fresh. (Which makes some sense for having this event fire.)
+  // In such cases, we need to re-initialize stuff. We could go point by point, but for now, just hit everything.
+  location.reload();
+});
 
 const titleLabel = document.querySelector('#titleLabel');
 titleLabel.textContent = Int([titleLabel.textContent]);
