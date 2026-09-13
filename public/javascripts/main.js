@@ -6,6 +6,7 @@ import { Agent} from './agent.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { getPointInCell } from './s2.js';
 import { Alert, getShareableURL, share } from './alert.js';
+import { Hashtags } from './hashtags.js';
 import { map, showMessage, updateLocation, recenterMap } from './map.js';
 import {postServiceMessage} from './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
 //const postServiceMessage = null;
@@ -138,6 +139,13 @@ showNotifications.onchange = () => {
 navigator.permissions.query({ name: 'notifications'})
   .then(status => status.onchange = () => noteNotificationPermission(window.Notification?.permission));
 
+export function closeAll() { // Close anything that might be open.
+  closeAbout();
+  Alert.closePopup();
+  Hashtags.closeSelector();
+  ['aboutContainer', 'updateContainer', 'correspondentContainer', 'qrContainer']
+    .forEach(tag => document.getElementById(tag).classList.toggle('hidden', true));
+}
 export function openAbout(event) {
   openDisplay('aboutContainer', event);
   noteNotificationPermission(window.Notification?.permission);
@@ -409,7 +417,7 @@ initText('.teach.attach');
 initText('.teach.changeHashtag');
 
 clickTip('#aboutButton', Int`Information about this app, and options to change notifications or how you appear to others.`, event => { // open about
-  Alert.closePopup();
+  closeAll();
   openAbout(event);
 });
 

@@ -3,7 +3,7 @@ import * as L from 'leaflet';
 import { Int } from './translations.js';
 import { consume } from './display.js';
 import { Agent } from './agent.js';
-import { networkPromise } from './main.js';
+import { networkPromise, closeAll } from './main.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { Alert, go } from './alert.js';
 import { resetInactivityTimer, tooltip } from './main.js';
@@ -74,7 +74,7 @@ export function updateLocation(lat, lng, zoom, positionLabel) { // initMap if ne
 
 export function recenterMap(event) {
   consume(event);
-  Alert.closePopup();
+  closeAll();
   const latLng = [lastLatitude, lastLongitude];
   map.flyTo(latLng);
 }

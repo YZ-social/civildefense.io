@@ -1,5 +1,5 @@
 const { pica, FileReader, File, URL } = globalThis;
-import { resetInactivityTimer } from './main.js';
+import { closeAll, resetInactivityTimer } from './main.js';
 import { showMessage } from './map.js';
 
 export function consume(event) { // i.e., don't close dialogs
@@ -11,6 +11,7 @@ export function openDisplay(containerIdentifier, event = null, content = undefin
   // Open containerIdentifier with close handler attached and optional content, and return content element
   const containerElement = document.getElementById(containerIdentifier);
   consume(event);
+  closeAll();
 
   containerElement.onclick = event => {
     resetInactivityTimer();

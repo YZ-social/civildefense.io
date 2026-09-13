@@ -3,7 +3,7 @@ import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { generateVapidKeys } from './browser-push.js';
 import { Int } from './translations.js';
 import { map, trackMap, showMessage } from './map.js';
-import { postServiceMessage, networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, clickTip, getText, openAbout, delay, osName } from './main.js';
+import { closeAll, postServiceMessage, networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, clickTip, getText, openAbout, delay, osName } from './main.js';
 import { consume } from './display.js';
 import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
@@ -44,7 +44,7 @@ export async function share(properties) {  // Invoke platform share API on prope
     }
   }
   if (!properties.files) {
-    Alert.closePopup();
+    closeAll();
     await delay(500); // Allow popup time to close. It doesn't render well because of the web component style sheets.
     const target = document.getElementById('mapCapture'); // For capturing a screen shot.
     const icon = target.lastElementChild;
@@ -66,6 +66,7 @@ export async function share(properties) {  // Invoke platform share API on prope
 const ttl = 24 * 60 * 60e3; // 24 hours
 let openOnReceive = null;
 export function go({lat = null, lng = null, zoom = null, alert = null}) { // Go to specified location (if any) and open marker (if any).
+  closeAll();
   if (lat !== null && lng !== null) {
     lat = parseFloat(lat);
     lng = parseFloat(lng);
