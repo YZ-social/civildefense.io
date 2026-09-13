@@ -169,7 +169,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const marker = this.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
       const region = P2PWebNetwork.regionCode(lat, lng);
       hashtag = Hashtags.add(hashtag); // We already have it and are subscribing, but this updates our extended form if needed.
-      super.initialize({payload, hashtag, tag, agent, lat, lng, issuedTime, originalPosting, ...rest});
+      super.initialize({payload, hashtag, tag, agent, lat, lng, region, issuedTime, originalPosting, ...rest});
       if (aggregate) {
 	// Destroy existing eventName markers and add their positions to the aggregate we are creating.
 	this.becomeAggregate(eventName);
@@ -656,10 +656,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
       filenameDisplay.textContent = fileChooser.files.length ? (fileChooser.files[0].name || 'camera') : '';
     };
     this.initChangeHashtag(popupElement);
+    const region = this.region;
     for (const correspondent of popupElement.querySelectorAll('.correspondent')) {
       const tag = correspondent.dataset.tag;
-      const region = P2PWebNetwork.regionCode(this.lat, this.lng);
-      const agent = Agent.ensure({tag, region: region});
+      const agent = Agent.ensure({tag, region});
       const isAvatar = correspondent.classList.contains('avatar');
       if (agent.addElement(correspondent, 'mixed', isAvatar ? 'avatar' : 'handle')) {
 	const isMine = Agent.isMine(tag);
@@ -784,9 +784,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
     event.stopPropagation();
     const button = event.target;
     const inputElement = button.parentElement;
-    const {tag, hashtag, lat, lng} = this;
+    const {tag, hashtag, lat, lng, region} = this;
     let payload = {message: inputElement.value.trim(), lat, lng};
-    const region = P2PWebNetwork.regionCode(lat, lng);
     const files = inputElement.parentElement.querySelector('input[type="file"]').files;
     if (!payload && !files.length) return;
     inputElement.value = '';
@@ -804,8 +803,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
   deleteReply(replyElement) {
     resetInactivityTimer();
-    const {lat, lng, tag} = this;
-    const region = P2PWebNetwork.regionCode(lat, lng);
+    const {lat, lng, region, tag} = this;
     const killTag = replyElement.dataset.tag;
     networkPromise.then(async contact => {
       // We won't be here unless we are the signer.
