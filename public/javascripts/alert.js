@@ -188,7 +188,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
     }
     const alert = aggregate || this;
     alert.startExpiration('.alert-pin', remaining);
-    alert.ensureRepliesSubscribed();
     alert.showNotification({agent, issuedTime});
     return keep;
   }
@@ -602,10 +601,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
 
   needsRedisplay = true;
-  ensureContent(popup = this.marker.getPopup()) { // Set content and handlers in popup if/as needed.
+  async ensureContent(popup = this.marker.getPopup()) { // Set content and handlers in popup if/as needed.
+    resetInactivityTimer();
     if (!popup) return;
     if (!popup.isOpen()) return;
     this.logAlert();
+    await this.ensureRepliesSubscribed();
     if (!this.needsRedisplay) {
       this.initializeHandlers(popup);
       return;
