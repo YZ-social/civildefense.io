@@ -195,7 +195,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   async ensureRepliesSubscribed(unsubscribe = false) { // Listen for replies to this alert.
     const {tag, region, aggregate, subscribed} = this;
     console.log('subscribeReplies', {tag, region, aggregate, subscribed, unsubscribe});
-    if (aggregate || subscribed) return;
+    if (aggregate) return;
     this.subscribed = true;
     const contact = await networkPromise;
     if (unsubscribe) await contact.subscribe({eventName: tag, region, handler: null});
@@ -237,9 +237,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
     // A value of {} passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
     return this.subscriptionQueue = this.subscriptionQueue.then(async () => {
       if (oldKeys && !Object.keys(oldKeys).length) { // This was a reset for a new node.
-	// The bookkeeping gets complicated with alerts that might still be valid, but with no triggering event to subscribe to replies.
-	// Best to kill 'em all.
-	this.items.forEach(alert => alert.destroy());
+	// Update replies subscriptions for alert that have already been opened.
+	for (const alert of this.items) {
+	  if (alert.subscribed) await alert.ensureRepliesSubscribed(true);
+	}
       }
       oldKeys ||= this.subscriptions;
       newKeys ||= this.subscriptionFromMap();
@@ -606,7 +607,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     if (!popup) return;
     if (!popup.isOpen()) return;
     this.logAlert();
-    await this.ensureRepliesSubscribed();
+    if (!this.subscribed) await this.ensureRepliesSubscribed();
     if (!this.needsRedisplay) {
       this.initializeHandlers(popup);
       return;
