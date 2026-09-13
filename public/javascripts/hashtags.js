@@ -125,7 +125,8 @@ export const Hashtags = {
     if (resetSubscriptions) {
       // We destroy unsubscribed markers right away, because we don't want the user to have to wait and wonder why they're still displayed.
       // If there are alerts in flight, they will be rejected by Alert initialize because we will have already turned off the sub.
-      Alert.items.forEach(wrapper => this.isSubscribed(wrapper.hashtag) || wrapper.destroy());
+      // The remaining have needsRedisplay set so that their menus are correct.
+      Alert.items.forEach(wrapper => (this.isSubscribed(wrapper.hashtag) && (wrapper.needsRedisplay = true)) || wrapper.destroy());
       Alert.updateSubscriptions();
     }
   },
