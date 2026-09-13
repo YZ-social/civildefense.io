@@ -184,16 +184,24 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	  openOnReceive = false;
 	  this.openPopup();
 	}
-	networkPromise.then(async contact => { // Asynchronously subscribe to replies to this tag, now that we have an alert for them to go to.
-	  await contact.subscribe({eventName: tag, region, handler: data => this.ensure(data),
-				   pushData: await this.constructor.pushData});
-	});
       }
     }
     const alert = aggregate || this;
     alert.startExpiration('.alert-pin', remaining);
+    alert.ensureRepliesSubscribed();
     alert.showNotification({agent, issuedTime});
     return keep;
+  }
+  susbscribed = false;
+  async ensureRepliesSubscribed(unsubscribe = false) { // Listen for replies to this alert.
+    const {tag, region, aggregate, subscribed} = this;
+    console.log('subscribeReplies', {tag, region, aggregate, subscribed, unsubscribe});
+    if (aggregate || subscribed) return;
+    this.subscribed = true;
+    const contact = await networkPromise;
+    if (unsubscribe) await contact.subscribe({eventName: tag, region, handler: null});
+    await contact.subscribe({eventName: tag, region, handler: data => this.ensure(data),
+			     pushData: await this.constructor.pushData});
   }
   update({topic, ts, ...rest}) { // Called when handling an existing Conversation. super confirms that nothing immutable has changed.
     return super.update({...rest}); // topic and ts vary with level, and so must not be part of ensure/update checks.
