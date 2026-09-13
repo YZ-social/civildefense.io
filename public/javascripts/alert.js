@@ -178,10 +178,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	this.noteEventName(eventName);
 	marker.bindPopup('', {className: 'alert'})
 	  .on('popupopen', event => this.ensureContent(event.popup))
-	  .on('popupclose', () => {
-	    document.body.classList.toggle('firstConversation', false);
-	    document.body.classList.toggle('firstPublish', false);
-	  });
+	  .on('popupclose', () => this.closeTeach());
 	tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
 	if (tag === openOnReceive) {
 	  openOnReceive = false;
@@ -625,7 +622,13 @@ export class Alert extends Conversation { // A wrapper around L.marker
     if (localStorage.getItem(classname)) return;
     localStorage.setItem(classname, '1');
     document.body.classList.toggle(classname, true);
+    document.querySelectorAll('.teach').forEach(element => element.onclick = () => this.closeTeach());
   }
+  closeTeach() { // All of them.
+    document.body.classList.toggle('firstConversation', false);
+    document.body.classList.toggle('firstPublish', false);
+  }
+
   clearAvatars(popup = this.marker?.getPopup()) {
     popup?.getElement()?.querySelectorAll('.correspondent[data-tag]')
       .forEach(element => Agent.ensure({tag: element.dataset.tag}).removeElement(element, 'mixed', element.classList.contains('avatar') ? 'avatar' : 'handle'));
