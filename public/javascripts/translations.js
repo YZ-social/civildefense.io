@@ -100,7 +100,10 @@ const translations = {
   ['" alerts in the map. You can delete the topic altogether with the X.']: {es: "» en el mapa. Puedes eliminar el tema por completo con la X."},
 
   ['Click to see more information in another tab about what you can do with this app and how it is resistant to tracking, censorship, and takedown.']: {es: "Haz clic para ver más información en otra pestaña sobre lo que puedes hacer con esta aplicación y cómo resiste el rastreo, la censura y la retirada de contenido."},
-  ['Click to see the source code and documentation for serving copies of this app in another tab.']: {es: "Haz clic para ver el código fuente y la documentación para servir copias de esta aplicación en otra pestaña."},
+  ['Click to learn about receiving operating system notifications.']: {es: "Haz clic para obtener información sobre cómo recibir notificaciones del sistema operativo."},
+  ['Click to learn about how you can choose to label yourself and how to recognize other users.']: {es: "Haz clic para saber cómo puedes elegir etiquetarte y cómo reconocer a otros usuarios."},
+  ['Click to learn about installation, updates, and removal.']: {es: "Haga clic para obtener información sobre la instalación, las actualizaciones y la eliminación."},
+  
   ['Show conversation for this ']: {es: "Mostrar la conversación de esta alerta de "},
   [' alert.']: {es: "."},
   ['Click to download.']: {es: "Haz clic para descargar."},

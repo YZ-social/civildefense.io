@@ -78,8 +78,10 @@
 
       <div id="aboutContainer" class="hidden">
 	<div class="display-content">
-          <h1><span id="titleLabel">Civil Defense</span><span id="titleHostname"></span>
-	    <a id="learnMore" href="about/index.html" target="yz.sidebar"><md-icon class="material-icons">help</md-icon></a></h1>
+          <h1>
+	    <a id="learnMore" href="about/index.html" target="yz.sidebar"><md-icon class="material-icons">help</md-icon></a>
+	    <span id="titleLabel">Civil Defense</span><span id="titleHostname"></span>
+	  </h1>
           <ul>
             <li id="aboutReport"></li>
             <li id="aboutShared"></li>
@@ -93,12 +95,14 @@
           <!-- </p> -->
 	  <hr>
 	  <div>
+	    <a id="learnNotification" href="about/notification.html" target="yz.sidebar"><md-icon class="material-icons">help</md-icon></a>
 	    <label>
 	      <md-checkbox id="showNotifications" touch-target="wrapper"></md-checkbox>
 	      <span id="showNotificationsLabel"></span>
 	    </label>
 	  </div>
 	  <div class="handle-avatar">
+	    <a id="learnIdentity" href="about/identity.html" target="yz.sidebar"><md-icon class="material-icons">help</md-icon></a>
 	    <md-outlined-text-field id="myHandle" placeholder="anonymous"></md-outlined-text-field>
 	    <md-outlined-icon-button id="myAvatar"></md-outlined-icon-button>
 	  </div>

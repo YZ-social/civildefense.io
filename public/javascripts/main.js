@@ -59,7 +59,7 @@ function isWebView() { return /CriOS|(WebView|wv|(iPhone|iPod|iPad)(?!.*Safari))
 function isApple() { return navigator.platform.startsWith('Mac') || ['iPhone', 'iPad'].includes(navigator.platform); }
 function isMobile() { return navigator.userAgentData?.mobile || /iPhone|iPad|iPod|Mobile/.test(navigator.userAgent); }
 function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches; }
-export function osName() { return navigator.userAgentData?.platform || navigator.userAgent.match(/Android/)?.[0] || navigator.platform; }
+export function osName() { return isApple() ? (isMobile() ? 'iOS' : 'OSX') : navigator.userAgentData?.platform || navigator.userAgent.match(/Android/)?.[0] || navigator.platform; }
 function mobilePlatformName() { return isMobile() && (isApple() ? 'iOS' : 'Android'); }
 function mobileVendorName() { return isMobile() && (isApple() ? 'Apple' : 'Android'); }
 function mobileBrowserName() { return isApple() ? 'Safari' : 'Chrome'; }
@@ -435,5 +435,8 @@ if (isStandalone()) {
 }
 
 tooltip('#learnMore', Int`Click to see more information in another tab about what you can do with this app and how it is resistant to tracking, censorship, and takedown.`);
+tooltip('#learnNotification', Int`Click to learn about receiving operating system notifications.`);
+tooltip('#learnIdentity', Int`Click to learn about how you can choose to label yourself and how to recognize other users.`);
+tooltip('#learnPWA', Int`Click to learn about installation, updates, and removal.`);
 
 initialize(false);

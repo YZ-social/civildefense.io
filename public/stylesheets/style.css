@@ -632,6 +632,10 @@ input[type="file"] {
     align-items: center;
     gap: 5px;
 }
+#learnNotification:after, #learnIdentity:after {
+    content: "";
+    margin-right: 5px;
+}
 .describe {
     margin-bottom: 5px;
 }
