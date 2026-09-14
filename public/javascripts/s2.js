@@ -1,5 +1,5 @@
-import { s2, s1, r1 } from 's2js';
-const { cellid, LatLng, Point, Cell, Cap, RegionCoverer } = s2;
+import { s2, s1, r1, geojson } from 's2js';
+const { cellid, LatLng, LatLngRect, Point, Cell, Cap, RegionCoverer } = s2;
 import { cellHex } from './versions.js';
 import { geoCellCenter/*, geoCellId*/ } from '@axona/protocol';
 const { BigInt } = globalThis;
@@ -94,4 +94,17 @@ export function findCoverCellsByMinMaxLatLng({minLat, maxLat, minLng, maxLng, fu
 
   const coverer = new RegionCoverer({minLevel, maxLevel, maxCells});
   return coverer.covering(rect); // a CellUnion — array-like of bigint cell IDs, already normalized/minimal
+}
+
+export function getSmallestCellSurrounding(centerLat, centerLng, halfSizeDegrees = 0.05) {
+  // Returns the bigint cellid of the smallest single S2 cell that completely
+  // covers a size x size box centered on the given lat/lng.
+
+  const minLat = centerLat - halfSizeDegrees;
+  const maxLat = centerLat + halfSizeDegrees;
+  const minLng = centerLng - halfSizeDegrees;
+  const maxLng = centerLng + halfSizeDegrees;
+
+  // The center could be near a cell corner, so ask for up to four.
+  return findCoverCellsByMinMaxLatLng({minLat, maxLat, minLng, maxLng, options: {maxCells: 4}});
 }

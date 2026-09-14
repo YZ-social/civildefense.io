@@ -4,7 +4,7 @@ import { Int } from './translations.js';
 import { openDisplay } from './display.js';
 import { Agent} from './agent.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
-import { getPointInCell } from './s2.js';
+import { getPointInCell, getSmallestCellSurrounding } from './s2.js';
 import { Alert, getShareableURL, share } from './alert.js';
 import { Hashtags } from './hashtags.js';
 import { map, showMessage, updateLocation, recenterMap } from './map.js';
@@ -226,6 +226,7 @@ export let positionWatch;
 let subscribeOneShot;
 const goodPositionLabel = Int`Your Location`;
 
+export let lastCells = null;
 function initializeGeolocation(subscribe = false) { // Arrange to constantly updateLocation, but:
   // Arrange to constantly updateLocation when geolocation updates (or a default init if that's not possible).
   // Once updateLocation has been called, updateSubscriptions() if the subscribe arg is true.
@@ -256,6 +257,8 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
 	zoom = 13;
 	[lat, lng] = [37.7749, -122.4194]; // San Fransisco
       }
+    } else {
+      lastCells = getSmallestCellSurrounding(lat, lng);
     }
     //console.log('initializeGeolocation updateLocation');
     updateLocation(lat, lng, zoom, positionLabel);

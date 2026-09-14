@@ -3,7 +3,7 @@ import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { generateVapidKeys } from './browser-push.js';
 import { Int } from './translations.js';
 import { map, trackMap, showMessage } from './map.js';
-import { closeAll, postServiceMessage, networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, clickTip, getText, openAbout, delay, osName } from './main.js';
+import { closeAll, postServiceMessage, networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, clickTip, getText, openAbout, delay, osName, lastCells } from './main.js';
 import { consume } from './display.js';
 import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
@@ -321,10 +321,14 @@ export class Alert extends Conversation { // A wrapper around L.marker
     this.eventName = eventName;
     if (!this.isAggregate) return;
     this.cellBorder?.removeFrom(map);
+    this.cellBorder = this.constructor.displayCell(topicCell(eventName));
+  }
+  static displayCell(cell, color = this.md_sys_color_secondary) { // And return cell for caching/removal.
     // Draw polygon border from cell corners.
-    const corners = getCellCorners(topicCell(eventName));
-    const border = this.cellBorder = L.polygon(corners, {color: this.constructor.md_sys_color_secondary, fillOpacity: 0.1});
+    const corners = getCellCorners(cell);
+    const border = L.polygon(corners, {color, fillOpacity: 0.1});
     border.addTo(map);
+    return border;
   }
   static md_sys_color_secondary = '#BD2E2F';
   static forEachAlertOf(eventName, callback, alerts = this.items) { // Apply callback to each of alerts matching eventName.
@@ -456,7 +460,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
 
   // We do not record exactly where you were looking across sessions, but we do record the containing level 9 cell.
   static lastLevel9Cell = null; // S2 level 9 cells average a radius of about 10km ~ 6.5 miles.
-  static subscriptionFromMap() { // Generate new subscriptions list ({eventName => count}) for current map bounds.
+  static shownCells = false; // Empty array for stashing debug polygons, else falsy.
+  static subscriptionFromMap() { // Generate new subscriptions list ({eventName => count}) for current map bounds,
+    // and additionally, a 1x1 degree box around the user's last known position, if any, regardless of map bounds.
     const center = map.getCenter();
     const bounds = map.getBounds();
     const northEast = bounds.getNorthEast();
@@ -470,6 +476,14 @@ export class Alert extends Conversation { // A wrapper around L.marker
       maxLng: northEast.lng
     });
     if (!newCells) return null;
+    if (this.shownCells) { // debugging
+      this.shownCells.forEach(polygon => polygon.removeFrom(map));
+      const mapPolys = newCells.map(cell => this.displayCell(cell));
+      const geoPolys = lastCells.map(cell => this.displayCell(cell, 'blue'));
+      this.shownCells = [...mapPolys, ...geoPolys];
+    }
+    // Alert.ensure will not pub multiple markers/notifications for the same alert, but let us not double subscriptions.
+    if (lastCells) lastCells.forEach(cell => newCells.includes(cell) || newCells.push(cell));
     const newKeys = {};
     newCells.forEach(cell => Hashtags.getSubscribe().forEach(hash => { // Populate count with existing count (exctly carried over cell sizes), else 0.
       const eventName = alertTopic(cell, hash);
