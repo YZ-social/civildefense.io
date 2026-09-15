@@ -23,6 +23,7 @@ let allKnownHashtags = JSON.parse(localStorage.getItem('allKnownHashtags') || `[
   "🎙️ news",
   "👁️ observer corps",
   "🎵 pop",
+  "🚂 train",
   "🧰 utility repairs"
 ]`);
 

@@ -310,6 +310,20 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     75% { filter: saturate(0); }
     100% { filter: saturate(1); }
 }
+@keyframes pulseHighlight {
+    0% { filter: saturate(0);  background-color: rgb(189, 46, 47, 0%); border-radius: 12px; border: solid thin rgb(189, 46, 47, 0); }
+    10% { filter: saturate(4); }
+    20% { filter: saturate(0); background-color: rgb(189, 46, 47, 100%); border: solid thick rgb(189, 46, 47, 100%);}
+    30% { filter: saturate(4); }
+    40% { filter: saturate(0); }
+    50% { filter: saturate(4); }
+    60% { filter: saturate(0); }
+    70% { filter: saturate(4); }
+    80% { filter: saturate(0); background-color: rgb(189, 46, 47, 100%); border: solid thick rgb(189, 46, 47, 0, 100%);}
+    90% { filter: saturate(4); }
+    99% { filter: saturate(0); background-color: rgb(189, 46, 47, 0%); border-radius: 12px; border: solid thin rgb(189, 46, 47, 0);}
+    100% { background-color: transparent; border: none; }
+}
 
 #checkForUpdates, #downloadUpdates, #updateContainer md-elevated-button {
     width: 150px;

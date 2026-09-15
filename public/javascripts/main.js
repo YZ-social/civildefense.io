@@ -192,10 +192,11 @@ document.querySelector('#correspondentContainer md-outlined-text-field').onclick
   event.stopPropagation();
 };
 
-clickTip('#share', Int`${osName()} share a link to this map and topics, with picture of map.`, event => {
-  event.stopPropagation();
+export function shareMap(event) {
+  event?.stopPropagation();
   share({text: "CivilDefense.io", url: getShareableURL().href });
-});
+}
+clickTip('#share', Int`${osName()} share a link to this map and topics, with picture of map.`, shareMap);
 
 clickTip('#recenterButton', Int`Recenter the map to where you are in the world.`, recenterMap);
 

@@ -71,7 +71,6 @@ a:hover { color: var(--red); }
     margin: 0 auto;
 }
 .button-img { width: 80px; }
-.topics { max-width: 350px; }
 .hero-logo {
     width: 80px;
     height: 80px;
@@ -90,6 +89,7 @@ a:hover { color: var(--red); }
     margin-bottom: 0.75rem;
 }
 .hero h1 span { color: var(--red-light); }
+.hero h1 span.about { color: var(--white); }
 .cd {
     color: var(--red);
     font-weight: 700;
@@ -251,7 +251,7 @@ a:hover { color: var(--red); }
     margin-bottom: 0.9rem;
     color: var(--body-text);
 }
-.content-wrap ul {
+.content-wrap ul, .content-wrap ol {
     margin: 0.4rem 0 1rem 1.2rem;
 }
 .content-wrap li {

@@ -16,10 +16,10 @@
 <header class="hero">
   <div class="hero-inner">
     <img class="hero-logo" src="civil-defense.png" alt="Civil Defense Logo">
-    <h1>The Civil Defense <span>App</span></h1>
-  <!--   <div class="hero-divider"></div> -->
-  <!--   <p class="hero-tagline">Realtime crowdmapping that is resistant to tracking, censorship, and takedown</p> -->
+    <h1>The Civil Defense <a href="/" target="civildefense"><span>App</span></a></h1>
   </div>
+
+
   <div class="language-selector">
     <label for="language">Language:</label>
     <select id="language" name="language" onchange="location = this.value;">
@@ -109,25 +109,32 @@
   </p>
 
   <h2 id="topics">Topics</h2>
-  <p>Control what topics are shown on the map by simply touching the topic labels to toggle them on and off. Like "hashtags", you add or create new topics by simply typing them - in this case, into the "add topic" box. There is no central list of topics.
-    <ul>
-      <li>If you like, you can begin a topic name with an emoji character, and that is what will be used on the map as a marker. Otherwise, a unique shape will be automatically generated and used until you receive an alert for that topic that <i>does</i> have a leading emoji.</li>
-      <li>You can remove a topic name from your screen altogether by toggling it off, and then touching the "x" that appears. You can add topics back by typing or selecting them from the "add topic" box.</li>
-      <li>The red "radio button" next to a topic name indicates that it will be the initial topic for a new alert you create by touching the map. (You can also change the topic of an alert you create by touching the topic name in the alert-conversation popup.)</li>
-    </ul>
-  </p>
+
+  <p>Control what topics are shown on the map by simply touching the topic labels to toggle them on and off.</p>
 
   <div class="centered">
-    <img class="topics" src="topics.png" alt="topic labels">
+    <a href="/?tags=%F0%9F%9A%82%20train&highlight=%5Blabel%3D%22%F0%9F%9A%82%20train%22%5D" target="civildefense"><img src="train.png" alt="train topic button"></a>
   </div>
 
+  <p>You can add or create your own by typing them into the "add topic" box. If your text begins with an emoji, that will be used as the marker in the map.</p>
+
+  <div class="centered">
+    <a href="/?highlight=.newtag" target="civildefense"><img src="add-topic.png" alt="add topic box with autocomplete"></a>
+  </div>
+
+  <p>The red "radio button" next to a topic name indicates that it will be the initial topic for a new alert you create by touching the map. You can also change the topic of an alert you create by touching the topic name in the alert-conversation popup.</p>
+
+  <div class="centered">
+    <a href="/?tags=%F0%9F%9A%82%20train&highlight=%5Blabel%3D%22%F0%9F%9A%82%20train%22%5D%20md-icon-button" target="civildefense"><img src="train-radio-button.png" alt="train topic radio button"></a>
+  </div>
 
   <h2 id="sharing">Sharing</h2>
 
   <p>Every alert you make will be immediately visible to anyone with the app who is looking at that point on the map. Every reply you make will be immediately shared with anyone looking at the same alert.</p>
   <p>You can use the share button to pass a link and message to those that may not yet have the app. The button appears on the map, at the top of an alert-conversation display, and next to each reply, and it shares whatever the button appears with.</p>
+
   <div class="centered">
-    <img class="button-img" src="../images/share.svg" alt="share">
+    <a href="/?highlight=%23share" target="civildefense"><img class="button-img" src="../images/share.svg" alt="share"></a>
   </div>
 
   <h2 id="options">Options</h2>
@@ -135,9 +142,8 @@
   <p>The app's "<span class="cd">CD</span>" button gives you control over <a href="notification.html">notifications</a>, <a href="identity.html">how you appear to others</a>, and <a href="pwa.html">updates</a>.</p>
 
   <div class="hero-inner">
-    <img class="hero-logo" src="civil-defense.png" alt="Civil Defense Logo">
+    <a href="/?highlight=%23aboutButton" target="civildefense"><img class="hero-logo" src="civil-defense.png" alt="Civil Defense Logo"></a>
   </div>
-
 
   <!-- <hr class="rule"> -->
 
@@ -146,43 +152,38 @@
   <h2 id="tracking">Resist Tracking</h2>
   <ul>
     <li>You cannot be identified as a person because there is no login, sign-up, or accounts. No phone number or email is used. There is no app store logging downloads. Users can choose to let others recognize them over multiple interactions — without divulging their actual identity.</li>
-    <li>It is extremely difficult to identify your IP address or network patterns, because alerts are distributed phone-to-phone over a peer-to-peer network.</li>
-    <li>Notifications are sent directly through the foreground app on your phone, without going through Apple or Google's messaging service. (Backgrounded app notifications available this Winter.)</li>
-    <li>Each alert disappears everywhere on the network after 24 hours. There are no collected records of messages, comments, or requested topics, and this is not an archive or long-term storage system.</li>
+    <li>It is extremely difficult to identify your IP address or network patterns, because alerts are distributed phone-to-phone over a peer-to-peer network.<a href="#p2p"><sup>1</sup></a></li>
+    <li>Messages are signed by the sender, sent directly through the network, or through Apple or Google's messaging service without identifying the app, topic, sender, or contents.</li>
+    <li>Each alert disappears everywhere on the network after 24 hours. There are no collected records of messages, comments, or requested topics<a href="#p2p"><sup>1</sup></a>, and this is not an archive or long-term storage system.</li>
   </ul>
 
   <h2 id="censorship">Resist Censorship</h2>
   <ul>
     <li>No user can be censored because there are no accounts. No one can steal your account information because there isn't any.</li>
-    <li>No content can be censored, there is no central organization who controls the network or has power to alter content.</li>
+    <li>No content can be censored, there is no central organization who controls the network or has power to alter content.<a href="#p2p"><sup>1</sup></a></li>
   </ul>
 
   <h2 id="takedown">Resist Takedown</h2>
   <ul>
     <li>No app store can block Civil Defense — the app is just a web page.</li>
     <li>Taking down web servers or domain names cannot block access for those who already have it, because the app caches everything it needs on first use. The <a href="https://github.com/yz-social/civildefense.io" target="yz.other" rel="noopener">open-source code</a> is available so anyone can host an alternative mirror.</li>
-    <li>There is no back-end server or data center to take down. All alert data is entirely peer-to-peer. All mirrors share this network: a post on <a href="https://civildefense.io" target="civildefense">civildefense.io</a> appears on the mirror at <a href="https://ki1r0y.com" target="ki1r0y" rel="noopener">ki1r0y.com</a> and vice versa.</li>
-    <li>Blocking network traffic is extremely difficult, because the low-level data is identical to video conferencing traffic.</li>
-    <li>Civil Defense is highly resistant to Denial of Service attacks. However, it does require a working Internet, and does not by itself offer any protection against a complete Internet shutdown.</li>
+    <li>There is no back-end server or data center to take down. All alert data is entirely peer-to-peer. All mirrors share this network: a post on <a href="https://civildefense.io" target="civildefense">civildefense.io</a> appears on the mirror at <a href="https://ki1r0y.com" target="ki1r0y" rel="noopener">ki1r0y.com</a> and vice versa.<a href="#p2p"><sup>1</sup></a></li>
+    <li>Blocking network traffic is extremely difficult, because the low-level data is identical to video conferencing traffic.<a href="#p2p"><sup>1</sup></a></li>
+    <li>Civil Defense is highly resistant to Denial of Service attacks.<a href="#p2p"><sup>1</sup></a> However, it does require a working Internet, and does not by itself offer any protection against a complete Internet shutdown.</li>
   </ul>
   <!-- <hr class="rule"> -->
 
   <h1 id="more">The Bigger Picture</h1>
-  <p>The Civil Defense runs on the <a href="https://github.com/axona-net/axona-protocol" target="yz.other" rel="noopener">Axona network</a>. Both are free and open source.</p>
+  <p>The Civil Defense runs on the <a href="https://github.com/axona-net/axona-protocol" target="yz.other" rel="noopener">Axona network</a><a href="#p2p"><sup>1</sup></a>. Both are free and open source.</p>
   <p>Axona is a modern descendant of the old <a href="https://en.wikipedia.org/wiki/Peer-to-peer" target="yz.other" rel="noopener">peer-to-peer networks</a> such as <a href="https://en.wikipedia.org/wiki/Napster">Napster</a>. It has a unique self-healing routing mechanism that uses neuron learning techniques to find the best way to distribute alerts. It is analogous to <a href="https://en.wikipedia.org/wiki/Tor_(network)" target="yz.other" rel="noopener">TOR</a> (The Onion Router), but designed from the ground up to run in mobile and desktop browsers.</p>
   <p>We are also developing a comprehensive quantum-ready cryptography system that will add private-groups for Civil Defense and any software on the network. We believe there are many applications where developers, users, and the public all benefit from open software and secure, decentralized networks — without app stores, servers, or data centers. Beyond Civil Defense, we are also developing large-scale <a href="https://en.wikipedia.org/wiki/Distributed_computing" target="yz.other" rel="noopener">multiuser collaboration</a> and <a href="https://poverty-action.org/inclusive-instant-payment-systems-evidence-based-approach-design-impact" target="yz.other" rel="noopener">Inclusive Instant Payment Systems</a>.</p>
 
+  <hr class="rule">
+  <b id="p2p">1</b>: Coming in Fall, 2026
+  <hr class="rule">
 
 <div class="centered">
-  <img src="serving-you.jpg" alt="Civil Defense Week poster - Serving you in time of emergency">
-</div>
-
-<div class="centered">
-  <img src="prevail.jpg" alt="Cold-War Civil Defense poster - Prepare, Protect, Prevail">
-</div>
-
-<div class="centered">
-  <img src="nazis.png" alt="WWII-style poster exhorting the public to use Civil Defense in case of Nazi attack.">
+  <img src="posters.jpeg" alt="Civil Defense posters from the 1950s">
 </div>
 
 </main>

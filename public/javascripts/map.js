@@ -32,9 +32,14 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
   }
 }
 
+function  flashElement(selector) {
+  const element = document.querySelector(selector);
+  setTimeout(() => element.style.animation = 'pulseHighlight ease 4s 1', 100);
+  setTimeout(() => element.style = '', 4200);
+}
+
 let yourLocation; // marker
 let lastLatitude, lastLongitude;
-
 export function updateLocation(lat, lng, zoom, positionLabel) { // initMap if necessary, and set our position.
   //console.log('updateLocation', lat, lng, map, yourLocation);
   // Can't call getCurrentPosition while watching. So set it here for use in recenterMap.
@@ -48,15 +53,16 @@ export function updateLocation(lat, lng, zoom, positionLabel) { // initMap if ne
     const params = url.searchParams;
     const tags = params.get('tags');
     const tagsArray = tags?.split(',') || [];
+    const highlight = params.get('highlight');
     tagsArray.forEach(tag => Hashtags.add(decodeURIComponent(tag)));
     Hashtags.onchange({resetSubscriptions: false}); // Too early to subscribe, but will be done during initialization.
     go({lat: params.get('lat'), lng: params.get('lng'), zoom: params.get('z'), alert: params.get('alert')});
     // We don't need the query parameters now. Get rid of them. They're annoying.
     if (params.size > 0) {
-      ['tags', 'lat', 'lng', 'z', 'alert'].forEach(key => params.delete(key));
+      ['tags', 'lat', 'lng', 'z', 'alert', 'highlight'].forEach(key => params.delete(key));
       history.replaceState(null, '', url);
     }
-
+    if (highlight) flashElement(highlight);
     return;
   }
   // Otherwise just update the yourLocation marker if appropriate (and not update zoom).

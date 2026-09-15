@@ -13,12 +13,50 @@
   <header class="hero">
     <div class="hero-inner">
       <img class="hero-logo" src="civil-defense.png" alt="Civil Defense Logo">
-      <h1>The Civil Defense <a href="index.html"><span>App</span></a></h1>
+      <h1>The <a href="index.html"><span class="about">Civil Defense</span></a> <a href="/" target="civildefense"><span>App</span></a></h1>
     </div>
   </header>
+
   <main class="content-wrap">
+
     <h1>Notifications without a Feed</h1>
-    <p>Lorem ipsum</p>
+
+    <p>When someone else drops an Alert onto the portion of the map you are watching, for a <a href="index.html#topic">topic</a> you are currently displaying, you will see it right away. You can also ask the app to send you a system notification. Touching the notification will open the alert in the app, so that you can see the conversation about it.</p>
+
+    <p>You must specifically turn this feature on, using the app's "<span class="cd">CD</span>" button. The system will then ask you if you want to enable notifications.
+      <ul>
+	<li>If you say "yes", you can then turn notifications on and off from the same place in the app.</li>
+	<li>If you say "no", or if you later turn off notifications in the browser or system settings, you will have to re-enable it from the browser or system settings. Notifcations on <i>Apple mobile devices</i> are only available when Civil Defense is <a href="pwa.html">installed</a>.</li>
+    </ul></p>
+
+    <div class="hero-inner">
+      <a href="/?highlight=%23aboutButton" target="civildefense"><img class="hero-logo" src="civil-defense.png" alt="Civil Defense Logo"></a>
+    </div>
+
+    <p>If you enable notifications, you will also see them:
+      <ul>
+	<li>If someone else drops an alert near your current position for a topic you are watching, even if you are looking someplace else on the map.</li>
+	<li>If someone replies to an alert that you have opened within the current map.</li>
+      </ul>
+    </p>
+
+    <h2>Privacy</h2>
+
+    <p>If the CivilDefense app is running, the notification is made entirely on the same device, without going through any other service.</p>
+    <p>However, mobile platforms can be quite aggressive about shutting down apps that you have opened, but which are not currently being displayed on the screen. In this case, the alert must be "pushed" (like a text message) in two steps.:
+      <ol>
+	<li>First, the CivilDefense network needs to send the message, just as it would if the app were running, but now through a "push service".
+	  <ul>
+	    <li>Currently, this is from civildefense.io.</li>
+	    <li>In the <a href="index.html#broadcast">next major version</a>, this will be from the peer-to-peer network itself.
+	  </ul>
+	  Either way, the network encrypts the message and sends it to the push service. It is not identified to the push service as being civildefense.io, but rather with a unique key created just of your most recent Civil Defense app session.
+	</li>
+	<li>Second, the push server - either Apple or Google - pushes the message to your device. They know that you got a push message, but not the application, topic, sender, or contents.</li>
+      </ol>
+    </p>
+
+    <hr class="rule">
 
     <div class="centered">
       <img src="serving-you.jpg" alt="Civil Defense Week poster - Serving you in time of emergency">
