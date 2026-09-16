@@ -255,21 +255,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	const region = topicRegion(eventName);
 	const pushData = handler && await this.pushData;
 	if (handler) Agent.current?.trackPublicChanges(region); // Background. No need to await.
-	const requestTime = Date.now(); let gotFirstData = false; const oHandler = handler;
-	console.log('request subscription', region, eventName);
-	if (handler) handler = data => {
-	  if (!gotFirstData) {
-	    gotFirstData = true;
-	    console.log('got data', region, eventName, Date.now() - requestTime);
-	  }
-	  oHandler(data);
-	}
-	return await contact.subscribe({eventName, region, handler, pushData, pushPersist: null})
-	  .then(sub => {
-	    console.log('got subscription', region, eventName, sub, Date.now() - requestTime);
-	    throttleMS && P2PWebNetwork.delay(throttleMS);
-	    return sub;
-	  });
+	return contact.subscribe({eventName, region, handler, pushData, pushPersist: null});
       };
       for (const key in newKeys) oldKeys.hasOwnProperty(key) || added.push(key);
       for (const key in oldKeys) newKeys.hasOwnProperty(key) || dropped.push(key);
@@ -283,10 +269,20 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	  this.transferOrClearEventMarkers(added.filter(hasTag), dropped.filter(hasTag), newKeys, oldKeys);
 	});
       }
-
-      for (const key of added) await subscribe(key, data => Alert.ensure(data));
-      for (const key of dropped) await subscribe(key, null);
+      // Subtle: await throttle time between initiating network request, but do not wait for each request to complete before starting the next.
+      // Do wait for all to complete.
+      const promises = [];
+      for (const key of added) {
+	promises.push(subscribe(key, data => Alert.ensure(data)));
+	if (throttleMS) await P2PWebNetwork.delay(throttleMS);
+      }
+      for (const key of dropped) {
+	promises.push(subscribe(key, null));
+	if (throttleMS) await P2PWebNetwork.delay(throttleMS);
+      }
       contact.pushPersist();
+      await Promise.all(promises);
+      console.log('updated');
     });
   }
   static clearPushData() { // Force new push subscription when next asked. Not needed at startup, but when creating a new node.
