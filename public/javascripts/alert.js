@@ -570,7 +570,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   
   static noMessage = Int`No additional information.`;
   static closePopup() { // Close any open popup.
-    map.closePopup();
+    map?.closePopup();
     Hashtags.closeSelector();
   }
   static async openPopup(alertTag) { // Open the marker specified by tag.
