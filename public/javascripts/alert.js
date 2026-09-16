@@ -261,8 +261,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	  if (!gotFirstData) {
 	    gotFirstData = true;
 	    console.log('got data', region, eventName, Date.now() - requestTime);
-	    oHandler(data);
 	  }
+	  oHandler(data);
 	}
 	return await contact.subscribe({eventName, region, handler, pushData, pushPersist: null})
 	  .then(sub => {
