@@ -255,8 +255,18 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	const region = topicRegion(eventName);
 	const pushData = handler && await this.pushData;
 	if (handler) Agent.current?.trackPublicChanges(region); // Background. No need to await.
+	const requestTime = Date.now(); let gotFirstData = false; const oHandler = handler;
+	console.log('request subscription', region, eventName);
+	if (handler) handler = data => {
+	  if (!gotFirstData) {
+	    gotFirstData = true;
+	    console.log('got data', region, eventName, Date.now() - requestTime);
+	    oHandler(data);
+	  }
+	}
 	return await contact.subscribe({eventName, region, handler, pushData, pushPersist: null})
 	  .then(sub => {
+	    console.log('got subscription', region, eventName, sub, Date.now() - requestTime);
 	    throttleMS && P2PWebNetwork.delay(throttleMS);
 	    return sub;
 	  });
