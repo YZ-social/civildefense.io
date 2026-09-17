@@ -42,7 +42,10 @@ export function configureWebsocket(server) {
 
   const interval = setInterval(function ping() { // Keep-alive ping/pong on interval
     wss.clients.forEach(function each(ws) {
-      if (!ws.isAlive) return ws.terminate();
+      if (!ws.isAlive) {
+	console.log('heartbeat failure');
+	return ws.terminate();
+      }
       if (ws.readyState == WebSocket.OPEN) {
 	ws.isAlive = false;
 	ws.ping();

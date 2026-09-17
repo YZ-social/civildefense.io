@@ -232,58 +232,86 @@ export class Alert extends Conversation { // A wrapper around L.marker
     return super.delete();
   }
 
-  static subscriptionQueue = Promise.resolve(); // Serialize updates so they don't overlap each other.
-  static async updateSubscriptions({newKeys, oldKeys, throttleMS = 20} = {}) { // Update current subscriptions.
-    // A value of {} passed for oldKeys is used to start things off fresh (i.e., without supressing subscription of any carry-overs).
-    return this.subscriptionQueue = this.subscriptionQueue.then(async () => {
-      if (oldKeys && !Object.keys(oldKeys).length) { // This was a reset for a new node.
-	// Update replies subscriptions for alert that have already been opened.
-	for (const alert of this.items) {
-	  if (alert.subscribed) await alert.ensureRepliesSubscribed(true);
-	}
-      }
-      oldKeys ||= this.subscriptions;
-      newKeys ||= this.subscriptionFromMap();
+  static subscriptionQueue = []; // Queue of pending updateSubscriptions reasons.
+  static updateSubscriptions(reason = 'map') { // Update current subscriptions for the given purpose:
+    // newNode: Supply an empty oldSubscriptions.
+    // stickyChange: Make sticky subscriptions match a new state.
+    // map: Make fewest changes for new map display.
+    //
+    // The effects must be serialized, but a pending map update can always be skipped for something after it.
+    // We don't want to stack up such changes, because the update can take several seconds on a bad network, during
+    // which the user might just keep futzing with the map.
+    const queue = this.subscriptionQueue;
+    const inProgress = queue.length;
+    queue.push(reason);
+    if (!inProgress) this.updatePendingSubscriptions();
+  }
+  static async updatePendingSubscriptions() { // Process the queue.
+    const contact = await networkPromise;
+    if (!contact) {
+      console.warn("No network through which to subscribe.");
+      return null; }
 
-      if (!newKeys) return; // e.g., wacky computation. Don't change anything.
-      const contact = await networkPromise;
-      const dropped = [], added = [];
-      if (!contact) { console.warn("No network through which to subscribe."); return; } // Does this ever happen? Why?
-      this.subscriptions = newKeys; // Before subscribing.
-      const subscribe = async (eventName, handler) => {
-	if (!eventName) console.log('sub to no eventName', {oldKeys, newKeys, dropped, added, handler});
-	const region = topicRegion(eventName);
-	const pushData = handler && await this.pushData;
-	if (handler) Agent.current?.trackPublicChanges(region); // Background. No need to await.
-	return contact.subscribe({eventName, region, handler, pushData, pushPersist: null});
-      };
-      for (const key in newKeys) oldKeys.hasOwnProperty(key) || added.push(key);
-      for (const key in oldKeys) newKeys.hasOwnProperty(key) || dropped.push(key);
-      console.log('updating subscriptions', {added, dropped, newKeys, oldKeys});
+    const queue = this.subscriptionQueue;
+    const reason = queue[0];
+    let newKeys, oldKeys;
+    if (reason === 'stickyChange') {
+      await contact.resetPersisted();
+    }
+    if (reason !== 'map') {
+      oldKeys = {};
+      // Update replies subscriptions for alerts that have already been opened.
+      for (const alert of this.items) {
+	if (alert.subscribed) await alert.ensureRepliesSubscribed(true);
+      }
+    } else if (queue.length > 1) { // Skip this map and just go on to whatever is pending.
+      queue.shift();
+      return this.updatePendingSubscriptions();
+    }
 
-      // Before subscribing, as that that may bring in an alert with the same tag as one being cleared.
-      if (this.aggregateLimit) {
-	// TODO: more efficient way?
-	new Set(added.map(topicTag)).forEach(tag => {
-	  const hasTag = topicName => topicTag(topicName) === tag;
-	  this.transferOrClearEventMarkers(added.filter(hasTag), dropped.filter(hasTag), newKeys, oldKeys);
-	});
-      }
-      // Subtle: await throttle time between initiating network request, but do not wait for each request to complete before starting the next.
-      // Do wait for all to complete.
-      const promises = [];
-      for (const key of added) {
-	promises.push(subscribe(key, data => Alert.ensure(data)));
-	if (throttleMS) await P2PWebNetwork.delay(throttleMS);
-      }
-      for (const key of dropped) {
-	promises.push(subscribe(key, null));
-	if (throttleMS) await P2PWebNetwork.delay(throttleMS);
-      }
-      contact.pushPersist();
-      await Promise.all(promises);
-      console.log('updated');
-    });
+    // Now complete this subscription update in full, before considering any others.
+    oldKeys ||= this.subscriptions;
+    newKeys ||= this.subscriptionFromMap();
+
+    const dropped = [], added = [];
+    this.subscriptions = newKeys; // Before subscribing.
+    const subscribe = async (eventName, handler) => {
+      if (!eventName) console.log('sub to no eventName', {oldKeys, newKeys, dropped, added, handler});
+      const region = topicRegion(eventName);
+      const pushData = handler && await this.pushData;
+      if (handler) Agent.current?.trackPublicChanges(region); // Background. No need to await.
+      return contact.subscribe({eventName, region, handler, pushData, pushPersist: null});
+    };
+    for (const key in newKeys) oldKeys.hasOwnProperty(key) || added.push(key);
+    for (const key in oldKeys) newKeys.hasOwnProperty(key) || dropped.push(key);
+    console.log('updating subscriptions', {added, dropped, newKeys, oldKeys});
+
+    // Before subscribing, as that that may bring in an alert with the same tag as one being cleared.
+    if (this.aggregateLimit) {
+      // TODO: more efficient way?
+      new Set(added.map(topicTag)).forEach(tag => {
+	const hasTag = topicName => topicTag(topicName) === tag;
+	this.transferOrClearEventMarkers(added.filter(hasTag), dropped.filter(hasTag), newKeys, oldKeys);
+      });
+    }
+    // Subtle: await throttle time between initiating network request, but do not wait for each request to complete before starting the next.
+    // Do wait for all to complete.
+    const throttleMS = 20;
+    const promises = [];
+    for (const key of added) {
+      promises.push(subscribe(key, data => Alert.ensure(data)));
+      if (throttleMS) await P2PWebNetwork.delay(throttleMS);
+    }
+    for (const key of dropped) {
+      promises.push(subscribe(key, null));
+      if (throttleMS) await P2PWebNetwork.delay(throttleMS);
+    }
+    contact.pushPersist();
+    await Promise.all(promises);
+    queue.shift();
+    console.log('updated', promises.length);
+    if (queue.length) return this.updatePendingSubscriptions(); // Handle anything now pending.
+    return null;
   }
   static clearPushData() { // Force new push subscription when next asked. Not needed at startup, but when creating a new node.
     this._pushData = null; // Otherwise, new subscriptions with the old data will be rejected by the service as being for an unsubscribed client.
@@ -299,11 +327,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
       //console.log('pushData', {registration, data, json});
       resolve({...json, applicationId, applicationServerKey});
     });
-  }
-  static async refreshPushSubscriptions() { // Make sticky subscriptions match a new state.
-    const contact = await networkPromise;
-    await contact.resetPersisted();
-    await this.updateSubscriptions({newKeys: this.subscriptions, oldKeys: {}});
   }
 
   // Instance Management Internals
@@ -481,7 +504,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       minLng: southWest.lng,
       maxLng: northEast.lng
     });
-    if (!newCells) return null;
+    if (!newCells) return {};
     if (this.shownCells) { // debugging
       this.shownCells.forEach(polygon => polygon.removeFrom(map));
       const mapPolys = newCells.map(cell => this.displayCell(cell));

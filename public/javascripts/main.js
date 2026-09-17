@@ -121,7 +121,7 @@ function noteNotificationPermission(permission) { // Update permission controls/
   }
   if (showNotifications.checked === notificationsPreviouslyAllowed) return;
   notificationsPreviouslyAllowed = showNotifications.checked;
-  Alert.refreshPushSubscriptions();
+  Alert.updateSubscriptions({newKeys: Alert.subscriptions, oldKeys: {}}); // Make sticky subscriptions match the new state.
 }
 clickTip(showNotifications.parentElement, Int`Enable local ${osName()} notifcations for map alerts, without going through any servers. Requires that the app be running.`, event => {
   resetInactivityTimer();
