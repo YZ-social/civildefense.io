@@ -71,6 +71,11 @@ a:hover { color: var(--red); }
     margin: 0 auto;
 }
 .button-img { width: 80px; }
+a > img {
+    box-shadow: 0 4px 28px rgba(255, 90, 0, 0.45);
+    border-radius: 18px;
+    border: solid thick var(--red);
+}
 .hero-logo {
     width: 80px;
     height: 80px;
