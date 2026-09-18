@@ -34,8 +34,7 @@ export function showMessage(message, type = 'loading', errorObject) { // Show lo
 
 function  flashElement(selector) {
   const element = document.querySelector(selector);
-  setTimeout(() => element.style.animation = 'pulseHighlight ease 4s 1', 100);
-  setTimeout(() => element.style = '', 4200);
+  setTimeout(() => element.style.animation = 'pulse20 ease 2s 1', 100);
 }
 
 let yourLocation; // marker

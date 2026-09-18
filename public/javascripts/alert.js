@@ -823,8 +823,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	const ringElement = this.startFader('.alert-commented', remaining);
 	if (ringElement) {
 	  ringElement.style.display = 'block';
-	  // Restart the pulse animation by setting animationName to something it isn't.
-	  ringElement.style.animationName = ringElement.style.animationName === 'pulse2' ? 'pulse' : 'pulse2';
+	  ringElement.style.animationName = 'pulse20 ease 2s 1';
 	}
       }
     }
@@ -888,7 +887,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const {message = payload, file, name} = payload || {}; // Message text converts recognized urls to A/V players or links.
       let text = message
 	  .replace(/https?:\/\/\S+\.(mp3|aac|ogg|oga|opus|m4a|m3u|mpu|mpd)$/ig, url => `<audio controls src="${url}" crossorigin="anonymous"></audio>`) // show audio urls as players
-	  .replace(/https?:\/\/\S+\.(mp4|mov|webmm|m3u8)$/ig, url => `<video controls src="${url}" crossorigin="anonymous"></video>`) // show video urls as players
+	  .replace(/https?:\/\/\S+\.(mp4|mov|webm|m3u8)$/ig, url => `<video controls src="${url}" crossorigin="anonymous"></video>`) // show video urls as players
 	  .replace(/(?<!")https?:\/\/\S+/g, url => `<a href="${url}" target="yz.sidebar">${url}</a>`); // show urls as links
       let attachment = '';
       if (file?.startsWith?.('data:image')) attachment = `<a href="${file}" download="${name}"><img class="attachment" src="${file}"></img></a>`;

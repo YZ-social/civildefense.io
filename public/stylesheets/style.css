@@ -253,7 +253,7 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
 }
 .alert-marker {
     text-shadow: 8px -3px 10px rgb(0 0 0 / 60%);
-    animation: pulse ease 0.8s 1;
+    animation: pulse08 ease 0.8s 1;
     transition: opacity 0.4s;
 }
 .alert-commented {
@@ -288,7 +288,7 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     left: -5px;
     background-image: radial-gradient(transparent 30%, var(--md-sys-color-primary), transparent 70%);
     transition: opacity 0.8s;
-    animation: pulse ease 0.8s 1;
+    animation: pulse08 ease 0.8s 1;
 }
 .aggregate.alert-pin.starting {
     font-size: 0px;
@@ -296,33 +296,30 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
 .aggregate.alert-pin.starting:after {
     opacity: 0;
 }
-@keyframes pulse {
-    0% { filter: saturate(1); }
-    25% { filter: saturate(4); }
-    50% { filter: saturate(1); }
-    75% { filter: saturate(0); }
-    100% { filter: saturate(1); }
+/* 0.2s               0.2s  */
+/*   <-0.8s-> <-0.8s->      */
+/*   4       4       4      */
+/* 1   1   1   1   1   1    */
+/*       0       0          */
+@keyframes pulse20 {
+      0% { filter: saturate(1); background-color: rgb(189, 46, 47, 0%); border-radius: 8px; }
+     10% { filter: saturate(4); background-color: rgb(189, 46, 47, 25%); }
+     20% { filter: saturate(1); background-color: rgb(189, 46, 47, 50%); }
+     30% { filter: saturate(0); }
+     40% { filter: saturate(1); }
+     50% { filter: saturate(4); }
+     60% { filter: saturate(1); }
+     70% { filter: saturate(0); }
+     80% { filter: saturate(1);  background-color: rgb(189, 46, 47, 50%); }
+     90% { filter: saturate(4); background-color: rgb(189, 46, 47, 25%); }
+    100% { filter: saturate(1); background-color: rgb(189, 46, 47, 0%); border-radius: 8px; }
 }
-@keyframes pulse2 { /* for restarting */
-    0% { filter: saturate(1); }
-    25% { filter: saturate(4); }
-    50% { filter: saturate(1); }
-    75% { filter: saturate(0); }
-    100% { filter: saturate(1); }
-}
-@keyframes pulseHighlight {
-    0% { filter: saturate(0);  background-color: rgb(189, 46, 47, 0%); border-radius: 12px; border: solid thin rgb(189, 46, 47, 0); }
-    10% { filter: saturate(4); }
-    20% { filter: saturate(0); background-color: rgb(189, 46, 47, 100%); border: solid thick rgb(189, 46, 47, 100%);}
-    30% { filter: saturate(4); }
-    40% { filter: saturate(0); }
-    50% { filter: saturate(4); }
-    60% { filter: saturate(0); }
-    70% { filter: saturate(4); }
-    80% { filter: saturate(0); background-color: rgb(189, 46, 47, 100%); border: solid thick rgb(189, 46, 47, 0, 100%);}
-    90% { filter: saturate(4); }
-    99% { filter: saturate(0); background-color: rgb(189, 46, 47, 0%); border-radius: 12px; border: solid thin rgb(189, 46, 47, 0);}
-    100% { background-color: transparent; border: none; }
+@keyframes pulse08 {
+      0% { filter: saturate(1); background-color: rgb(189, 46, 47, 0%); border-radius: 8px; }
+     25% { filter: saturate(4); background-color: rgb(189, 46, 47, 25%); }
+     50% { filter: saturate(1); background-color: rgb(189, 46, 47, 40%); }
+     75% { filter: saturate(0); background-color: rgb(189, 46, 47, 25%); }
+    100% { filter: saturate(1);  background-color: rgb(189, 46, 47, 0%); border-radius: 8px;}
 }
 
 #checkForUpdates, #downloadUpdates, #updateContainer md-elevated-button {
@@ -334,7 +331,7 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     gap: 10px;
 }
 .pub {
-    animation: pulse ease 0.8s 1;
+    animation: pulse08 ease 0.8s 1;
     --_label-text-weight: 800;
     --_selected-label-text-color: var(--md-sys-color-secondary);
     --md-filter-chip-selected-leading-icon-color: var(--md-sys-color-secondary);

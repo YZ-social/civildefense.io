@@ -385,6 +385,9 @@ window.addEventListener("appinstalled", async () => {
   // In such cases, we need to re-initialize stuff. We could go point by point, but for now, just hit everything.
   location.reload();
 });
+document.body.addEventListener('animationend', event => {
+  event.target.style.animation = '';
+});
 
 const titleLabel = document.querySelector('#titleLabel');
 titleLabel.textContent = Int([titleLabel.textContent]);
