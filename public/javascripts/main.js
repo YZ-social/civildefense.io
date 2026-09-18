@@ -121,7 +121,7 @@ function noteNotificationPermission(permission) { // Update permission controls/
   }
   if (showNotifications.checked === notificationsPreviouslyAllowed) return;
   notificationsPreviouslyAllowed = showNotifications.checked;
-  Alert.updateSubscriptions({newKeys: Alert.subscriptions, oldKeys: {}}); // Make sticky subscriptions match the new state.
+  Alert.updateSubscriptions('stickyChange');
 }
 clickTip(showNotifications.parentElement, Int`Enable local ${osName()} notifcations for map alerts, without going through any servers. Requires that the app be running.`, event => {
   resetInactivityTimer();
@@ -266,7 +266,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
     if (!subscribeOneShot) return;
     subscribeOneShot = false;
     resetInactivityTimer(false);
-    Alert.updateSubscriptions({oldKeys: {}}); // This was for a new node, so supply an empty oldSubscriptions.
+    Alert.updateSubscriptions('newNode');
   };
   if (!geolocation) {
     showMessage(Int`Geolocation not supported. Using default location.`, 'error', 'fail');
