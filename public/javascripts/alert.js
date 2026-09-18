@@ -284,7 +284,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     };
     for (const key in newKeys) oldKeys.hasOwnProperty(key) || added.push(key);
     for (const key in oldKeys) newKeys.hasOwnProperty(key) || dropped.push(key);
-    console.log('updating subscriptions', {added, dropped, newKeys, oldKeys});
+    console.log('updating subscriptions', {reason, added, dropped, newKeys, oldKeys});
 
     // Before subscribing, as that that may bring in an alert with the same tag as one being cleared.
     if (this.aggregateLimit) {
@@ -309,7 +309,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     contact.pushPersist();
     await Promise.all(promises);
     queue.shift();
-    console.log('updated', promises.length);
+    //console.log('updated', promises.length);
     if (queue.length) return this.updatePendingSubscriptions(); // Handle anything now pending.
     return null;
   }
@@ -887,8 +887,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const formatReply = ({tag, payload, hashtag, ...rest}) => {
       const {message = payload, file, name} = payload || {}; // Message text converts recognized urls to A/V players or links.
       let text = message
-	  .replace(/https?:\/\/\S+\.(mp3|aac|ogg|oga|opus|m4a|m3u8|m3u|mpu|mpd)$/ig, url => `<audio controls src="${url}" crossorigin="anonymous"></audio>`) // show audio urls as players
-	  .replace(/https?:\/\/\S+\.(mp4|mov|webm)$/ig, url => `<video controls src="${url}" crossorigin="anonymous"></video>`) // show video urls as players
+	  .replace(/https?:\/\/\S+\.(mp3|aac|ogg|oga|opus|m4a|m3u|mpu|mpd)$/ig, url => `<audio controls src="${url}" crossorigin="anonymous"></audio>`) // show audio urls as players
+	  .replace(/https?:\/\/\S+\.(mp4|mov|webmm|m3u8)$/ig, url => `<video controls src="${url}" crossorigin="anonymous"></video>`) // show video urls as players
 	  .replace(/(?<!")https?:\/\/\S+/g, url => `<a href="${url}" target="yz.sidebar">${url}</a>`); // show urls as links
       let attachment = '';
       if (file?.startsWith?.('data:image')) attachment = `<a href="${file}" download="${name}"><img class="attachment" src="${file}"></img></a>`;
