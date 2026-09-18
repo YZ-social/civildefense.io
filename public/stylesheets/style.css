@@ -296,6 +296,13 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
 .aggregate.alert-pin.starting:after {
     opacity: 0;
 }
+@keyframes pulse08 {
+      0% { filter: saturate(1); background-color: rgb(189, 46, 47, 0%); border-radius: 8px; }
+     25% { filter: saturate(4); background-color: rgb(189, 46, 47, 25%); }
+     50% { filter: saturate(1); background-color: rgb(189, 46, 47, 40%); }
+     75% { filter: saturate(0); background-color: rgb(189, 46, 47, 25%); }
+    100% { filter: saturate(1);  background-color: rgb(189, 46, 47, 0%); border-radius: 8px;}
+}
 /* 0.2s               0.2s  */
 /*   <-0.8s-> <-0.8s->      */
 /*   4       4       4      */
@@ -314,12 +321,18 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
      90% { filter: saturate(4); background-color: rgb(189, 46, 47, 25%); }
     100% { filter: saturate(1); background-color: rgb(189, 46, 47, 0%); border-radius: 8px; }
 }
-@keyframes pulse08 {
-      0% { filter: saturate(1); background-color: rgb(189, 46, 47, 0%); border-radius: 8px; }
-     25% { filter: saturate(4); background-color: rgb(189, 46, 47, 25%); }
-     50% { filter: saturate(1); background-color: rgb(189, 46, 47, 40%); }
-     75% { filter: saturate(0); background-color: rgb(189, 46, 47, 25%); }
-    100% { filter: saturate(1);  background-color: rgb(189, 46, 47, 0%); border-radius: 8px;}
+@keyframes pulse20border {
+      0% { filter: saturate(1); background-color: rgb(189, 46, 47, 0%); border-radius: 8px; border: solid thin rgb(189, 46, 47, 0);}
+     10% { filter: saturate(4); background-color: rgb(189, 46, 47, 25%); border: solid thick rgb(189, 46, 47, 100%); }
+     20% { filter: saturate(1); background-color: rgb(189, 46, 47, 50%); }
+     30% { filter: saturate(0); }
+     40% { filter: saturate(1); }
+     50% { filter: saturate(4); }
+     60% { filter: saturate(1); }
+     70% { filter: saturate(0); }
+     80% { filter: saturate(1);  background-color: rgb(189, 46, 47, 50%); }
+     90% { filter: saturate(4); background-color: rgb(189, 46, 47, 25%); border: solid thick rgb(189, 46, 47, 100%); }
+    100% { filter: saturate(1); background-color: rgb(189, 46, 47, 0%); border-radius: 8px; border: solid thin rgb(189, 46, 47, 0); }
 }
 
 #checkForUpdates, #downloadUpdates, #updateContainer md-elevated-button {
