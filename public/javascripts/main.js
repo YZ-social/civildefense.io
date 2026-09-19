@@ -81,7 +81,7 @@ export function notificationsAllowed() { // Combined result.
   return postServiceMessage && (Notification?.permission === 'granted') && notificationsRequested();
 }
 let notificationsPreviouslyAllowed = notificationsAllowed();
-function noteNotificationPermission(permission) { // Update permission controls/text/persistence.
+function noteNotificationPermission(permission = window.Notification?.permission) { // Update permission controls/text/persistence.
   // Called when checkbox is toggled, opening dialog, or if platform happens to tell us permission was externally changed (e.g., even if dialog already open).
   if (isWebView()) {
     showNotifications.checked = false;
@@ -135,9 +135,6 @@ showNotifications.onchange = () => {
     window.Notification?.requestPermission().then(noteNotificationPermission);
   }
 };
-// Safari never fires 'change': https://webkit.org/b/259432
-navigator.permissions.query({ name: 'notifications'})
-  .then(status => status.onchange = () => noteNotificationPermission(window.Notification?.permission));
 
 export function closeAll() { // Close anything that might be open.
   closeAbout();
@@ -146,11 +143,17 @@ export function closeAll() { // Close anything that might be open.
   ['aboutContainer', 'updateContainer', 'correspondentContainer', 'qrContainer']
     .forEach(tag => document.getElementById(tag).classList.toggle('hidden', true));
 }
+let notificationPermissionInterval;
 export function openAbout(event) {
   openDisplay('aboutContainer', event);
-  noteNotificationPermission(window.Notification?.permission);
+  noteNotificationPermission();
+  // I'd rather do:
+  // navigator.permissions.query({ name: 'notifications'}).then(status => status.onchange = () => noteNotificationPermission());
+  // but Safari never fires 'change' - https://webkit.org/b/259432 - and it's simpler to the following for all rather than just for some.
+  notificationPermissionInterval = setInterval(noteNotificationPermission, 1e3);
 }
 export function closeAbout() {
+  clearInterval(notificationPermissionInterval);
   document.getElementById('aboutContainer').classList.toggle('hidden', true);
 }
 document.getElementById('scriptChooser').onchange = event => { // Run a script module chosen by the user. e.g., for testing.
