@@ -79,7 +79,7 @@ export class P2PWebNetwork {
       const [pushId, ...topics] = JSON.parse(lastPushed);
       await Promise.all([
 	navigator.serviceWorker.ready
-	  .then(registration => registration.pushManager.getSubscription())
+	  .then(registration => registration.pushManager?.getSubscription())
 	  .then(subscription => subscription?.unsubscribe()),
 	...topics.map(topic => peer.unsub(topic, {pushId}))
       ]);
