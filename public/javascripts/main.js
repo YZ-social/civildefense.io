@@ -132,7 +132,7 @@ showNotifications.onchange = () => {
     localStorage.setItem('notificationsRequested', showNotifications.checked ? '1' : '');
     noteNotificationPermission('granted');
   } else {
-    window.Notification?.requestPermission().then(noteNotificationPermission());
+    window.Notification?.requestPermission().then(noteNotificationPermission);
   }
 };
 // Safari never fires 'change': https://webkit.org/b/259432
