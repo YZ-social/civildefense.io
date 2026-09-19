@@ -142,6 +142,116 @@ export const Hashtags = {
         <md-icon-button slot="remove-trailing-icon"><md-icon class="material-icons"></md-icon></md-icon-button>
       </md-filter-chip>`;
   },
+  sort(tags) { // Sort list of tags in place without regard to leding emoji
+    tags.sort((a, b) => stripLeadingEmoji(a).localeCompare(stripLeadingEmoji(b)));
+  },
+  resetSubscriberDisplay() { // Lay out all the hashtag chips display, including the input for adding new ones.
+    this.chipset.innerHTML = '';
+    const tags = this.getAll();
+
+    // Sort alphabetically, ignoring any leading emoji, as these have unexpected orderings.
+    this.sort(tags);
+    const reordered = {};
+    tags.forEach(tag => reordered[tag] = this.hashtags[tag]);
+    this.hashtags = reordered;
+
+    // Add a chip for each hashtag.
+    tags.forEach(label => { // Elements are displayed from the bottom up.
+      this.chipset.insertAdjacentHTML("afterbegin", this.chipHTML(label));
+    });
+    // IWBNI we just added handlers once to the chipset and relied on bubbling up, but there's something not working about that.
+    [...this.chipset.children].forEach(element => {
+      // Material design will update the displays. We have to handle the data changes.
+      element.addEventListener('remove', event => { // Clicking the button WITHIN the chip (which is the material design 'remove' event).
+	resetInactivityTimer();
+	const chip = event.target;
+	if (!chip.selected) { // 'x' icon. Not currently selected. Go ahead and remove it.
+	  showMessage(Int`Topic "${chip.label}" has been removed. You can add it back with "add topic".`, 'instructions');
+	  return this.remove(chip);
+	} // radio button icon. Chip is already selected. We are setting the publishing tag.
+	event.preventDefault();
+	showMessage(Int`Tapping the map will now produce an alert for the "${chip.label}" topic.`, 'instructions');
+	if (chip.classList.contains('pub')) return false;
+	return this.setPublish(chip.label);
+      });
+      clickTip(element, Int`Toggle whether alerts for this topic shown on the map. Separately, a radio button is shown when selected and sets this as the initial topic of the next alert you make, while an x button is shown when deselected and removes the topic.`, event => { // Toggle action on whole chip.
+	event.stopPropagation();
+	resetInactivityTimer();
+	const chip = event.target;
+	if (chip.selected) showMessage(Int`Turning "${chip.label}" alerts back on in the map.`, 'instructions');
+	else showMessage(Int`Turning off "${chip.label}" alerts in the map. You can delete the topic altogether with the X.`, 'instructions');
+	this.toggleChip(chip);
+	Alert.closePopup();
+	this.onchange({redisplaySubscribers: false});
+      });
+    });
+    this.chipset.insertAdjacentHTML("afterbegin",  // Chip to add a new hashtag.
+				    `<div class="combobox">
+  <md-filled-text-field class="newtag"
+     aria-expanded="false"
+     aria-controls="knownTagsListbox"
+     aria-autocomplete="list"
+     autocomplete="off"
+     tabindex="0"
+     placeholder="➕${Int`add topic`}"></md-filled-text-field>
+</div>`);
+    // I've tried also supplying a datalist, e.g., to supply the mobile keyboard completions, but
+    // I have not been able to get it to work.
+    this.initializeTopicInput();
+  },
+  remove(chip, redisplaySubscribers = false) { // Remove this topic, persistently.
+    delete this.hashtags[chip.label];
+    delete this.canonical2extended[canonicalTag(chip.label)];
+    this.onchange({redisplaySubscribers, resetSubscriptions: false});
+  },
+  toggleChip(chip) { // Switch whether the topic is or is not subscribed.
+    // Now selected => hashtags[label] becomes 'pub' (selected and the publisher) and clear old pub
+    // NOT now selected => hashtags[label] becomes false (through mechanism as follows)
+    //    but if publisher => set alt publisher if possible, else remember as backupPublisher
+    const label = chip.label;
+
+    // chip.selected is new state, after clicking.
+    if (chip.selected) return this.setPublish(label);  // Become publisher, clearing old publisher.
+
+    // Not selected:
+
+    // If we're not publisher, just clear. But don't go through getPublish, as that can have side effects.
+    if (this.hashtags[label] !== 'pub') return this.hashtags[label] = false;
+
+    // Also clear, but...
+    const subs = this.getSubscribe();
+    if (subs.length > 1) {  // Find and set alternative publisher if possible.
+      const pubIndex = subs.indexOf(label);
+      const index = (pubIndex + 1) % subs.length;
+      this.setPublish(subs[index]);
+    } else {
+      // No alternative available. Clear it, but remember for use by getPublish.
+      // It will stay .pub styled while toggled, until anything toggles on.
+      this.backupPublisher = label;
+    }
+    return this.hashtags[label] = false;
+  },
+  getChip(label) { // Handy for scripting, but not otherwise used in app.
+    for (const chip of this.chipset.children) {
+      if (chip.label === label) return chip;
+    }
+    return null;
+  },
+  setPublish(newTag) { // Make this topic be the one to be used when we next publish an alert.
+    // newTag will be marked for publishing (in this.hashtags and element style)
+    // Old publish tag (if any) will be set back to merely be subscribed (in same)
+    let oldTag = this.getPublish();
+    const backup = this.backupPublisher;
+    if (oldTag) this.hashtags[oldTag] = true; // true (instead of 'pub')
+    else if (backup) oldTag = backup;
+    this.backupPublisher = false;
+    this.hashtags[newTag] = 'pub';
+    for (const chip of this.chipset.children) {
+      if (chip.label === newTag) chip.classList.add('pub');
+      else if (chip.label === oldTag) chip.classList.remove('pub');
+    }
+    return oldTag;
+  },
 
   // Topic entry, with autocomplete.
   // - When you click the input box, it shows all the topics we know about.
@@ -259,61 +369,7 @@ export const Hashtags = {
 
     this.openSelector();
   },
-  sort(tags) { // Sort list of tags in place without regard to leding emoji
-    tags.sort((a, b) => stripLeadingEmoji(a).localeCompare(stripLeadingEmoji(b)));
-  },
-  resetSubscriberDisplay() { // Lay out all the hashtag chips display, including the input for adding new ones.
-    this.chipset.innerHTML = '';
-    const tags = this.getAll();
-
-    // Sort alphabetically, ignoring any leading emoji, as these have unexpected orderings.
-    this.sort(tags);
-    const reordered = {};
-    tags.forEach(tag => reordered[tag] = this.hashtags[tag]);
-    this.hashtags = reordered;
-
-    // Add a chip for each hashtag.
-    tags.forEach(label => { // Elements are displayed from the bottom up.
-      this.chipset.insertAdjacentHTML("afterbegin", this.chipHTML(label));
-    });
-    // IWBNI we just added handlers once to the chipset and relied on bubbling up, but there's something not working about that.
-    [...this.chipset.children].forEach(element => {
-      // Material design will update the displays. We have to handle the data changes.
-      element.addEventListener('remove', event => { // Clicking the button WITHIN the chip (which is the material design 'remove' event).
-	resetInactivityTimer();
-	const chip = event.target;
-	if (!chip.selected) { // 'x' icon. Not currently selected. Go ahead and remove it.
-	  showMessage(Int`Topic "${chip.label}" has been removed. You can add it back with "add topic".`, 'instructions');
-	  return this.remove(chip);
-	} // radio button icon. Chip is already selected. We are setting the publishing tag.
-	event.preventDefault();
-	showMessage(Int`Tapping the map will now produce an alert for the "${chip.label}" topic.`, 'instructions');
-	if (chip.classList.contains('pub')) return false;
-	return this.setPublish(chip.label);
-      });
-      clickTip(element, Int`Toggle whether alerts for this topic shown on the map. Separately, a radio button is shown when selected and sets this as the initial topic of the next alert you make, while an x button is shown when deselected and removes the topic.`, event => { // Toggle action on whole chip.
-	event.stopPropagation();
-	resetInactivityTimer();
-	const chip = event.target;
-	if (chip.selected) showMessage(Int`Turning "${chip.label}" alerts back on in the map.`, 'instructions');
-	else showMessage(Int`Turning off "${chip.label}" alerts in the map. You can delete the topic altogether with the X.`, 'instructions');
-	this.toggleChip(chip);
-	Alert.closePopup();
-	this.onchange({redisplaySubscribers: false});
-      });
-    });
-    this.chipset.insertAdjacentHTML("afterbegin",  // Chip to add a new hashtag.
-				    `<div class="combobox">
-  <md-filled-text-field class="newtag"
-     aria-expanded="false"
-     aria-controls="knownTagsListbox"
-     aria-autocomplete="list"
-     autocomplete="off"
-     tabindex="0"
-     placeholder="➕${Int`add topic`}"></md-filled-text-field>
-</div>`);
-    // I've tried also supplying a datalist, e.g., to supply the mobile keyboard completions, but
-    // I have not been able to get it to work.
+  initializeTopicInput() {
     const newtag = this.newtag = this.chipset.querySelector('.newtag');
     const listbox = this.listbox = document.querySelector('.combobox-listbox');
     clickTip(newtag, Int`Add a new topic for which the map should show any alerts.`, event => { // Focusing "add topic".
@@ -367,60 +423,7 @@ export const Hashtags = {
     // When we click on the listbox, the browser will first blur newtag, and then
     // we would not get the click! So here we delay closing a bit.
     newtag.onblur = () => setTimeout(() => this.closeSelector(), 200);
-  },
-  remove(chip, redisplaySubscribers = false) { // Remove this topic, persistently.
-    delete this.hashtags[chip.label];
-    delete this.canonical2extended[canonicalTag(chip.label)];
-    this.onchange({redisplaySubscribers, resetSubscriptions: false});
-  },
-  toggleChip(chip) { // Switch whether the topic is or is not subscribed.
-    // Now selected => hashtags[label] becomes 'pub' (selected and the publisher) and clear old pub
-    // NOT now selected => hashtags[label] becomes false (through mechanism as follows)
-    //    but if publisher => set alt publisher if possible, else remember as backupPublisher
-    const label = chip.label;
-
-    // chip.selected is new state, after clicking.
-    if (chip.selected) return this.setPublish(label);  // Become publisher, clearing old publisher.
-
-    // Not selected:
-
-    // If we're not publisher, just clear. But don't go through getPublish, as that can have side effects.
-    if (this.hashtags[label] !== 'pub') return this.hashtags[label] = false;
-
-    // Also clear, but...
-    const subs = this.getSubscribe();
-    if (subs.length > 1) {  // Find and set alternative publisher if possible.
-      const pubIndex = subs.indexOf(label);
-      const index = (pubIndex + 1) % subs.length;
-      this.setPublish(subs[index]);
-    } else {
-      // No alternative available. Clear it, but remember for use by getPublish.
-      // It will stay .pub styled while toggled, until anything toggles on.
-      this.backupPublisher = label;
-    }
-    return this.hashtags[label] = false;
-  },
-  getChip(label) { // Handy for scripting, but not otherwise used in app.
-    for (const chip of this.chipset.children) {
-      if (chip.label === label) return chip;
-    }
-    return null;
-  },
-  setPublish(newTag) { // Make this topic be the one to be used when we next publish an alert.
-    // newTag will be marked for publishing (in this.hashtags and element style)
-    // Old publish tag (if any) will be set back to merely be subscribed (in same)
-    let oldTag = this.getPublish();
-    const backup = this.backupPublisher;
-    if (oldTag) this.hashtags[oldTag] = true; // true (instead of 'pub')
-    else if (backup) oldTag = backup;
-    this.backupPublisher = false;
-    this.hashtags[newTag] = 'pub';
-    for (const chip of this.chipset.children) {
-      if (chip.label === newTag) chip.classList.add('pub');
-      else if (chip.label === oldTag) chip.classList.remove('pub');
-    }
-    return oldTag;
-  }
+  }  
 };
 globalThis.Hashtags = Hashtags; // for debugging
 
