@@ -6,8 +6,9 @@ const sockets = {};
 operator.setReceiver((nodeId, id, envelope) => {
   const socket = sockets[nodeId];
   console.log('socket send', nodeId, socket.readyState);
-  if (socket.readyState !== WebSocket.OPEN) throw new Error('Socket not open');
   socket.send(JSON.stringify([id, envelope])); // We want an error if socket is gone, closed, etc.
+  // State might not update until we attempt to actually send.
+  if (socket.readyState !== WebSocket.OPEN) throw new Error(`Socket ${nodeId} send in state ${socket.readyState}.`);
 });
 
 function heartbeat() {

@@ -44,10 +44,11 @@ async function fireEvent(...rest) { // Send envelope to a subscribed hander.
   try {
     invoke(...rest);
   } catch (error) { // Error sending, e.g., nodeTag is gone and we had not yet noticed.
+    console.log(error.message); 
     const [nodeTag, id, envelope] = rest;
     await deleteSubscriber(nodeTag);
     const subscription = await store.get('sub', await deriveTopicId(envelope.topic), id);
-    console.log(error.message, 'activated:', subscription);
+    console.log('activation result:', subscription);
     if (subscription) push(envelope, subscription, PUBLISH_TIMEOUT);
   }
 }
