@@ -16,24 +16,16 @@ window.P2PWebNetwork = P2PWebNetwork;
 document.getElementById('appVersion').textContent = appVersion;
 document.getElementById('kernelVersion').textContent = P2PWebNetwork.kernelVersion;
 
-const RETRY_SECONDS = 90;
-const INACTIVITY_SECONDS = 5 * 60; // five minutes
-
 export function delay(ms = 800, value = undefined) { // Promise resolves to value after specified milliseconds.
   return new Promise(resolve => setTimeout(resolve, ms, value));
 }
 
-var inactivityTimer = null, reconnectCountdown, networkPromise = null;
-export { networkPromise };
-export async function resetInactivityTimer(clearMessage = true) { // if !network, initialize(false), else disconnect after INACTIVITY_SECONDSif not restarted
+export var networkPromise = null;
+export async function resetInactivityTimer(clearMessage = true) { // if !networkPromise, initialize(false).
+  // Historically, this also managed a timer that disconnected from network after a perdiod with no activity.
   //console.log('resetInactivityTimer, networkPromise:', networkPromise);
   if (clearMessage) showMessage('');
-  clearTimeout(inactivityTimer);
-  clearInterval(reconnectCountdown);
   if (!networkPromise) return initialize(false);
-  // return inactivityTimer = setTimeout(() => {
-  //   networkPromise?.then(contact => contact.disconnect());
-  // }, INACTIVITY_SECONDS * 1e3);
 }
 
 function asElement(elementOrQuerySelector) { // Return an element - treating a string arg as a query selector, or just return the arg.
@@ -203,27 +195,12 @@ clickTip('#share', Int`${osName()} share a link to this map and topics, with pic
 
 clickTip('#recenterButton', Int`Recenter the map to where you are in the world.`, recenterMap);
 
-function checkOnline() { //true if online and visible, else cancel reconnectCountdown and inactivityTimeout, and show "offline"
+function checkOnline() { //true if online and visible, else cancel inactivityTimeout, and show "offline"
   //console.log('checkOnline', navigator.onLine && !document.hidden);
   if (navigator.onLine && !document.hidden) return true;
-  clearTimeout(inactivityTimer);
-  clearInterval(reconnectCountdown);
   if (!navigator.onLine) showMessage(Int`No network connection.`, 'error');
   else console.warn('hidden');
   return false;
-}
-function resetReconnectCountdown() { // if !checkOnline each second, show time remaining; at expiration initialize(false)
-  console.log('resetReconnectCountdown');
-  clearInterval(reconnectCountdown);
-  let counter = RETRY_SECONDS;
-  reconnectCountdown = setInterval(() => {
-    if (!checkOnline()) return null;
-    if (counter > 1) return showMessage(Int`Disconnected. Retrying in ` + counter-- + Int` seconds.`, 'error');
-    showMessage('');
-    console.log('countdown timer expired');
-    clearInterval(reconnectCountdown);
-    return initialize(false);
-  }, 1e3);
 }
 
 export let positionWatch;
@@ -308,6 +285,7 @@ let checking = false; // For debouncing.
 // On startup, get last persisted portals list, else the portal we came in on.
 //fixme let portals = new Set(JSON.parse(localStorage.getItem('portals') || `["${new URL('/kdht', window.location).href}"]`));
 async function initialize(event) { // Ensure there is a network promise and map, and reset geolocation:
+  // Called with no event by startup and resetInactivityTimer, and with event by handlers for visibilitychange and online.
   // debounce
   // if !checkOnline(), return
   // set network to promise a new Contact, set ondisconnect, and connect.
@@ -363,15 +341,6 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	  // so as not to confuse other nodes that have given up on the unresponsive old GUID.
 	  showMessage(message, 'error');
 	});
-	//contact.connect(/*fixme ...portals*/)
-	  // .then(() => contact.subscribe({ // Add and persist any new portals we haven't heard about.
-	  //   eventName: 'sys:portals',
-	  //   handler: data => {
-	  //     const operation = data.payload ? 'add' : 'delete';
-	  //     const resultSet = portals[operation](data.subject);
-	  //     localStorage.setItem('portals', JSON.stringify([...resultSet]));
-	  //   }
-	  // }))
       });
     }
     await Agent.initialize();
