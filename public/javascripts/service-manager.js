@@ -1,6 +1,6 @@
 const { Request, Response, URL, localStorage, BroadcastChannel } = globalThis;
 import { appVersion } from './versions.js';
-import { resetInactivityTimer, clickTip, closeAbout } from './main.js';
+import { resetInactivityTimer, clickTip, closeAbout, delay } from './main.js';
 import { openDisplay } from './display.js';
 import { go, getShareableURL } from './alert.js';
 import { Int } from './translations.js';
@@ -141,6 +141,8 @@ await navigator.serviceWorker
 	resolveCached?.(params);
 	break;
       case 'go':
+	await delay();
+	resetInactivityTimer();
 	go(params);
 	break;
       default:
