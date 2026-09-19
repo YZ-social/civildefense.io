@@ -512,7 +512,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       this.shownCells = [...mapPolys, ...geoPolys];
     }
     // Alert.ensure will not pub multiple markers/notifications for the same alert, but let us not double subscriptions.
-    if (lastCells) lastCells.forEach(cell => newCells.includes(cell) || newCells.push(cell));
+    //fixme restore if (lastCells) lastCells.forEach(cell => newCells.includes(cell) || newCells.push(cell));
     const newKeys = {};
     newCells.forEach(cell => Hashtags.getSubscribe().forEach(hash => { // Populate count with existing count (exctly carried over cell sizes), else 0.
       const eventName = alertTopic(cell, hash);
