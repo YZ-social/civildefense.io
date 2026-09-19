@@ -89,15 +89,16 @@ export async function unsubscribe(topic, nodeTag, {pushId}) {
   // Additionally, an activated sticky pushId will be removed if specified - it is the nodeTag from a previous session).
 
   const topicId = await deriveTopicId(topic);
-  let id = await store.remove('sub', topicId, nodeTag);
+  let id = await store.remove('sub', topicId, nodeTag), tracked;
   // Also remove any sticky push subscription:
   // If not yet promoted to sub, it's in track under our current, protectable nodeTag.
   await store.remove('track', topicId, nodeTag);
   // Otherwise, it might have been activated in sub under pushId (i.e., a previous session nodeTag).
   // TODO: pushId should probably be a JWS that was signed in the subscribing node's previous session by the pushId,
   // thus proving that the request actually came from the succcessor to that node.
-  if (pushId) pushId = await store.remove('sub', topicId, pushId);  // pushId must match that used during activation.
-  return {ok: !!id, id, pushId}; // Axona doesn't return the id(s) of the subscription(s), but it is convenient for us to do so.
+  if (pushId) tracked = await store.remove('sub', topicId, pushId);  // pushId must match that used during activation.
+  if (pushId) console.log('remove tracking', pushId, tracked);
+  return {ok: !!id, id, pushId: tracked}; // Axona doesn't return the id(s) of the subscription(s), but it is convenient for us to do so.
 }
 
 export async function deleteSubscriber(nodeTag) {
@@ -108,7 +109,7 @@ export async function deleteSubscriber(nodeTag) {
     // Activate pending push subscription, if any, by moving it from 'track' to active 'sub'.
     const pushSubscription = await store.remove('track', topicId, nodeTag);
     if (pushSubscription) {
-      //console.log('activiting', topicId, nodeTag, pushSubscription);
+      console.log('activiting', topicId, nodeTag, pushSubscription.applicationId);
       await store.set('sub', topicId, nodeTag, pushSubscription, TRACK_TIMEOUT);
     }
   }
