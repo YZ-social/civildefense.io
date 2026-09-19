@@ -72,9 +72,13 @@ a:hover { color: var(--red); }
 }
 .button-img { width: 80px; }
 a > img {
-    box-shadow: 0 4px 28px rgba(255, 90, 0, 0.45);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
     border-radius: 18px;
     border: solid thick var(--red);
+}
+a > img:hover {
+    transform: translateY(-2px);
+    transition: transform 0.15s;
 }
 .hero-logo {
     width: 80px;
@@ -288,9 +292,9 @@ video + .carousel-caption {
     letter-spacing: 0.08em;
     text-transform: uppercase;
     padding: 14px 38px;
-    border-radius: 4px;
+    border-radius: 18px;
     text-decoration: none;
-    box-shadow: 0 4px 28px rgba(255,90,0,0.45);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.45);
     transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
 }
 .launch-btn:hover {
