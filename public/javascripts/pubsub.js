@@ -47,6 +47,7 @@ async function fireEvent(...rest) { // Send envelope to a subscribed hander.
     const [nodeTag, id, envelope] = rest;
     await deleteSubscriber(nodeTag);
     const subscription = await store.get('sub', await deriveTopicId(envelope.topic), id);
+    console.log(error.message, 'activated:', subscription);
     if (subscription) push(envelope, subscription, PUBLISH_TIMEOUT);
   }
 }

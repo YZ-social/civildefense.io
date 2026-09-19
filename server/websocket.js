@@ -5,6 +5,7 @@ import * as operator from '../public/javascripts/pubsub.js';
 const sockets = {};
 operator.setReceiver((nodeId, id, envelope) => {
   const socket = sockets[nodeId];
+  if (!socket.readyState == WebSocket.OPEN) throw new Error('Socket not open');
   socket.send(JSON.stringify([id, envelope])); // We want an error if socket is gone, closed, etc.
 });
 
