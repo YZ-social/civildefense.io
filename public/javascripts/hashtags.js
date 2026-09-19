@@ -267,6 +267,7 @@ export const Hashtags = {
   //   - otherwise => exact contents of input box is used.
   closeSelector() { // Close the autocomplete tag selector
     const { listbox, newtag } = this;
+    for (const li of listbox.children) li.classList.toggle('active', false);
     listbox.classList.toggle('hidden', true);
     newtag.setAttribute('aria-expanded', 'false');
     newtag.removeAttribute('aria-activedescendant');
@@ -351,10 +352,14 @@ export const Hashtags = {
       li.id = `tag-option-${i}`;
       li.setAttribute('role', 'option');
       li.innerHTML = this.formatPubtag(highlight(item, matchString), item);
+      // The order of events in clicking here is:
+      // li.onpointerdown, newtag.onblur, li.onpointerup, li.click
+      // So things would be simple if we did selectValue in pointerdown.
+      // HOWEVER, that would presvent touch drag from properly scrolling the listbox.
+      // So, we get fancy here.
+      li.onpointerdown = () => this.inCompletionClick = true;
+      li.onpointerup = () => this.inCompletionClick = false;
       li.onclick = event => {
-	// pointerdown would fire before the text field's blur event,
-	// so we would not have to delay that. But then we would not
-	// scroll properly by touch drag.
         event.preventDefault();
 	event.stopPropagation();
         this.selectValue(item);
@@ -422,8 +427,8 @@ export const Hashtags = {
     newtag.oninput = () => this.renderSelector(newtag.value);
     // When we click on the listbox, the browser will first blur newtag, and then
     // we would not get the click! So here we delay closing a bit.
-    newtag.onblur = () => setTimeout(() => this.closeSelector(), 200);
-  }  
+    newtag.onblur = () => this.inCompletionClick || this.closeSelector();
+  }
 };
 globalThis.Hashtags = Hashtags; // for debugging
 
