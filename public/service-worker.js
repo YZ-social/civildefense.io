@@ -227,7 +227,7 @@ function showNotification({lat, lng, issuedTime, hashtag, alert, body = '', forc
 }
 
 function showNotificationFromEnvelope({deleted, message, msgId}) { // We get the generic, application-independent envelope.
-  //console.log('envelope', message, msgId);
+  console.log('received push', msgId, deleted ? 'cancel' : '');
   if (deleted) return cancelNotification(msgId);
   const {issuedTime, hashtag, payload, alert = msgId} = message;
   let {lat, lng, message:body, name = ''} = payload;

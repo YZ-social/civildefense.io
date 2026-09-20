@@ -48,7 +48,7 @@ async function fireEvent(...rest) { // Send envelope to a subscribed hander.
     const [nodeTag, id, envelope] = rest;
     await deleteSubscriber(nodeTag);
     const subscription = await store.get('sub', await deriveTopicId(envelope.topic), id);
-    console.log('activation result:', subscription);
+    console.log('push error activation result:', subscription.endpoint);
     if (subscription) push(envelope, subscription, PUBLISH_TIMEOUT);
   }
 }
@@ -99,7 +99,7 @@ export async function unsubscribe(topic, nodeTag, {pushId}) {
   // TODO: pushId should probably be a JWS that was signed in the subscribing node's previous session by the pushId,
   // thus proving that the request actually came from the succcessor to that node.
   if (pushId) tracked = await store.remove('sub', topicId, pushId);  // pushId must match that used during activation.
-  if (pushId) console.log('remove tracking', pushId, tracked);
+  if (pushId) console.log('remove tracking', pushId, tracked?.endpoint);
   return {ok: !!id, id, pushId: tracked}; // Axona doesn't return the id(s) of the subscription(s), but it is convenient for us to do so.
 }
 
@@ -111,7 +111,7 @@ export async function deleteSubscriber(nodeTag) {
     // Activate pending push subscription, if any, by moving it from 'track' to active 'sub'.
     const pushSubscription = await store.remove('track', topicId, nodeTag);
     if (pushSubscription) {
-      console.log('activiting', topicId, nodeTag, pushSubscription.applicationId);
+      console.log('activating', nodeTag, pushSubscription.endpoint);
       await store.set('sub', topicId, nodeTag, pushSubscription, TRACK_TIMEOUT);
     }
   }
@@ -127,6 +127,7 @@ async function handleEvents(topicId, envelope)  {
     if (isConnectedSubscription(handlerInfo)) { // nodeId
       return fireEvent(nodeTag, handlerInfo, envelope);
     } else { // activated sticky push subscription data object.
+      console.log('pushing for nodeId', nodeTag, handlerInfo?.endpoint);
       return push(envelope, handlerInfo, PUBLISH_TIMEOUT);
     }
   }));
