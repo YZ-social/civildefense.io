@@ -225,6 +225,8 @@ video + .carousel-caption {
     padding: 2.5rem 1.25rem 4rem;
 }
 
+.content-wrap div.centered + p { padding-top: 2rem; }
+
 /* Section headings */
 .content-wrap h1 {
     font-family: var(--font-display);
