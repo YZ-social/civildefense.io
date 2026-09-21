@@ -356,11 +356,11 @@ export const Hashtags = {
       li.id = `tag-option-${i}`;
       li.setAttribute('role', 'option');
       li.innerHTML = this.formatPubtag(highlight(item, matchString), item);
-      li.addEventListener('pointerdown', () => this.selectorsScroll = li.scrollTop;
-      li.addEventListener('pointerup',  () => {
+      li.onpointerdown = () => this.selectorsScroll = li.scrollTop;
+      li.onpointerup =  () => {
 	const scrollDelta = Math.abs(this.selectorsScroll - li.scrollTop);
 	if (scrollDelta < 3) this.selectValue(item);
-      });
+      };
       listbox.appendChild(li);
     });
     setTimeout(() => { // Needs a tick.
