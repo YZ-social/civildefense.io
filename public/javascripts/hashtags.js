@@ -300,17 +300,20 @@ export const Hashtags = {
     this.acceptTag();
   },
   acceptTag() { // Add the new hashtag.
+    console.log('acceptTag', this.newtag?.value);
     resetInactivityTimer();
     let tag = this.newtag?.value  // Get into standard form, but do not strip emoji or case into canonical yet.
 	.replace(/^#/, '')        // No leading hash
 	.replace(':', '.')        // Replace colon with some other separator.
 	.replace(/\s+/g, ' ')     // Replace multiple spaces with a single space
 	.normalize('NFD');        // Standardize different ways of making accents into decomposed form - but do not remove them.
+    console.log('tag:', tag);
     Alert.closePopup();
     if (!tag) return;
     if (this.firstEmoji(tag)) { // Possibly REPLACE existing with the new tag.
       const canonical = canonicalTag(tag);
       const existingExtended = this.canonical2extended[canonical];
+      console.log({canonical, existingExtended});
       if (existingExtended !== tag) {
 	delete this.canonical2extended[canonical];
 	delete this.hashtags[existingExtended];
@@ -318,6 +321,7 @@ export const Hashtags = {
     }
     tag = this.add(tag); // Might exist, in which case tag might now be extended.
     this.setPublish(tag);
+    console.log('onchange with', this.hashtags);
     this.onchange({highlightPublish: true});
   },
   activeIndex: -1,
@@ -357,12 +361,14 @@ export const Hashtags = {
       // So things would be simple if we did selectValue in pointerdown.
       // HOWEVER, that would presvent touch drag from properly scrolling the listbox.
       // So, we get fancy here.
-      li.onpointerdown = () => this.inCompletionClick = true;
-      li.onpointerup = () => this.inCompletionClick = false;
+      li.onpointerdown = () => { console.log('pointerdown'); this.inCompletionClick = true; };
+      li.onpointerup = () => { console.log('pointerup'); this.inCompletionClick = false; };
       li.onclick = event => {
+	console.log('click', item);
         event.preventDefault();
 	event.stopPropagation();
         this.selectValue(item);
+	console.log('clicked');
       };
       listbox.appendChild(li);
     });
