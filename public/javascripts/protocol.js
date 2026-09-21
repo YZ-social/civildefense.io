@@ -95,13 +95,13 @@ if (dht < 1) {
 	socket.onmessage = event => {
 	  const [tag, ...rest] = JSON.parse(event.data);
 	  const subHandler = handlers[tag];
+	  if (subHandler) {
+	    const [ackTag, ...parameters] = rest;
+	    console.log('event', ackTag);
+	    socket.send(JSON.stringify([0, ackTag]));
+	    return subHandler(...parameters);
+	  }
 	  const inFlightResolver = inFlight[tag];
-
-	  // if ((!subHandler && !inFlightResolver) || // debug
-	  //     ((typeof(subHandler) !== 'function') && (typeof(inFlightResolver) !== 'function')))
-	  //   console.warn('no handler or request', {tag, rest, subHandler, inFlightResolver, handlers, inFlight});
-
-	  if (subHandler) return subHandler(...rest);
 	  delete inFlight[tag];
 	  return inFlightResolver?.(...rest);
 	};
@@ -123,7 +123,7 @@ if (dht < 1) {
 	disconnect = () => socket.close();
       } else {
 	disconnect = () => null;
-	operator.setReceiver((nodeTag, id, ...rest) => handlers[id](...rest));
+	operator.setSender((nodeTag, id, ...rest) => handlers[id](...rest));
 	resolve((methodName, ...rest) => operator[methodName](...rest)); // send()
       }
     });

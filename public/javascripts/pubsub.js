@@ -37,20 +37,19 @@ const PUBLISH_TIMEOUT = 24 * 60 * 60e3;      // Delete after 24 hours.
 const TRACK_TIMEOUT = PUBLISH_TIMEOUT;
 
 let invoke;
-export function setReceiver(receiver) { // Set the means by which we fire events over a connection.
+export function setSender(receiver) { // Set the means by which we fire events over a direct connection.
   invoke = receiver; // E.g. (nodeId, handlerId, envelope) => getSocket(nodeId).send(JSON.stringify([handlerId, envelope]));
 }
-async function fireEvent(...rest) { // Send envelope to a subscribed hander.
-  try {
-    invoke(...rest);
-  } catch (error) { // Error sending, e.g., nodeTag is gone and we had not yet noticed.
-    console.log(error.message); 
+
+function directFireEvent(...rest) { // Send envelope to a subscribed hander.
+  return invoke(...rest).catch(async error => { // Error sending, e.g., nodeTag is gone and we had not yet noticed.
+    console.log(error.message || error);
     const [nodeTag, id, envelope] = rest;
     await deleteSubscriber(nodeTag);
     const subscription = await store.get('sub', await deriveTopicId(envelope.topic), id);
-    console.log('push error activation result:', subscription.endpoint);
+    console.log('push error activation result:', subscription?.endpoint);
     if (subscription) push(envelope, subscription, PUBLISH_TIMEOUT);
-  }
+  });
 }
 
 export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}) {
@@ -68,7 +67,7 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}
       for (const envelope of await store.values('pub', topicId)) {
 	switch (since) {
 	case 'all':
-	  await fireEvent(nodeTag, id, envelope);
+	  await directFireEvent(nodeTag, id, envelope);
 	  break;
 	case 'latest':
 	  if (envelope.ts > lastTime) {
@@ -77,10 +76,10 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}
 	  }
 	  break;
 	default: // Must be a timestamp
-	  if (envelope.ts === since) await fireEvent(nodeTag, id, envelope);
+	  if (envelope.ts === since) await directFireEvent(nodeTag, id, envelope);
 	}
       }
-      if (lastEnvelope) fireEvent(nodeTag, id, lastEnvelope);
+      if (lastEnvelope) directFireEvent(nodeTag, id, lastEnvelope);
     }, 100);
   }
   return {topicName: {name, region, owner, write}, topicId, id};
@@ -104,10 +103,11 @@ export async function unsubscribe(topic, nodeTag, {pushId}) {
 }
 
 export async function deleteSubscriber(nodeTag) {
-  // The node is gone: lost connection, or fireEvent failed.
-
+  // The node is gone: lost connection, or directFireEvent failed.
+  console.log('deleteSubscriber', nodeTag);
   for (const topicId of await store.topics('sub')) { // Remove in all topics.
-    await store.remove('sub', topicId, nodeTag);
+    const sub = await store.remove('sub', topicId, nodeTag);
+    if (sub) console.log('removed sub', sub);
     // Activate pending push subscription, if any, by moving it from 'track' to active 'sub'.
     const pushSubscription = await store.remove('track', topicId, nodeTag);
     if (pushSubscription) {
@@ -125,7 +125,7 @@ async function handleEvents(topicId, envelope)  {
   // Each sub's handlerInfo can be an ordinary subscription nodeId, or a sticky push subscription data.
   return Promise.all(subs.map(([nodeTag, handlerInfo]) => {
     if (isConnectedSubscription(handlerInfo)) { // nodeId
-      return fireEvent(nodeTag, handlerInfo, envelope);
+      return directFireEvent(nodeTag, handlerInfo, envelope);
     } else { // activated sticky push subscription data object.
       console.log('pushing for nodeId', nodeTag, handlerInfo?.endpoint);
       return push(envelope, handlerInfo, PUBLISH_TIMEOUT);
@@ -157,3 +157,5 @@ export async function unpublish(topic, msgId, {signWith}) {
   await handleEvents(topicId, envelope);
   return {ok: true};
 }
+
+export const operators = {setSender, subscribe, unsubscribe, deleteSubscriber, publish, unpublish};
