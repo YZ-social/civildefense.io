@@ -79,7 +79,10 @@ async function installUpdate(event, newVersion) {
   event.stopPropagation();
   event.target.textContent = Int`Installing...`; // In case there is some delay, tell the user what we're trying to do. Will be cleared with reload.
   event.target.disabled = true;
-  await caches.delete(appVersion); // Must be before cacheSource, or we'll just recache the same files!
+  // Must be before cacheSource, or we'll just recache the same files!
+  const cacheNames = await caches.keys();
+  await Promise.all(cacheNames.map(name => caches.delete(name))); // Includes ALL cache storage, such as seen notifications.
+
   await cacheSource(newVersion);
   closeAbout();
   // Reload, but convince all browsers to re-"fetch" (through the new service worker that is now running).

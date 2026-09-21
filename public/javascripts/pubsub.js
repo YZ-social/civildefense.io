@@ -50,7 +50,7 @@ function directFireEvent(...rest) { // Send envelope to a subscribed hander.
     const topicId = await deriveTopicId(topic);
     const subscription = await store.get('sub', topicId, id);
     console.log('push error activation:', topic, topicId, id, subscription);
-    if (subscription) push(envelope, subscription, PUBLISH_TIMEOUT);
+    if (subscription) push(envelope, subscription, PUBLISH_TIMEOUT); // Do not wait for push.
   });
 }
 
@@ -62,7 +62,7 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}
   await store.set('sub', topicId, nodeTag, id, SUBSCRIPTION_TIMEOUT);
   // If pushData, store it separately by nodeTag until it needs to be activated.
   if (pushData) {
-    console.log('track push sub', topicId, nodeTag, pushData.endpoint);
+    console.log('track push sub', topicId, nodeTag, pushData.endpoint.slice(0, 80));
     await store.set('track', topicId, nodeTag, pushData, TRACK_TIMEOUT);
   } else {
     store.remove('track', topicId, nodeTag);
@@ -104,7 +104,7 @@ export async function unsubscribe(topic, nodeTag, {pushId}) {
   // TODO: pushId should probably be a JWS that was signed in the subscribing node's previous session by the pushId,
   // thus proving that the request actually came from the succcessor to that node.
   if (pushId) tracked = await store.remove('sub', topicId, pushId);  // pushId must match that used during activation.
-  //if (pushId) console.log('normal unsubscribe remove tracking', pushId, tracked?.endpoint);
+  //if (pushId) console.log('normal unsubscribe remove tracking', pushId, tracked?.endpoint.slice(0, 80));
   return {ok: !!id, id, pushId: tracked}; // Axona doesn't return the id(s) of the subscription(s), but it is convenient for us to do so.
 }
 
@@ -113,11 +113,11 @@ export async function deleteSubscriber(nodeTag) {
   console.log('deleteSubscriber', nodeTag);
   for (const topicId of await store.topics('sub')) { // Remove in all topics.
     const sub = await store.remove('sub', topicId, nodeTag);
-    if (sub) console.log('removed sub topic', topicId, 'node:', nodeTag, 'handler:', sub);
+    if (sub) console.log('removed sub', topicId, nodeTag, sub);
     // Activate pending push subscription, if any, by moving it from 'track' to active 'sub'.
     const pushSubscription = await store.remove('track', topicId, nodeTag);
     if (pushSubscription) {
-      console.log('activating', topicId, nodeTag, pushSubscription.endpoint);
+      console.log('activating', topicId, nodeTag, pushSubscription.endpoint.slice(0, 80));
       await store.set('sub', topicId, nodeTag, pushSubscription, TRACK_TIMEOUT);
     }
   }
@@ -133,8 +133,9 @@ async function handleEvents(topicId, envelope)  {
     if (isConnectedSubscription(handlerInfo)) { // nodeId
       return directFireEvent(nodeTag, handlerInfo, envelope);
     } else { // activated sticky push subscription data object.
-      console.log('pushing for nodeId', nodeTag, handlerInfo?.endpoint);
-      return push(envelope, handlerInfo, PUBLISH_TIMEOUT);
+      console.log('pushing for nodeId', nodeTag, handlerInfo?.endpoint.slice(0, 80));
+      push(envelope, handlerInfo, PUBLISH_TIMEOUT);
+      return null; // Do not wait for push
     }
   }));
 }

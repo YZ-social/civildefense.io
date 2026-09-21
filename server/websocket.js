@@ -3,7 +3,6 @@ import { WebSocketServer } from 'ws';
 import { operators } from '../public/javascripts/pubsub.js';
 
 const sockets = {};
-let sendCounter = 0;
 operators.setSender((nodeId, eventHandlerId, envelope) => new Promise((resolve, reject) => {
   // Setup pubsub to receive events, by supplying a function that promises to send the event.
   //
@@ -22,16 +21,22 @@ operators.setSender((nodeId, eventHandlerId, envelope) => new Promise((resolve, 
   // But if there is no acknowledgement (or if the updated readyState after sending is not OPEN), then the promise is rejected,
   // and pubsub can catch that and transmit by the sticky push sub, if any.
   const socket = sockets[nodeId];
-  const ACK_TIME_MS = 3e3;
+  const ACK_TIME_MS = 5e3;
+  const ackTag = nodeId + socket.sendCounter++;
   const fail = reason => {
     delete sockets[nodeId]; // Keep close() from removing any sticky sub.
+    delete operators[ackTag];
     socket.terminate(); // close will be asynchronous.
     reject(reason); // Reject now (before close), so that caller can catch this and push message to sticky sub, if any.
   };
-  const ackTag = 'm' + sendCounter++;
   console.log('socket send', nodeId, socket.readyState, ackTag, eventHandlerId);
   const timer = setTimeout(() => fail(`No acknowledgement from ${nodeId} on ${ackTag} in state ${socket.readyState} for handler ${eventHandlerId}.`), ACK_TIME_MS);
-  operators[ackTag] = () => { console.log(nodeId, 'ack', ackTag, 'from eventHandlerId', eventHandlerId); clearTimeout(timer); resolve(); };
+  operators[ackTag] = () => {
+    console.log(nodeId, 'ack', ackTag, 'from eventHandlerId', eventHandlerId);
+    clearTimeout(timer);
+    delete operators[ackTag];
+    resolve();
+  };
   socket.send(JSON.stringify([eventHandlerId, ackTag, envelope])); // We want an error if socket is gone, closed, etc.
   // State might not update until we attempt to actually send.
   if (socket.readyState !== WebSocket.OPEN) fail(`Socket ${nodeId} send in state ${socket.readyState} for handler ${eventHandlerId} of ack ${ackTag}.`);
@@ -46,6 +51,7 @@ export function configureWebsocket(server) {
   wss.on('connection', (ws, req) => {
     const nodeTag = req.url.slice(1);
     console.log('Connected', nodeTag);
+    ws.sendCounter = 0;
     sockets[nodeTag] = ws;
 
     ws.on('message', async message => {
