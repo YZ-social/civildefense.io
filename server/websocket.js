@@ -29,12 +29,12 @@ operators.setSender((nodeId, eventHandlerId, envelope) => new Promise((resolve, 
     reject(reason); // Reject now (before close), so that caller can catch this and push message to sticky sub, if any.
   };
   const ackTag = 'm' + sendCounter++;
-  console.log('socket send', nodeId, socket.readyState, ackTag);
-  const timer = setTimeout(() => fail(`No acknowledgement from ${nodeId}.`), ACK_TIME_MS);
-  operators[ackTag] = () => { console.log('ack', ackTag); clearTimeout(timer); resolve(); };
+  console.log('socket send', nodeId, socket.readyState, ackTag, eventHandlerId);
+  const timer = setTimeout(() => fail(`No acknowledgement from ${nodeId} on ${ackTag} in state ${socket.readyState} for handler ${eventHandlerId}.`), ACK_TIME_MS);
+  operators[ackTag] = () => { console.log(nodeId, 'ack', ackTag, 'from eventHandlerId', eventHandlerId); clearTimeout(timer); resolve(); };
   socket.send(JSON.stringify([eventHandlerId, ackTag, envelope])); // We want an error if socket is gone, closed, etc.
   // State might not update until we attempt to actually send.
-  if (socket.readyState !== WebSocket.OPEN) fail(`Socket ${nodeId} send in state ${socket.readyState}.`);
+  if (socket.readyState !== WebSocket.OPEN) fail(`Socket ${nodeId} send in state ${socket.readyState} for handler ${eventHandlerId} of ack ${ackTag}.`);
 }));
 
 function heartbeat() {
