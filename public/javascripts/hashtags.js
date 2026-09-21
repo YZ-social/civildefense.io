@@ -361,15 +361,22 @@ export const Hashtags = {
       // So things would be simple if we did selectValue in pointerdown.
       // HOWEVER, that would presvent touch drag from properly scrolling the listbox.
       // So, we get fancy here.
-      li.addEventListener('pointerdown', () => { console.log('pointerdown'); this.inCompletionClick = true; });
-      li.addEventListener('pointerup',  () => { console.log('pointerup'); this.inCompletionClick = false; });
-      li.addEventListener('click', event => {
-	console.log('click', item);
-        event.preventDefault();
-	event.stopPropagation();
-        this.selectValue(item);
-	console.log('clicked');
+      li.addEventListener('pointerdown', () => {
+	console.log('pointerdown');
+	this.inCompletionClick = true;
+	this.selectValue(item);
       });
+      li.addEventListener('pointerup',  () => {
+	console.log('pointerup');
+	this.inCompletionClick = false;
+      });
+      // li.addEventListener('click', event => {
+      // 	console.log('click', item);
+      //   event.preventDefault();
+      // 	event.stopPropagation();
+      //   //this.selectValue(item);
+      // 	console.log('clicked');
+      // });
       listbox.appendChild(li);
     });
     setTimeout(() => { // Needs a tick.
@@ -383,6 +390,18 @@ export const Hashtags = {
   initializeTopicInput() {
     const newtag = this.newtag = this.chipset.querySelector('.newtag');
     const listbox = this.listbox = document.querySelector('.combobox-listbox');
+    newtag.oninput = () => { console.log('input', newtag.value); this.renderSelector(newtag.value); };
+    newtag.onchange = () => {
+      console.log('change', newtag.value);
+      if (this.activeIndex < 0) {
+	this.acceptTag(); // As is, not from list.
+      } else {
+        this.selectValue(this.selectors[this.activeIndex]);
+      }
+    };
+    // When we click on the listbox, the browser will first blur newtag, and then
+    // we would not get the click! So here we delay closing a bit.
+    newtag.onblur = () => { console.log('blur inCompletionClick:', this.inCompletionClick); this.inCompletionClick || this.closeSelector();};
     clickTip(newtag, Int`Add a new topic for which the map should show any alerts.`, event => { // Focusing "add topic".
       event.stopPropagation();
       Alert.closePopup();
@@ -426,18 +445,6 @@ export const Hashtags = {
 	this.activeIndex = -1;
       }
     };
-    newtag.oninput = () => { console.log('input', newtag.value); this.renderSelector(newtag.value); };
-    newtag.onchange = () => {
-      console.log('change', newtag.value);
-      if (this.activeIndex < 0) {
-	this.acceptTag(); // As is, not from list.
-      } else {
-        this.selectValue(this.selectors[this.activeIndex]);
-      }
-    };
-    // When we click on the listbox, the browser will first blur newtag, and then
-    // we would not get the click! So here we delay closing a bit.
-    newtag.onblur = () => { console.log('blur inCompletionClick:', this.inCompletionClick); this.inCompletionClick || this.closeSelector();};
   }
 };
 globalThis.Hashtags = Hashtags; // for debugging
