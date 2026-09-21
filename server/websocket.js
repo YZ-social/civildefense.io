@@ -21,6 +21,7 @@ operators.setSender((nodeId, eventHandlerId, envelope) => new Promise((resolve, 
   // But if there is no acknowledgement (or if the updated readyState after sending is not OPEN), then the promise is rejected,
   // and pubsub can catch that and transmit by the sticky push sub, if any.
   const socket = sockets[nodeId];
+  if (!socket) return;
   const ACK_TIME_MS = 5e3;
   const ackTag = nodeId + socket.sendCounter++;
   const fail = reason => {
