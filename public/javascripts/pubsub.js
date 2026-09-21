@@ -46,8 +46,10 @@ function directFireEvent(...rest) { // Send envelope to a subscribed hander.
     console.log(error.message || error);
     const [nodeTag, id, envelope] = rest;
     await deleteSubscriber(nodeTag);
-    const subscription = await store.get('sub', await deriveTopicId(envelope.topic), id);
-    console.log('push error activation result:', subscription?.endpoint);
+    const topic = envelope.topic;
+    const topicId = await deriveTopicId(topic);
+    const subscription = await store.get('sub', topicId, id);
+    console.log('push error activation:', topic, topicId, id, subscription);
     if (subscription) push(envelope, subscription, PUBLISH_TIMEOUT);
   });
 }
@@ -59,8 +61,12 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}
   const id = uuidv4();
   await store.set('sub', topicId, nodeTag, id, SUBSCRIPTION_TIMEOUT);
   // If pushData, store it separately by nodeTag until it needs to be activated.
-  if (pushData) await store.set('track', topicId, nodeTag, pushData, TRACK_TIMEOUT);
-  else store.remove('track', topicId, nodeTag);
+  if (pushData) {
+    console.log('track push sub', topicId, nodeTag, pushData.endpoint);
+    await store.set('track', topicId, nodeTag, pushData, TRACK_TIMEOUT);
+  } else {
+    store.remove('track', topicId, nodeTag);
+  }
   if (since) { // invoke handler on any sticky data, but only after we have told client the subscription id. TODO: is there a better way?
     setTimeout(async () => {
       let lastEnvelope = null, lastTime = 0;
@@ -107,11 +113,11 @@ export async function deleteSubscriber(nodeTag) {
   console.log('deleteSubscriber', nodeTag);
   for (const topicId of await store.topics('sub')) { // Remove in all topics.
     const sub = await store.remove('sub', topicId, nodeTag);
-    if (sub) console.log('removed sub', sub);
+    if (sub) console.log('removed sub', topicId, nodeTag, sub);
     // Activate pending push subscription, if any, by moving it from 'track' to active 'sub'.
     const pushSubscription = await store.remove('track', topicId, nodeTag);
     if (pushSubscription) {
-      console.log('activating', nodeTag, pushSubscription.endpoint);
+      console.log('activating', topicId, nodeTag, pushSubscription.endpoint);
       await store.set('sub', topicId, nodeTag, pushSubscription, TRACK_TIMEOUT);
     }
   }
