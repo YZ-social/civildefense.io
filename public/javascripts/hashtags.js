@@ -362,13 +362,15 @@ export const Hashtags = {
       // HOWEVER, that would presvent touch drag from properly scrolling the listbox.
       // So, we get fancy here.
       li.addEventListener('pointerdown', () => {
-	console.log('pointerdown');
-	this.inCompletionClick = true;
-	this.selectValue(item);
+	this.inCompletionClick = true;	
+	this.selectorsScroll = li.scrollTop;
+	console.log('pointerdown', li.scrollTop);
       });
       li.addEventListener('pointerup',  () => {
-	console.log('pointerup');
+	const scrollDelta = Math.abs(this.selectorsScroll - li.scrollTop);
+	console.log('pointerup', this.selectorsScroll, li.scrollTop, scrollDelta);
 	this.inCompletionClick = false;
+	if (scrollDelta < 3) this.selectValue(item);
       });
       // li.addEventListener('click', event => {
       // 	console.log('click', item);
