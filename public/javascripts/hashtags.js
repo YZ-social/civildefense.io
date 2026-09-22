@@ -366,6 +366,14 @@ export const Hashtags = {
     this.openSelector();
   },
   initializeTopicInput() {
+    // Getting this correct is hard.
+    // We want all of the following to be true, on ALL BROWSERS, INCLUDING MOBILE BROWSERS:
+    // 0. The UL listbox starts as display:none.
+    // 1. When the INPUT newtag is clicked, the UL and it's LI become visible.
+    // 2. When the combined height of the LI elements exceeds that of the UL, they must be scrollable.
+    // 3. When a UL > LI is visible and clicked, an action is taken in the app, and the UL becomes display:none again.
+    // 4. When the INPUT loses focus by any other action, the UL becomes display:none again without the app action.
+    // 5. When a UL > LI is visible and clicked, the map underneath does NOT receive a click.
     const newtag = this.newtag = this.chipset.querySelector('.newtag');
     const listbox = this.listbox = document.querySelector('.combobox-listbox');
     // Specifically mousedown, not pointerdown.
