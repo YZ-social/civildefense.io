@@ -102,8 +102,11 @@ if (dht < 1) {
 	    return subHandler(...parameters);
 	  }
 	  const inFlightResolver = inFlight[tag];
-	  delete inFlight[tag];
-	  return inFlightResolver?.(...rest);
+	  if (inFlightResolver) {
+	    delete inFlight[tag];
+	    return inFlightResolver(...rest);
+	  }
+	  return console.log('unexpected message', event.data);
 	};
 	socket.onopen = () => {
 	  if (socket.readyState !== WebSocket.OPEN) return; // You would think that can't happen, but...
