@@ -356,16 +356,24 @@ export const Hashtags = {
       li.id = `tag-option-${i}`;
       li.setAttribute('role', 'option');
       li.innerHTML = this.formatPubtag(highlight(item, matchString), item);
-      li.onpointerdown = () => {
+      li.onpointerdown = event => {
 	console.log('pointerdown');
 	this.pointerdown = true;
-	this.selectorsScroll = li.scrollTop;
+	event.stopPropagation();
+	event.preventDefault();
       };
-      li.onpointerup =  () => {
-	const scrollDelta = Math.abs(this.selectorsScroll - li.scrollTop);
-	console.log('pointerup', scrollDelta, item);
+      li.onpointerup =  event => {
+	console.log('pointerup');
 	this.pointerdown = false;
-	if (scrollDelta < 3) this.selectValue(item);
+	event.stopPropagation();
+	event.preventDefault();
+      };
+      li.onclick = event => {
+	event.stopPropagation();
+	event.preventDefault();
+	const scrollDelta = Math.abs(this.selectorsScroll - li.scrollTop);
+	console.log('click', scrollDelta, item);
+	this.selectValue(item);
       };
       listbox.appendChild(li);
     });
@@ -387,14 +395,16 @@ export const Hashtags = {
       } else {
         this.selectValue(this.selectors[this.activeIndex]);
       }
-    };
+    },
     // When we click on the listbox, the browser will first blur newtag, and then
     // we would not get the click! So here we delay closing a bit.
-    newtag.onblur = () => {
+    newtag.onblur = event => {
       console.log('blur', this.pointerdown);
+      event.stopPropagation();
+      event.preventDefault();
       if (this.pointerdown) return;
       this.closeSelector();
-    }
+    },
     clickTip(newtag, Int`Add a new topic for which the map should show any alerts.`, event => { // Focusing "add topic".
       event.stopPropagation();
       Alert.closePopup();
@@ -403,7 +413,7 @@ export const Hashtags = {
       if (navigator.maxTouchPoints <= 1) { // Only when no multi-touch. On-screen keyboard makes it shoot off the top.
 	showMessage(Int`Type a new topic name to see any alerts on the map with this topic.`, 'instructions');
       }
-    });
+    }),
     newtag.onkeydown = event => {
       if (listbox.classList.contains('hidden')) return;
       const optionCount = listbox.querySelectorAll('.combobox-option').length;
