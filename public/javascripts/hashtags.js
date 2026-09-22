@@ -356,25 +356,6 @@ export const Hashtags = {
       li.id = `tag-option-${i}`;
       li.setAttribute('role', 'option');
       li.innerHTML = this.formatPubtag(highlight(item, matchString), item);
-      li.onpointerdown = event => {
-	console.log('pointerdown');
-	this.pointerdown = true;
-	event.stopPropagation();
-	event.preventDefault();
-      };
-      li.onpointerup =  event => {
-	console.log('pointerup');
-	this.pointerdown = false;
-	event.stopPropagation();
-	event.preventDefault();
-      };
-      li.onclick = event => {
-	event.stopPropagation();
-	event.preventDefault();
-	const scrollDelta = Math.abs(this.selectorsScroll - li.scrollTop);
-	console.log('click', scrollDelta, item);
-	this.selectValue(item);
-      };
       listbox.appendChild(li);
     });
     setTimeout(() => { // Needs a tick.
@@ -382,12 +363,23 @@ export const Hashtags = {
       const max = Math.max(125, width);
       newtag.style.width = max + 'px'; // Set newtag so that input box makes room for floating lis
     }, 50);
-
     this.openSelector();
   },
   initializeTopicInput() {
     const newtag = this.newtag = this.chipset.querySelector('.newtag');
     const listbox = this.listbox = document.querySelector('.combobox-listbox');
+    // Specifically mousedown, not pointerdown.
+    // Stop the dropdown from stealing focus -> stops premature blur
+    // and is also what keeps the UL on top for the WHOLE mousedown->mouseup->click
+    // sequence, which is what keeps us from click through to map.
+    listbox.onmousedown = event => event.preventDefault();
+    listbox.onclick = event => {
+      const li = event.target.closest('li');
+      console.log('listbox click', li);
+      if (!li) return;
+      this.selectValue(li.textContent);
+      this.closeSelector();       // safe here — this click's path is already resolved
+    };
     newtag.oninput = () => this.renderSelector(newtag.value);
     newtag.onchange = () => {
       if (this.activeIndex < 0) {
@@ -396,16 +388,12 @@ export const Hashtags = {
         this.selectValue(this.selectors[this.activeIndex]);
       }
     },
-    // When we click on the listbox, the browser will first blur newtag, and then
-    // we would not get the click! So here we delay closing a bit.
-    newtag.onblur = event => {
-      console.log('blur', this.pointerdown);
-      event.stopPropagation();
-      event.preventDefault();
-      if (this.pointerdown) return;
+    newtag.onblur = () => {
+      console.log('input blur');
       this.closeSelector();
     },
     clickTip(newtag, Int`Add a new topic for which the map should show any alerts.`, event => { // Focusing "add topic".
+      console.log('input click');
       event.stopPropagation();
       Alert.closePopup();
       resetInactivityTimer();

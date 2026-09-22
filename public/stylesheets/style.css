@@ -205,6 +205,7 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     bottom: 55px;
     max-height: 45dvh; /* leaving room for portrait keyboard. landscape keyboard has no room at all *\/ */
     overflow-y: auto;
+    overscroll-behavior: contain;      /* don't chain scroll to page */
     width: fit-content;
     min-width: var(--combobox-minWidth);
     z-index: 1000;
