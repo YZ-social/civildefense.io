@@ -356,9 +356,15 @@ export const Hashtags = {
       li.id = `tag-option-${i}`;
       li.setAttribute('role', 'option');
       li.innerHTML = this.formatPubtag(highlight(item, matchString), item);
-      li.onpointerdown = () => this.selectorsScroll = li.scrollTop;
+      li.onpointerdown = () => {
+	console.log('pointerdown');
+	this.pointerdown = true;
+	this.selectorsScroll = li.scrollTop;
+      };
       li.onpointerup =  () => {
 	const scrollDelta = Math.abs(this.selectorsScroll - li.scrollTop);
+	console.log('pointerup', scrollDelta, item);
+	this.pointerdown = false;
 	if (scrollDelta < 3) this.selectValue(item);
       };
       listbox.appendChild(li);
@@ -384,7 +390,11 @@ export const Hashtags = {
     };
     // When we click on the listbox, the browser will first blur newtag, and then
     // we would not get the click! So here we delay closing a bit.
-    newtag.onblur = () => this.closeSelector();
+    newtag.onblur = () => {
+      console.log('blur', this.pointerdown);
+      if (this.pointerdown) return;
+      this.closeSelector();
+    }
     clickTip(newtag, Int`Add a new topic for which the map should show any alerts.`, event => { // Focusing "add topic".
       event.stopPropagation();
       Alert.closePopup();
