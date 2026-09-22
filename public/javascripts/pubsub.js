@@ -54,6 +54,11 @@ function directFireEvent(...rest) { // Send envelope to a subscribed hander.
   });
 }
 
+let burstQueue = Promise.resolve();
+function sendBurst(thunk) { // Serialize outbursts so that we and a client that subscribed to a bunch both have time to send/accept ack's.
+  burstQueue = burstQueue.then(thunk);
+}
+
 export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}) {
   // Axona allows multiple handlers on the same topic, but we don't use that in civildefense, and do not implement it here.
 
@@ -68,25 +73,26 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}
     store.remove('track', topicId, nodeTag);
   }
   if (since) { // invoke handler on any sticky data, but only after we have told client the subscription id. TODO: is there a better way?
-    setTimeout(async () => {
-      let lastEnvelope = null, lastTime = 0;
-      for (const envelope of await store.values('pub', topicId)) {
-	switch (since) {
-	case 'all':
-	  await directFireEvent(nodeTag, id, envelope);
-	  break;
-	case 'latest':
-	  if (envelope.ts > lastTime) {
-	    lastTime = envelope.ts;
-	    lastEnvelope = envelope;
+    setTimeout(() =>
+      sendBurst(async () => {
+	let lastEnvelope = null, lastTime = 0;
+	for (const envelope of await store.values('pub', topicId)) {
+	  switch (since) {
+	  case 'all':
+	    await directFireEvent(nodeTag, id, envelope);
+	    break;
+	  case 'latest':
+	    if (envelope.ts > lastTime) {
+	      lastTime = envelope.ts;
+	      lastEnvelope = envelope;
+	    }
+	    break;
+	  default: // Must be a timestamp
+	    if (envelope.ts === since) await directFireEvent(nodeTag, id, envelope);
 	  }
-	  break;
-	default: // Must be a timestamp
-	  if (envelope.ts === since) await directFireEvent(nodeTag, id, envelope);
 	}
-      }
-      if (lastEnvelope) directFireEvent(nodeTag, id, lastEnvelope);
-    }, 100);
+	if (lastEnvelope) directFireEvent(nodeTag, id, lastEnvelope);
+      }), 100);
   }
   return {topicName: {name, region, owner, write}, topicId, id};
 }
