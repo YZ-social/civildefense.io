@@ -30,7 +30,7 @@ operators.setSender((nodeId, eventHandlerId, envelope) => new Promise((resolve, 
     socket.terminate(); // close will be asynchronous.
     reject(reason); // Reject now (before close), so that caller can catch this and push message to sticky sub, if any.
   };
-  console.log('socket send', socket.readyState, ackTag, eventHandlerId);
+  console.log(new Date(), 'socket send', socket.readyState, ackTag, eventHandlerId);
   const timer = setTimeout(() => fail(`No acknowledgement for ${ackTag} in state ${socket.readyState} for handler ${eventHandlerId}.`), ACK_TIME_MS);
   operators[ackTag] = () => {
     console.log('ack', ackTag, 'from eventHandlerId', eventHandlerId);
@@ -71,7 +71,7 @@ export function configureWebsocket(server) {
 
     ws.on('error', console.error);
     ws.on('close', () => {
-      console.log('Disconnected', nodeTag);
+      console.log(new Date(), 'Disconnected', nodeTag);
       // Guarded, so that we don't double delete, and remove an active sticky sub.
       if (sockets[nodeTag]) operators.deleteSubscriber(nodeTag);
       delete sockets[nodeTag];

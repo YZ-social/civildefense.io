@@ -43,7 +43,7 @@ export function setSender(receiver) { // Set the means by which we fire events o
 
 function directFireEvent(...rest) { // Send envelope to a subscribed hander.
   return invoke(...rest).catch(async error => { // Error sending, e.g., nodeTag is gone and we had not yet noticed.
-    console.log(error.message || error);
+    console.log(new Date(), error.message || error);
     const [nodeTag, id, envelope] = rest;
     await deleteSubscriber(nodeTag);
     const topic = envelope.topic;
