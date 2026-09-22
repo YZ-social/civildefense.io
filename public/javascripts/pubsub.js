@@ -73,10 +73,11 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}
     store.remove('track', topicId, nodeTag);
   }
   if (since) { // invoke handler on any sticky data, but only after we have told client the subscription id. TODO: is there a better way?
-    setTimeout(() =>
-      sendBurst(async () => {
+    setTimeout(async () => {
+      //sendBurst(async () => {
 	let lastEnvelope = null, lastTime = 0;
 	for (const envelope of await store.values('pub', topicId)) {
+	  if (!await store.get('sub', topicId, nodeTag)) return;
 	  switch (since) {
 	  case 'all':
 	    await directFireEvent(nodeTag, id, envelope);
@@ -92,7 +93,8 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}
 	  }
 	}
 	if (lastEnvelope) directFireEvent(nodeTag, id, lastEnvelope);
-      }), 100);
+      //});
+    }, 100);
   }
   return {topicName: {name, region, owner, write}, topicId, id};
 }
