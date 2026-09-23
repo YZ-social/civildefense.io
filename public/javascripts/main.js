@@ -8,6 +8,7 @@ import { getPointInCell, getSmallestCellSurrounding } from './s2.js';
 import { Alert, getShareableURL, share } from './alert.js';
 import { Hashtags } from './hashtags.js';
 import { map, showMessage, updateLocation, recenterMap } from './map.js';
+import { dht } from './protocol.js';
 import {postServiceMessage} from './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
 //const postServiceMessage = null;
 export {postServiceMessage};
@@ -315,7 +316,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
       networkPromise = promise;
       console.log('Creating node.');
       Alert.clearPushData();
-      resolve(await P2PWebNetwork.create({pushPersistor: postServiceMessage && localStorage}));
+      resolve(await P2PWebNetwork.create({pushPersistor: postServiceMessage && (dht === 0) && localStorage}));
       networkPromise.then(contact => {
 	globalThis.contact = contact; // For debugging.
 	// On leaving, we would like to copy stored data and politely say 'bye' (so others can clean up their connections). Alas:
