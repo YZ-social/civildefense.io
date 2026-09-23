@@ -78,6 +78,7 @@ export function configureWebsocket(server) {
     });
   });
 
+  const HEARTBEAT_MS = 20e3;
   const interval = setInterval(function ping() { // Keep-alive ping/pong on interval
     wss.clients.forEach(function each(ws) {
       if (!ws.isAlive) {
@@ -90,5 +91,5 @@ export function configureWebsocket(server) {
       }
       return null;
     });
-  }, 20e3);
+  }, HEARTBEAT_MS);
 }
