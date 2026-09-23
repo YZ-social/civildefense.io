@@ -121,8 +121,10 @@ clickTip(showNotifications.parentElement, Int`Enable local ${osName()} notifcati
   event.stopPropagation();
 });
 showNotifications.onchange = () => {
+  const wantsNotification = showNotifications.checked;
+  localStorage.setItem('notificationsRequested', wantsNotification ? '1' : '');
+  const hasPermission = window.Notification?.permission;
   if (window.Notification?.permission === 'granted') {
-    localStorage.setItem('notificationsRequested', showNotifications.checked ? '1' : '');
     noteNotificationPermission('granted');
   } else {
     window.Notification?.requestPermission().then(noteNotificationPermission);
