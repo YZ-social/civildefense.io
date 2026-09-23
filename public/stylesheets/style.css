@@ -412,9 +412,8 @@ md-outlined-icon-button minidenticon-svg, md-outlined-icon-button img {
 .alert-pin minidenticon-svg {
     display: inline-block;
     position: relative;
-    height: 40px;
-    width: 40px;
-    top: 7px;
+    height: 30px;
+    width: 30px;
     background: white;
 }
 .alert form {
