@@ -250,6 +250,7 @@ export const Hashtags = {
       if (chip.label === newTag) chip.classList.add('pub');
       else if (chip.label === oldTag) chip.classList.remove('pub');
     }
+    this.onchange({redisplaySubscribers: false, resetSubscriptions: false});
     return oldTag;
   },
 
