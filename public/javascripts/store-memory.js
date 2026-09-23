@@ -31,7 +31,9 @@ function cancelTimer(type, topicId, subject) {
 }
 
 function get(type, topicId, subject) {
-  return bucketFor(data, type, topicId)?.[subject];
+  const bucket = bucketFor(data, type, topicId);
+  console.log('get', {type, topicId, subject, bucket}); // fixme remove
+  return bucket?.[subject];
 }
 function set(type, topicId, subject, value, ttlMs) {
   cancelTimer(type, topicId, subject); // replacing a value resets its expiry

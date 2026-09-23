@@ -48,8 +48,8 @@ function directFireEvent(...rest) { // Send envelope to a subscribed hander.
     await deleteSubscriber(nodeTag);
     const topic = envelope.topic;
     const topicId = await deriveTopicId(topic);
-    const subscription = await store.get('sub', topicId, id);
-    console.log('push error activation:', topic, topicId, id, subscription);
+    const subscription = await store.get('sub', topicId, nodeTag);
+    console.log('direct-send error, activating:', topic, topicId, id, subscription);
     if (subscription) push(envelope, subscription, PUBLISH_TIMEOUT); // Do not wait for push.
   });
 }
