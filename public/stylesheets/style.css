@@ -444,6 +444,7 @@ md-outlined-icon-button minidenticon-svg, md-outlined-icon-button img {
     width: 100px;
 }
 .alert md-icon {
+    font-size: 20px;
     width: 22px;
     height: 22px;
 }
