@@ -71,6 +71,11 @@ md-outlined-text-field {
     max-width: 90vw;
     min-width: min(84vw, 600px);
     max-height: 80vh;
+}
+.leaflet-popup-content .scroller {
+    max-height: calc(80vh - 50px - 56px);
+}
+.leaflet-popup-content .scroller, .display-content {
     overflow: auto;
 }
 /* Safari. Example dimensions are iPhone 17 pro max simulator */
@@ -475,10 +480,10 @@ md-menu {
 .changeHashtag {
     anchor-name: --changeHashtag;
 }
-.correspondent.avatar {
+.leaflet-popup-content > div.attribution:not(.replies) > .correspondent.avatar {
     anchor-name: --correspondentAvatar;
 }
-.attribution > .share {
+.leaflet-popup-content > div.attribution:not(.replies) > .share {
     anchor-name: --share;
 }
 .reply-input [slot="leading-icon"] {
@@ -571,6 +576,7 @@ md-menu-item minidenticon-svg {
 .reply .attribution {
     border-style: solid solid none solid;
     border-radius: 12px 12px 0 0;
+    border-width: thin;
 }
 .reply .message {
     color: black;

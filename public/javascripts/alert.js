@@ -176,7 +176,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	this.constructor.clearEventMarkers(eventName, aggregate);
       } else {
 	this.noteEventName(eventName);
-	marker.bindPopup('', {className: 'alert'})
+	marker.bindPopup('', {
+	  className: 'alert',
+	  autoPanPaddingTopLeft: (localStorage.getItem('.firstConversation') || localStorage.getItem('.firstPublish')) ? null : [5, 140]
+	})
 	  .on('popupopen', event => this.ensureContent(event.popup))
 	  .on('popupclose', () => this.closeTeach());
 	tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
@@ -658,8 +661,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
     this.needsRedisplay = false;
     const {issuedTime, originalPosting, hashtag, agent}  = this;
     this.clearAvatars(popup);
-    let content = this.formatAttribution({agent, issuedTime, originalPosting, hashtag});
-    content += this.formatReplies();
+    let content = `${this.formatAttribution({agent, issuedTime, originalPosting, hashtag})}
+<div class="scroller">${this.formatReplies()}</div>
+${this.formatReplyInput()}`;
     popup.setContent(content);
     const onFirstNewPopup = () => {
       const popup = this.marker.getPopup();
@@ -908,7 +912,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const formattedReplies = items.map(formatReply).join('');
     return `
 <div class="replies">${formattedReplies}</div>
-<div class="attachment-preview"></div>
+<div class="attachment-preview"></div>`;
+  }
+  formatReplyInput() {
+    return `
 <md-outlined-text-field class="reply-input" type="textarea" rows="1" label="${Int`reply here`}">
   <md-tonal-icon-button slot="leading-icon">
     <md-icon class="material-icons">attach_file</md-icon>
