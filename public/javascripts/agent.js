@@ -332,7 +332,6 @@ export class Agent {
       fileChooser.oncancel = event => {
 	consume(event);
 	console.log('cancel my avatar');
-	myAgent.updateValue(this.spinner, 'public', 'avatar', false);
 	myAgent.updateValue(null, 'public', 'avatar');
 	myAgent.persistPrivate(null, 'avatar'); // So that we'll have it next session.
 	console.log('clearing avatar selection');
