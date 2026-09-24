@@ -1,7 +1,7 @@
 const { localStorage, URL, URLSearchParams } = globalThis;
 import * as L from 'leaflet';
 import { Int } from './translations.js';
-import { consume } from './display.js';
+import { consume, teach } from './display.js';
 import { Agent } from './agent.js';
 import { networkPromise, closeAll } from './main.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
@@ -10,27 +10,6 @@ import { resetInactivityTimer, tooltip } from './main.js';
 import { Hashtags } from './hashtags.js';
 
 export let map; // Leaflet map object.
-
-const infoBanner = document.getElementById('info');
-let messageTimeout;
-export function showMessage(message, type = 'loading', errorObject) { // Show loading/instructions/error message.
-  if (errorObject || type === 'error' ) console.error(message, errorObject || '');
-  else if (message) console.warn(message);
-  if (!message) {
-    infoBanner.style.display = 'none';
-    return;
-  }
-
-  if (infoBanner.style) infoBanner.style = '';
-  infoBanner.innerHTML = message;
-  const className = `info-banner ${type}`;
-  if (infoBanner.className !== className) infoBanner.className = className;
-
-  if (type === 'instructions') {
-    clearTimeout(messageTimeout);
-    messageTimeout = setTimeout(() => infoBanner.style.display = 'none', 5e3);
-  }
-}
 
 function  flashElement(selector) {
   const element = document.querySelector(selector);

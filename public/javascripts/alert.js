@@ -2,9 +2,9 @@ import * as L from 'leaflet';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { generateVapidKeys } from './browser-push.js';
 import { Int } from './translations.js';
-import { map, trackMap, showMessage } from './map.js';
+import { consume, teach, closeTeach, showMessage } from './display.js';
+import { map, trackMap } from './map.js';
 import { closeAll, postServiceMessage, networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, clickTip, getText, openAbout, delay, osName, lastCells } from './main.js';
-import { consume } from './display.js';
 import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
 import { Conversation, Reply } from './conversation.js';
@@ -181,7 +181,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	  autoPanPaddingTopLeft: (localStorage.getItem('.firstConversation') || localStorage.getItem('.firstPublish')) ? null : [5, 140]
 	})
 	  .on('popupopen', event => this.ensureContent(event.popup))
-	  .on('popupclose', () => this.closeTeach());
+	  .on('popupclose', () => closeTeach());
 	tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
 	if (tag === openOnReceive) {
 	  openOnReceive = false;
@@ -670,20 +670,10 @@ ${this.formatReplyInput()}`;
       if (!popup) delay(50).then(onFirstNewPopup);
       popup.update();
       this.initializeHandlers(popup);
-      this.teach('firstConversation');
-      if (Agent.isMine(this.agent)) this.teach('firstPublish');
+      teach('firstConversation');
+      if (Agent.isMine(this.agent)) teach('firstPublish');
     };
     onFirstNewPopup();
-  }
-  teach(classname) {
-    if (localStorage.getItem(classname)) return;
-    localStorage.setItem(classname, '1');
-    document.body.classList.toggle(classname, true);
-    document.querySelectorAll('.teach').forEach(element => element.onclick = () => this.closeTeach());
-  }
-  closeTeach() { // All of them.
-    document.body.classList.toggle('firstConversation', false);
-    document.body.classList.toggle('firstPublish', false);
   }
 
   clearAvatars(popup = this.marker?.getPopup()) {

@@ -1,6 +1,5 @@
-const { pica, FileReader, File, URL } = globalThis;
+const { pica, FileReader, File, URL, localStorage } = globalThis;
 import { closeAll, resetInactivityTimer } from './main.js';
-import { showMessage } from './map.js';
 
 export function consume(event) { // i.e., don't close dialogs
   event?.stopPropagation();
@@ -23,4 +22,37 @@ export function openDisplay(containerIdentifier, event = null, content = undefin
 
   containerElement.classList.toggle('hidden', false);  
   return contentElement;
+}
+
+const infoBanner = document.getElementById('info');
+let messageTimeout;
+export function showMessage(message, type = 'loading', errorObject) { // Show loading/instructions/error message.
+  if (errorObject || type === 'error' ) console.error(message, errorObject || '');
+  else if (message) console.warn(message);
+  if (!message) {
+    infoBanner.style.display = 'none';
+    return;
+  }
+
+  if (infoBanner.style) infoBanner.style = '';
+  infoBanner.innerHTML = message;
+  const className = `info-banner ${type}`;
+  if (infoBanner.className !== className) infoBanner.className = className;
+
+  if (type === 'instructions') {
+    clearTimeout(messageTimeout);
+    messageTimeout = setTimeout(() => infoBanner.style.display = 'none', 5e3);
+  }
+}
+
+export function teach(classname) {
+  if (localStorage.getItem(classname)) return;
+  localStorage.setItem(classname, '1');
+  document.body.classList.toggle(classname, true);
+  document.querySelectorAll('.teach').forEach(element => element.onclick = closeTeach);
+}
+export function closeTeach() { // All of them.
+  document.body.classList.toggle('firstConversation', false);
+  document.body.classList.toggle('firstPublish', false);
+  document.body.classList.toggle('firstTopics', false);
 }

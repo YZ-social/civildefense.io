@@ -1,7 +1,7 @@
 const { localStorage } = globalThis; // For linters.
+import { teach, showMessage } from './display.js';
 import { stripLeadingEmoji, canonicalTag } from './versions.js';
 import { Int } from './translations.js';
-import { showMessage } from './map.js';
 import { Alert } from './alert.js';
 import { resetInactivityTimer, clickTip } from './main.js';
 
@@ -453,3 +453,4 @@ globalThis.Hashtags = Hashtags; // for debugging
 // First the persisted/default data:
 const persisted = JSON.parse(localStorage.getItem('hashtags') || `{"🍰 ${Int`cake`}": true, "${help}": "pub"}`);
 Object.entries(persisted).forEach(([tag, active]) => Hashtags.add(tag, active, false));
+if (!location.search.includes('alert') && !localStorage.firstTopics) teach('firstTopics');

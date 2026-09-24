@@ -495,6 +495,16 @@ md-filter-chip[label="🆘 help"], md-filter-chip[label="🆘 ayuda"] {
 .leaflet-popup-content-wrapper {
     anchor-name: --popup;
 }
+#aboutButton {
+    anchor-name: --cdOptions;
+}
+md-filter-chip:first-of-type {
+    anchor-name: --firstTopicChip;
+}
+.newtag {
+    anchor-name: --combobox-newtag;
+}
+body:not(.firstTopics) .firstTopics,
 body.firstPublish.firstConversation .firstConversation .correspondent,
 body:not(.firstPublish) .firstPublish,
 body:not(.firstConversation) .firstConversation {
@@ -523,6 +533,22 @@ body:not(.firstConversation) .firstConversation {
     left: anchor(--popup left);
     background: linear-gradient(var(--md-sys-color-primary), color-mix(in srgb, var(--md-sys-color-primary), white 40%));
 }
+.teach.cdOptions {
+    position-anchor: --cdOptions;
+    top: calc(anchor(bottom) + 15px);
+    right: anchor(right);
+    background: linear-gradient(var(--md-sys-color-primary), color-mix(in srgb, var(--md-sys-color-primary), white 40%));
+}
+.teach.toggleTopic {
+    position-anchor: --firstTopicChip;
+    bottom: calc(anchor(top) + 15px);
+    right: anchor(right);
+}
+.teach.addTopic {
+    position-anchor: --combobox-newtag;
+    bottom: calc(anchor(top) + 15px);
+    left: anchor(left);
+}
 .teach:after {
     content: "";
     position: absolute;
@@ -550,6 +576,21 @@ body:not(.firstConversation) .firstConversation {
     top: -15px;
     left: 32px;
     border-width: 0 15px 15px;
+}
+.teach.cdOptions:after {
+    top: -15px;
+    right: 25px;
+    border-width: 0 15px 15px;
+}
+.teach.toggleTopic:after {
+    bottom: -15px;
+    right: 45px;
+    border-width: 15px 15px 0;
+}
+.teach.addTopic:after {
+    bottom: -15px;
+    left: 45px;
+    border-width: 15px 15px 0;
 }
 md-outlined-button {
     padding: 10px;

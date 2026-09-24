@@ -1,13 +1,13 @@
 const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, URL, Notification } = globalThis; // For linters.
 import { appVersion } from './versions.js';
 import { Int } from './translations.js';
-import { openDisplay } from './display.js';
+import { openDisplay, showMessage } from './display.js';
 import { Agent} from './agent.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { getPointInCell, getSmallestCellSurrounding } from './s2.js';
 import { Alert, getShareableURL, share } from './alert.js';
 import { Hashtags } from './hashtags.js';
-import { map, showMessage, updateLocation, recenterMap } from './map.js';
+import { map, updateLocation, recenterMap } from './map.js';
 import { dht } from './protocol.js';
 import {postServiceMessage} from './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
 //const postServiceMessage = null;
@@ -398,6 +398,9 @@ initText('.firstPublish .teach.correspondent');
 initText('.teach.share');
 initText('.teach.attach');
 initText('.teach.changeHashtag');
+initText('.teach.toggleTopic');
+initText('.teach.addTopic');
+initText('.teach.cdOptions');
 
 clickTip('#aboutButton', Int`Information about this app, and options to change notifications or how you appear to others.`, event => { // open about
   closeAll();
