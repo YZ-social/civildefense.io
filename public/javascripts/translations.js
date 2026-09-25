@@ -80,9 +80,9 @@ const translations = {
   ['.teach.attach']: {en: "Attach a file to your reply.", es: "Adjunta un archivo a tu respuesta."},
   ['.teach.share']: {en: "Share this alert through other programs.", es: "Comparte esta alerta a través de otros programas."},
   ['.teach.changeHashtag']: {en: "Delete your alert or change its topic.", es: "Elimina tu alerta o cambia su tema."},
-  ['.teach.toggleTopic']: {en: "Toggle whether a topic is shown on the map."},
-  ['.teach.addTopic']: {en: "Add a new topic."},
-  ['.teach.cdOptions']: {en: "Options and more information."},
+  ['.teach.toggleTopic']: {en: "Toggle whether a topic is shown on the map.", es: "Alterna si un tema se muestra en el mapa"},
+  ['.teach.addTopic']: {en: "Add a new topic.", es: "Añadir un nuevo tema."},
+  ['.teach.cdOptions']: {en: "Options and more information.", es: "Opciones y más información."},
 
   ['#describePrivate1']: {en: "Here are your private labels for", es: "Aquí están sus etiquetas privadas para"},
   ['#describePrivate2']: {en: "to help you recognize posts from them:", es: "Para ayudarte a reconocer publicaciones de ellas:"},

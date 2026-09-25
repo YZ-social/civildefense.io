@@ -453,4 +453,4 @@ globalThis.Hashtags = Hashtags; // for debugging
 // First the persisted/default data:
 const persisted = JSON.parse(localStorage.getItem('hashtags') || `{"🍰 ${Int`cake`}": true, "${help}": "pub"}`);
 Object.entries(persisted).forEach(([tag, active]) => Hashtags.add(tag, active, false));
-if (!location.search.includes('alert') && !localStorage.firstTopics) teach('firstTopics');
+if (!location.search.includes('alert')) teach('firstTopics');
