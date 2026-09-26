@@ -251,6 +251,12 @@ async function showNotification({lat, lng, issuedTime, hashtag, alert, body = ''
   const queryString = `./?tags=${encodeURIComponent(hashtag)}&lat=${lat}&lng=${lng}&alert=${alert}`;
   const url = new URL(queryString, base).href; // For opening page when it has been closed.
   const data = {lat, lng, url, issuedTime};
+  // We currently specify tag:alert, renotify:true to show each notification but then collapse by conversation to show only the latest message.
+  // If the platform actually implements that correctly, we cannot cancel a deleted most-recent reply, because the previous isn't retained.
+  // If we change to not specify these params, then we should go ahead and cancel any deleted tag (in AlertReply#delete).
+  // As of 9/25/26, it appears that:
+  // Desktop Chrome ignores renotify, such that it does collapse but does not renotify.
+  // Desktop Safari ignores tag, such that each alert is individual and gets renotified accordingly (as if renotify were always true).
   const options = {icon, timestamp, body, data, tag: alert, renotify: true};
   console.log('showNotification', {seenKey, hashtag, options});
   await self.registration.showNotification(hashtag, options);

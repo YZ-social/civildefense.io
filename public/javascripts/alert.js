@@ -93,7 +93,7 @@ class AlertReply extends Reply {
     // and contents, and then have ensureContent() arrange in its delayed followup to replace the placeholder when the promise
     // resolves.
     await super.initialize(properties);
-    const {container, agent, issuedTime, payload, alert} = properties;
+    const {payload} = properties;
     const {file:attachmentTopic} = payload;
     if (attachmentTopic) {
       const contact = await networkPromise;
@@ -104,12 +104,14 @@ class AlertReply extends Reply {
     this.showNotification();
     return this;
   }
+  update({topic, ts, alert, ...rest}) { // Ignore some.
+    return super.update({...rest});
+  }
   get body() {
     const {payload} = this;
     const body = payload.message || payload.name || payload;
     return body;
   }
-  update() { } // TODO: are we really getting multiple reply events for the same data?
   // We coalesce notifications by tags. If we did not, it would be nice to remove the
   // notification if the reply is deleted.
   // Since we do coelesce, that's largely unnecessary. However, there is still the case
@@ -120,8 +122,19 @@ class AlertReply extends Reply {
   // So... for now, we do not remove alerts at all, because in the one case that it matters,
   // it could result in a user becoming unaware of the remaining messages.
   showNotification({force = false} = {}) {
-    const {container, agent, issuedTime, body, alert} = this;
-    container.showNotification({agent, issuedTime, body, alert, force});
+    const {container, agent, issuedTime, body} = this;
+    container.showNotification({agent, issuedTime, body, force});
+  }
+  async delete() { // Form of destroy called by ensure() with no payload.
+    const alertInstance = this.container;
+    // Did this reply arrive as one of those supplemental alert publications?
+    const asAlertSupplement = Alert.removeItem(this.tag); // If from normal subscription, it will NOT be present.
+    super.delete();
+    if (asAlertSupplement) { // We did not arrive here through alertInstance.ensure(), which does the following:
+      alertInstance.needsRedisplay = true;
+      alertInstance.ensureContent();
+    }
+    // See service worker showNotification comments regarding cancel.
   }
 }
 
@@ -194,6 +207,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     alert.showNotification({agent, issuedTime});
     return keep;
   }
+
   susbscribed = false;
   async ensureRepliesSubscribed(unsubscribe = false) { // Listen for replies to this alert.
     const {tag, region, aggregate, subscribed} = this;
@@ -207,6 +221,18 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
   update({topic, ts, ...rest}) { // Called when handling an existing Conversation. super confirms that nothing immutable has changed.
     return super.update({...rest}); // topic and ts vary with level, and so must not be part of ensure/update checks.
+  }
+  static async ensure({alert, ...data}) { // If alert is truthy, this was a supplemental publication about a reply to the specified alert.
+    if (!alert) return super.ensure(data); // Normal initialize/update above.
+    const existingAlert = this.getItem(alert);
+    if (!existingAlert) throw new Error(`No alert found for ${alert}. Maybe expired?`);
+    const { tag:replyTag } = data;
+    // We are in Alert.ensure, with data that would normally appear for alertInstance.ensure() which we still call.
+    // It creates the reply adds it to alertInstance.items and promises the reply.
+    // Here we ALSO add that reply to Alert.items, so that a killed publication event will find/destroy it.
+    const reply = await existingAlert.ensure(data);
+    this.setItem(replyTag, reply);
+    return reply;
   }
   async destroy(markerDelayMS = 400) { // Remove this Alert pin entirely, either through unpublish, expiration, or conversion of a cell to aggregate.
     // We do not decrement Alert.subscriptions[this.eventName] and unaggregate into individual markers.
@@ -532,6 +558,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // non-overlapping cells will catch it. (Network subscriptions are much more expensive than publishing, and the app
   // users watch more than they publish, so we minimize the number of subscriptions that a user has at any moment.)
 
+  // We can also publish replies to all the S2 levels. In this case, this method is called with an explicit payload, and alert.
+
   // The app (not the network) restricts the user to publish up to maxPublish alerts over the last maxPublish minutes.
   // I.e., one / minute, but allowing bursts up to maxPublish. After that, one can still publish, but kill the oldest.
   // We keep enough data in memory that we can reproduce what to kill,m even if Alert has since scrolled off the map and been destroyed.
@@ -544,13 +572,11 @@ export class Alert extends Conversation { // A wrapper around L.marker
 			hashtag = Hashtags.getPublish(true),
 			payload = {lat, lng, originalPosting}, // If payload is null (cancels tag), lat & lng are still used to generate eventNames.
 			cancel = undefined, // First unpublish the specified data, if any. Complicated default.
-			issuedTime = Date.now(), tag,
+			issuedTime = Date.now(), tag, alert,
 			...rest
 		       }) {
     // We call all the publishing at once and return tag, without waiting for each to occur.
     // However, the 'unpublishing' (if any) is invoked first.
-    // To do this, we must hash the eventName ourselves.
-    //console.log('publish', {lat, lng, hashtag, payload, cancel, tag, issuedTime, rest});
     if (this.publishing) { console.log('skiping overlapping publish'); return null; } // do not stack them up.
     try {
       this.publishing = true;
@@ -563,9 +589,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
       }
 
       const contact = await networkPromise; // subtle: The rest of this all happens synchronously, with any null payloads definitely first.
+      const limitAsAlert = payload && !alert; // Do we treat this as an alert, or something else such as a reply.
       let oldCells = null, oldHash, oldTag = null; // Recorded for logging, below.
       let lastFillIn = {lat, lng, hashtag, issuedTime};
-      if (payload) {
+      if (limitAsAlert) {
 	this.lastPublished.push(lastFillIn); // Capture the added data.
 	const periodStart = Date.now() - (this.maxPublish * 60e3); // maxPublish minutes ago.
 	this.lastPublished = this.lastPublished.filter(past => past.issuedTime >= periodStart);
@@ -584,10 +611,13 @@ export class Alert extends Conversation { // A wrapper around L.marker
       }
 
       const region = P2PWebNetwork.regionCode(lat, lng);
+      console.log('publish', {region, tag, payload, issuedTime, hashtag, alert, rest});
       const pubs = await Promise.all(eventNames.map(eventName =>
-	contact.publish({eventName, region, killTag: tag, payload: tag ? null : payload, issuedTime, hashtag, ...rest})));
-      if (payload) tag = lastFillIn.tag = pubs[0];
-      else this.lastPublished = this.lastPublished.filter(past => past.tag !== tag);
+	contact.publish({eventName, region, killTag: tag, payload: tag ? null : payload, issuedTime, hashtag, alert, ...rest})));
+      if (limitAsAlert) {
+        if (payload) tag = lastFillIn.tag = pubs[0];
+        else this.lastPublished = this.lastPublished.filter(past => past.tag !== tag);
+      }
 
       console.log('Published', {cells, n: cells.length, region, hashtag, tag, payload, oldCells, oldHash, oldTag});
       return tag;
@@ -830,10 +860,15 @@ ${this.formatReplyInput()}`;
     event.stopPropagation();
     const button = event.target;
     const inputElement = button.parentElement;
-    const {tag, hashtag, lat, lng, region} = this;
-    let payload = {message: inputElement.value.trim(), lat, lng};
+    const {tag:alert, hashtag, lat, lng, region} = this;
+    const message = inputElement.value.trim();
+    const issuedTime = Date.now();
+    // Users won't subscribe to tag unless the alert itself has already landed, and that has lat/lng/hashtag.
+    // However, these must be included anyway in case the receiving user clicks on an out-of-band
+    // notification at a later time, without the alert being on the map at that moment.
+    let payload = {message, lat, lng};
     const files = inputElement.parentElement.querySelector('input[type="file"]').files;
-    if (!payload && !files.length) return;
+    if (!message && !files.length) return;
     inputElement.value = '';
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     const contact = await networkPromise;
@@ -841,21 +876,33 @@ ${this.formatReplyInput()}`;
       const {topic:file, msgIds} = await contact.chunkifyBlob({blob: files[0], region});
       payload.file = file;
     }
-    // Users won't subscribe to tag unless the alert itself has already landed, and that has lat/lng/hashtag.
-    // However, these must be included anyway in case the receiving user clicks on an out-of-band
-    // notification at a later time, without the alert being on the map at that moment.
-    await contact.publish({eventName: tag, region, payload, hashtag, alert: tag}); // Publish the new reply.
+    // A reply can be sent to the alert-specific topic that clients subscribe to when they open a conversation on that alert,
+    // or it can be sent to all the containing cells, just like an alert.
+    //
+    // We generally want to do only the first, so that it is only received (and generates a notification) for those
+    // actually interested in the conversation around that alert. However, it is useful to send the FIRST
+    // reply to all the containing cells, so that they know there is a conversation and can get a notification with the message,
+    // even if they don't yet know they want to follow that conversation.
+    //
+    // It is ok (but unnecessary) if we send both ways, or if there is a race between two people to be first such that
+    // both send to all the containing cells. The AlertReply.ensure mechanism will handle either and dedupe.
+    // However, to make dedupe work, we rely on a "pun": In both of the two ways to publish, we rely on
+    // the parameters being the same so that the computed msgId is the same so that duplicates can be deduped.
+    if (this.items.length) await contact.publish({eventName: alert, region, payload, hashtag, alert, issuedTime}); // To alert-specific topic.
+    else await this.constructor.publish({lat, lng, payload, hashtag, alert, issuedTime}); // To all containing cells.
     Agent.current.persistPublicMetadata();
   }
   deleteReply(replyElement) {
+    // We won't be here unless we are the signer, so we will have permission to kill the publication.
     resetInactivityTimer();
     const {lat, lng, region, tag} = this;
-    const killTag = replyElement.dataset.tag;
+    const replyTag = replyElement.dataset.tag;
+    const reply = this.getItem(replyTag);
     networkPromise.then(async contact => {
-      // We won't be here unless we are the signer.
-      await contact.publish({eventName: tag, region, killTag, payload: null});
+      // If reply was sent as a supplemental publish, we need to kill it the same way.
+      if (this.constructor.getItem(replyTag)) await Alert.publish({lat, lng, tag: replyTag, payload: null, cancel: null});
+      else await contact.publish({eventName: tag, region, killTag: replyTag, payload: null}); // Normal reply with a single event to kill.
       // IFF there's an attachment AND we're given msgIds by receiveChunkedBytes, then delete the attachment.
-      const reply = this.getItem(killTag);
       const {attachmentTopic, msgIds = []} = reply?.payload || {};
       if (msgIds.length) {
 	const {name, owner, region} = attachmentTopic;

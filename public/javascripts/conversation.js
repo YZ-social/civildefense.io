@@ -59,8 +59,8 @@ export class Conversation extends Tagged { // A conversation with replies.
     return items.find(reply => reply.tag === tag);
   }
   setItem(tag, item) { // Adds reply to cache, maintaining order. Ignores tag.
-    const { items } = this;        
-    items.push(item);
+    const { items } = this;
+    if (!items.includes(item)) items.push(item);
     items.sort((a, b) => a.issuedTime - b.issuedTime); // In case they arrive out of order. Typically just a check.
     return item;
   }
