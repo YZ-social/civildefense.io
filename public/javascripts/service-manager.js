@@ -62,17 +62,21 @@ const checkButton = document.getElementById('checkForUpdates');
 const updateText = document.getElementById('updateStatus');
 const downloadButton = document.getElementById('downloadUpdates');
 const downloadButton2 = document.getElementById('downloadUpdates2');
+const newVersionHeader = document.getElementById('newVersionHeader');
 
 function getServiceVersion() { // Ask the service worker to send back it's version, which will trigger a compare.
   console.log('requesting service-worker version');
   postServiceMessage('version', appVersion);
 }
-function newVersionAvailable(newVersion) {
+function versionHTML({serviceVersion, releaseNotesURL}) {
+  return `<a href="${releaseNotesURL}" target="yz.sidebar">${serviceVersion}</a>`;
+}
+function newVersionAvailable(version) {
   // Set up all the buttons and displays in case the user declines the popup,
   // and then open the popup.
   checkButton.classList.toggle('hidden', true);
   downloadButton.classList.toggle('hidden', false);
-  updateText.textContent = `${Int`Version`} ${newVersion} ${Int`available`}.`;
+  newVersionHeader.innerHTML = updateText.innerHTML = `${Int`Version`} ${versionHTML(version)} ${Int`available`}.`;
   openDisplay('updateContainer');
 }
 async function installUpdate(event, newVersion) {
@@ -133,10 +137,11 @@ await navigator.serviceWorker
       switch (method) {
       case 'version':
 	console.log('Comparing service worker version', params, 'to app version', appVersion);
-	if (params === appVersion) {
+	if (params.serviceVersion === appVersion) {
 	  //console.log('Checked version', appVersion);
+	  document.getElementById('appVersion').innerHTML = versionHTML(params);
 	} else {
-	  serviceVersion = params;
+	  serviceVersion = params.serviceVersion;
 	  newVersionAvailable(params);
 	}
 	break;

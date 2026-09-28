@@ -1,6 +1,7 @@
 const { Request, Response, URL, clients} = self;
 // Little point in trying to automatically pull this through package.json, as we need a byte change in THIS file to trigger a new worker.
-const serviceVersion = '5.2.0';
+const serviceVersion = '5.2.1';
+const releaseNotesURL = 'https://docs.google.com/document/d/1GmBqqiEv2EA6R5qrtY9emmmzdZPzOt1egARBHVgoeEQ/edit?usp=sharing';
 
 const cacheList = [ // The files we need.
   "/",
@@ -280,7 +281,7 @@ self.addEventListener('message', event => {
   const {method, params} = event.data;
   switch (method) {
   case 'version':
-    event.waitUntil(event.source.postMessage({method: 'version', params: serviceVersion}));
+    event.waitUntil(event.source.postMessage({method: 'version', params: {serviceVersion, releaseNotesURL}}));
     break;
   case 'cacheSource': // Cache source in the given version.
     event.waitUntil(cacheSource(params, event)

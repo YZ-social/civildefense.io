@@ -382,7 +382,6 @@ initText('#aboutFade');
 initText('#version');
 initText('#checkForUpdates');
 initText('#downloadUpdates');
-initText('#newVersionHeader');
 initText('#updateNowQuestion');
 initText('#updateReload');
 initText('#updateDefer');
