@@ -182,8 +182,8 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     pointer-events: auto;
 }
 .button-container {
-    bottom: 0;
-    left: 5px;
+    bottom: 5px;
+    left: 10px;
     position: absolute;
     display: flex;
     gap: 5px;
