@@ -80,7 +80,7 @@ export function go({lat = null, lng = null, zoom = null, alert = null}) { // Go 
 }
 
 class AlertReply extends Reply {
-  async initialize(properties) { // Set properties of this AlertReply.
+  async initialize({...properties}) { // Set properties of this AlertReply.
     // Currently, this waits for any attachment to be fetched. (Conversation.ensure() will wait as long as we need.)
     // This means that the alert will not show up until we have the attachments, and then it shows up all at once with the text,
     // attribution, and attachment. (There's no img or video "loading" period because the attachment comes through as a complete
@@ -92,15 +92,17 @@ class AlertReply extends Reply {
     // a promise to reassemble the attachment, have formatReply create a findable placeholder to later replace with the A element
     // and contents, and then have ensureContent() arrange in its delayed followup to replace the placeholder when the promise
     // resolves.
-    await super.initialize(properties);
     const {payload} = properties;
-    const {file:attachmentTopic} = payload;
+    const {message = payload, file:attachmentTopic} = payload;
     if (attachmentTopic) {
       const contact = await networkPromise;
       // Before pushing data on to replies.
       const {dataURL:file, name, msgIds} = await contact.assembleChunkedDataURL(attachmentTopic);
-      Object.assign(payload, {file, name, attachmentTopic, msgIds});
+      Object.assign(properties, {message, file, name, attachmentTopic, msgIds});
+    } else {
+      properties.message = message;
     }
+    await super.initialize(properties);
     this.showNotification();
     return this;
   }
@@ -108,9 +110,8 @@ class AlertReply extends Reply {
     return super.update({...rest});
   }
   get body() {
-    const {payload} = this;
-    const body = payload.message || payload.name || payload;
-    return body;
+    const {message, name} = this;
+    return message || name || '';
   }
   // We coalesce notifications by tags. If we did not, it would be nice to remove the
   // notification if the reply is deleted.
@@ -924,9 +925,8 @@ ${this.formatReplyInput()}`;
   // If present the attachment will be an A element with download attribute, surrounding either an IMG, A/V player, or an attachment icon followed by the file name.
   formatReplies() { // Answer HTML for the replies and input box.
     const { items, agent, originalPosting } = this;
-    const formatReply = ({tag, payload, hashtag, ...rest}) => {
-      const {message = payload, file, name} = payload || {}; // Message text converts recognized urls to A/V players or links.
-      let text = message
+    const formatReply = ({tag, message, file, name, hashtag, ...rest}) => {
+      let text = message  // Message text converts recognized urls to A/V players or links.
 	  .replace(/https?:\/\/\S+\.(mp3|aac|ogg|oga|opus|m4a|m3u|mpu|mpd)$/ig, url => `<audio controls src="${url}" crossorigin="anonymous"></audio>`) // show audio urls as players
 	  .replace(/https?:\/\/\S+\.(mp4|mov|webm|m3u8)$/ig, url => `<video controls src="${url}" crossorigin="anonymous"></video>`) // show video urls as players
 	  .replace(/(?<!")https?:\/\/\S+/g, url => `<a href="${url}" target="yz.sidebar">${url}</a>`); // show urls as links

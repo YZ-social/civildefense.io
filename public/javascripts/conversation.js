@@ -9,7 +9,9 @@ export class Tagged { // Maintains cached existence within a (possibly instance-
 
   // These next three instance methods are not generally called directly, but are here for extending by subclasses.
   initialize({...properties} = {}) { // Initialization of a new object. (Includes tag.) Must return this, or null to not cache.
-    // Application subclass will typically extend this with UI initialization
+    // Application subclass will typically extend this with UI initialization.
+    // It is perfectly fine for subclasses to assign additional properties, but it must not alter the given properties
+    // such that cached ensure => update of the same data would fail to be idempotent.
     Object.assign(this, properties);
     return this;
   }
