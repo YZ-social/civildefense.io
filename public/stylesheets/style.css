@@ -27,17 +27,21 @@
     /* --md-sys-color-surface-container-highest: purple;   */
     /* --md-sys-color-surface-container-lowest: purple;       */
 }
-* {
+body {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-}
 
-body {
     font-family: Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen, Ubuntu, Cantarell, sans-serif;
     overflow: hidden;
     color: var(--md-sys-color-primary);
 }
+md-checkbox { margin: 0; }
+.message > p, .message > ul, .message > ol {
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
 .leaflet-bar a, .leaflet-container a.leaflet-popup-close-button, .leaflet-popup-content-wrapper {
     color: var(--md-sys-color-primary);
     border-color: var(--md-sys-color-primary);
@@ -620,6 +624,7 @@ md-menu-item minidenticon-svg {
     border-width: thin;
 }
 .reply .message {
+    font-size: 18px;
     color: black;
     border-color: var(--md-sys-color-primary);
     border-width: 1px;

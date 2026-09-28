@@ -22,8 +22,10 @@
   "dependencies": {
     "@axona/protocol": "github:axona-net/axona-protocol#semver:^4.84.0",
     "cors": "^2.8.6",
+    "dompurify": "^3.4.16",
     "express": "^4.22.1",
     "leaflet": "^1.9.4",
+    "marked": "^18.0.14",
     "minidenticons": "^4.2.1",
     "morgan": "^1.10.1",
     "node-datachannel": "^0.32.3",

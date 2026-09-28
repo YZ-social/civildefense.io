@@ -1,4 +1,5 @@
 import * as L from 'leaflet';
+import { marked } from 'marked';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { generateVapidKeys } from './browser-push.js';
 import { Int } from './translations.js';
@@ -950,7 +951,7 @@ ${this.formatReplyInput()}`;
   formatReplies() { // Answer HTML for the replies and input box.
     const { items, agent, originalPosting } = this;
     const formatReply = ({tag, message, file, name, hashtag, ...rest}) => {
-      let text = message  // Message text converts recognized urls to A/V players or links.
+      const text = message  // Message text converts recognized urls to A/V players or links.
 	  .replace(/https?:\/\/\S+\.(mp3|aac|ogg|oga|opus|m4a|m3u|mpu|mpd)$/ig, url => `<audio controls src="${url}" crossorigin="anonymous"></audio>`) // show audio urls as players
 	  .replace(/https?:\/\/\S+\.(mp4|mov|webm|m3u8)$/ig, url => `<video controls src="${url}" crossorigin="anonymous"></video>`) // show video urls as players
 	  .replace(/(?<!")https?:\/\/\S+/g, url => `<a href="${url}" target="yz.sidebar">${url}</a>`); // show urls as links
@@ -965,7 +966,7 @@ ${this.formatReplyInput()}`;
     ${name}
   </a>
 </div>`;
-      const messageDisplay = message ? `<span class="message">${text}</span>` : '';
+      const messageDisplay = message ? `<div class="message">${marked.parse(text)}</div>` : '';
       let dataAttributes = `data-tag="${tag}" data-text="${message}"`;
       if (file) dataAttributes += ` data-file="${file}" data-name="${name}"`;
       return `<div class="reply" ${dataAttributes}>${this.formatAttribution(rest)}${attachment}${messageDisplay}</div>`;

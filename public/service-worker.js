@@ -101,6 +101,7 @@ const cacheList = [ // The files we need.
 
   "pica/pica.min.js",
   "minidenticons/minidenticons.min.js",
+  "marked/marked.esm.js",
   "s2js/s2js.esm.js",
   "bigfloat/esm/index.js",
   "bigfloat/esm/BigFloat32",
