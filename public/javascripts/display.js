@@ -1,4 +1,4 @@
-const { pica, FileReader, File, URL, localStorage } = globalThis;
+const { FileReader, File, URL, localStorage } = globalThis;
 import { closeAll, resetInactivityTimer } from './main.js';
 
 export function consume(event) { // i.e., don't close dialogs

@@ -88,7 +88,7 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
 
   // Add OpenStreetMap tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
+    attribution: '© <a href="https://www.openstreetmap.org/copyright" target="yz.sidebar">OpenStreetMap</a> contributors',
     // Because we have a service worker AND rebuild dom structure within canvas in domtoimage, we need to tell Leaflet to not be opaque.
     crossOrigin: 'anonymous',
     maxZoom: 19
