@@ -123,8 +123,8 @@ class AlertReply extends Reply {
   // So... for now, we do not remove alerts at all, because in the one case that it matters,
   // it could result in a user becoming unaware of the remaining messages.
   showNotification({force = false} = {}) {
-    const {container, agent, issuedTime, body} = this;
-    container.showNotification({agent, issuedTime, body, force});
+    const {container, agent, issuedTime, body, tag:msgId} = this;
+    container.showNotification({msgId, agent, issuedTime, body, force});
   }
   async delete() { // Form of destroy called by ensure() with no payload.
     const alertInstance = this.container;
@@ -136,6 +136,7 @@ class AlertReply extends Reply {
       alertInstance.ensureContent();
     }
     // See service worker showNotification comments regarding cancel.
+    if (notificationsAllowed()) postServiceMessage('cancelNotification', [this.tag]);
   }
 }
 
@@ -936,12 +937,12 @@ ${this.formatReplyInput()}`;
       }
     });
   }
-  showNotification({issuedTime = this.issuedTime, body = this.label, agent = this.agent, alert = this.tag, lat = this.lat, lng = this.lng, hashtag = this.hashtag, force = false}) {
+  showNotification({issuedTime = this.issuedTime, body = this.label, agent = this.agent, msgId = this.tag, alert = this.tag, lat = this.lat, lng = this.lng, hashtag = this.hashtag, force = false}) {
     // Give OS notification that comes back to here, unless act is us.
     // All notifications on the same alert (e.g., the post and each reply) have the same tag, so OS can collapse them.
-    //console.log('alert showNotification', {lat, lng, hashtag, alert, agent, body, force});
+    console.log('alert showNotification', {lat, lng, hashtag, alert, agent, body, force});
     if (agent === Agent.tag || !notificationsAllowed()) return;
-    postServiceMessage('notify', {lat, lng, issuedTime, hashtag, alert, body, force});
+    postServiceMessage('notify', {lat, lng, issuedTime, hashtag, msgId, alert, body, force});
   }
   // Each reply element is a DIV.reply with data-tag and data-text attributes that are used in sharing.
   // It contains an attribution header with controls, zero or one attachments, and then the message text.

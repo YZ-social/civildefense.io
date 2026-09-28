@@ -232,7 +232,7 @@ async function expireStaleAlerts() { // Maintenance: declutter notifications and
   }
 }
 
-async function showNotification({lat, lng, issuedTime, hashtag, alert, body = '', force = false}) { // Promise to show a platform notification. There are two paths to here:
+async function showNotification({lat, lng, issuedTime, hashtag, msgId, alert, body = '', force = false}) { // Promise to show a platform notification. There are two paths to here:
   // 1. The app handles data from network connections, and determines that it should alert the user.
   //    In this case, the app sends the data to this service worker.
   // 2. An upstream node would like to send the data over the network, but finds that we are not connected,
@@ -240,25 +240,19 @@ async function showNotification({lat, lng, issuedTime, hashtag, alert, body = ''
   // Abstractly, this function could be in either app or service worker, but the app might not be running
   // in path 2, so it has to be here if we want to have the code in just one place.
   // Any filtering (e.g., do not show notifications for one's own alerts) happens upstream of here. (We don't know the Agent.current and the sender isn't in the notification.)
-  const seenKey = alert + body;  // If we click on a notification for an off-screen alert, we may process the alert again and try to notify again.
-  const seen = !force && await hasSeenAlert(seenKey);
-  console.log({seenKey, seen});
+  const seen = !force && await hasSeenAlert(msgId); // If we click on a notification for an off-screen alert, we may process the alert again and try to notify again.
   if (seen) return null;
-  noteSeenAlert(seenKey, issuedTime);
+  noteSeenAlert(msgId, issuedTime);
   const base = location.href;
   const timestamp = issuedTime;
   const icon = new URL('./images/civil-defense-192.png', base).href;
   const queryString = `./?tags=${encodeURIComponent(hashtag)}&lat=${lat}&lng=${lng}&alert=${alert}`;
   const url = new URL(queryString, base).href; // For opening page when it has been closed.
   const data = {lat, lng, url, issuedTime};
-  // We currently specify tag:alert, renotify:true to show each notification but then collapse by conversation to show only the latest message.
-  // If the platform actually implements that correctly, we cannot cancel a deleted most-recent reply, because the previous isn't retained.
-  // If we change to not specify these params, then we should go ahead and cancel any deleted tag (in AlertReply#delete).
-  // As of 9/25/26, it appears that:
-  // Desktop Chrome ignores renotify, such that it does collapse but does not renotify.
-  // Desktop Safari ignores tag, such that each alert is individual and gets renotified accordingly (as if renotify were always true).
-  const options = {icon, timestamp, body, data, tag: alert, renotify: true};
-  console.log('showNotification', {seenKey, hashtag, options});
+  // If we turn on {tag: alert||msgId, renotify: true} again, beware of cancelling notifications for deleted replies.
+  // See https://docs.google.com/document/d/1ZMC0JLlUbC5XnOP-oyseSUrEhByfGjPgam9mo7B9qls/edit?usp=sharing
+  const options = {icon, timestamp, body, data, tag: msgId};
+  console.log('showNotification', {msgId, hashtag, options});
   await self.registration.showNotification(hashtag, options);
   return expireStaleAlerts();
 }
@@ -266,16 +260,19 @@ async function showNotification({lat, lng, issuedTime, hashtag, alert, body = ''
 function showNotificationFromEnvelope({deleted, message, msgId}) { // We get the generic, application-independent envelope.
   console.log('received push', msgId, deleted ? 'cancel' : '');
   if (deleted) return cancelNotification(msgId);
-  const {issuedTime, hashtag, payload, alert = msgId} = message;
-  let {lat, lng, message:body, name = ''} = payload;
+  const {issuedTime, hashtag, payload} = message;
+  let {lat, lng, message:body, name = '', alert} = payload;
   body ||= name;
-  return showNotification({alert, lat, lng, issuedTime, hashtag, body});
+  return showNotification({alert, msgId, lat, lng, issuedTime, hashtag, body});
 }
 
 async function cancelNotification(tag, body = '') { // Cancel those that match tag, and if body, then only those also matching body.
   for (const notification of await self.registration.getNotifications({tag})) {
     console.log('cancel notification', {tag, body, notification});
-    if (!body || (body === notification.body)) notification.close();
+    if (!body || (body === notification.body)) {
+      notification.close();
+      await new Promise(resolve => setTimeout(resolve, 1e3));
+    }
   }
 }
 
