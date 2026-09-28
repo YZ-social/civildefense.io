@@ -30,10 +30,8 @@ operators.setSender((nodeId, eventHandlerId, envelope) => new Promise((resolve, 
     socket.terminate(); // close will be asynchronous.
     reject(reason); // Reject now (before close), so that caller can catch this and push message to sticky sub, if any.
   };
-  console.log(new Date(), 'socket send', socket.readyState, ackTag, eventHandlerId);
   const timer = setTimeout(() => fail(`No acknowledgement for ${ackTag} in state ${socket.readyState} for handler ${eventHandlerId}.`), ACK_TIME_MS);
   operators[ackTag] = () => {
-    console.log('ack', ackTag, 'from eventHandlerId', eventHandlerId);
     clearTimeout(timer);
     delete operators[ackTag];
     resolve();

@@ -97,7 +97,6 @@ if (dht < 1) {
 	  const subHandler = handlers[tag];
 	  if (subHandler) {
 	    const [ackTag, ...parameters] = rest;
-	    console.log('event', ackTag);
 	    socket.send(JSON.stringify([0, ackTag]));
 	    return subHandler(...parameters);
 	  }
