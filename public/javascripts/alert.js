@@ -175,7 +175,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       keep = null; // This new instance is superfluous. Tell ensure() to destroy it...
       aggregate.lerp(eventName, payload.lat, payload.lng); // ...but nudge the existing aggregate towards us.
     } else { // Does not exist yet
-      let {lat, lng, originalPosting} = payload;
+      let {lat, lng, label, originalPosting} = payload;
       lat = parseFloat(lat);
       lng = parseFloat(lng);
       if (this.constructor.cellCountOverLimit(eventName)) aggregate = this; // If now over, treat this marker as an aggregate.
@@ -183,7 +183,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const marker = this.marker = L.marker([lat, lng], {icon, autoPan: false}).addTo(map);
       const region = P2PWebNetwork.regionCode(lat, lng);
       hashtag = Hashtags.add(hashtag); // We already have it and are subscribing, but this updates our extended form if needed.
-      super.initialize({payload, hashtag, tag, agent, lat, lng, region, issuedTime, originalPosting, ...rest});
+      super.initialize({payload, hashtag, tag, agent, lat, lng, label, region, issuedTime, originalPosting, ...rest});
       if (aggregate) {
 	// Destroy existing eventName markers and add their positions to the aggregate we are creating.
 	this.becomeAggregate(eventName);
@@ -196,7 +196,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	})
 	  .on('popupopen', event => this.ensureContent(event.popup))
 	  .on('popupclose', () => closeTeach());
-	tooltip(marker.getElement(), Int`Show conversation for this ${hashtag} alert.`);
+	tooltip(marker.getElement(), this.label);
 	if (tag === openOnReceive) {
 	  openOnReceive = false;
 	  this.openPopup();
@@ -573,7 +573,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 			hashtag = Hashtags.getPublish(true),
 			payload = {lat, lng, originalPosting}, // If payload is null (cancels tag), lat & lng are still used to generate eventNames.
 			cancel = undefined, // First unpublish the specified data, if any. Complicated default.
-			issuedTime = Date.now(), tag, alert,
+			issuedTime = Date.now(), tag, alert, label,
 			...rest
 		       }) {
     // We call all the publishing at once and return tag, without waiting for each to occur.
@@ -581,6 +581,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     if (this.publishing) { console.log('skiping overlapping publish'); return null; } // do not stack them up.
     try {
       this.publishing = true;
+      const geocodePromise = (label === undefined) && payload && !alert && await this.reverseGeocode(lat, lng);
       const cells = getContainingCells(lat, lng);
       const eventNames = cells.map(cell => alertTopic(cell, hashtag));
       if (payload && eventNames.some(eventName => this.getAggregate(eventName))) { // Attemtpt to publish where we are showing an aggregate.
@@ -612,7 +613,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
       }
 
       const region = P2PWebNetwork.regionCode(lat, lng);
-      console.log('publish', {region, tag, payload, issuedTime, hashtag, alert, rest});
+      if (geocodePromise) payload.label = await geocodePromise;
+      else if (typeof(label) === 'string') payload.label = label;
+      console.log('publish', {region, tag, payload, issuedTime, hashtag, alert, geocodePromise, rest});
       const pubs = await Promise.all(eventNames.map(eventName =>
 	contact.publish({eventName, region, killTag: tag, payload: tag ? null : payload, issuedTime, hashtag, alert, ...rest})));
       if (limitAsAlert) {
@@ -806,14 +809,18 @@ ${this.formatReplyInput()}`;
     const sharer = `<md-outlined-icon-button class="share"><md-icon class="material-icons">ios_share</md-icon></md-outlined-icon-button>`;
     const actions = this.formatAttributionActions({agent, hashtag});
     const dataText = hashtag ? 'data-text=""' : ''; // Used in sharing.
+    const label = hashtag ? this.label : '';
     return `
 <div class="attribution" ${dataText}>
   ${sharer}
   <md-outlined-icon-button class="correspondent avatar" data-tag="${agent}"></md-outlined-icon-button>
   <div class="attribution-metadata">
-    <div class="correspondent handle" data-tag="${agent}"></div>
-    <div>${new Date(originalPosting || issuedTime).toLocaleString()}</div>
-    ${originalPosting ? `<div>${Int`updated`} ${new Date(issuedTime).toLocaleString()}</div>` : ''}
+    <div class="attribution-row">
+      <div class="correspondent handle" data-tag="${agent}"></div>
+      <div>${new Date(originalPosting || issuedTime).toLocaleTimeString()}</div>
+      ${originalPosting ? `<div>${Int`updated`} ${new Date(issuedTime).toLocaleTimeString()}</div>` : ''}
+    </div>
+    ${label ? `<div>@ ${label}</div>` : ''}
   </div>
   ${actions}
 </div>`;
@@ -840,7 +847,7 @@ ${this.formatReplyInput()}`;
     const reply = await super.ensure(data);
     if (reply) {
       if (reply === this.items[0]) { // If first sorted reply, and there's a message, update the tooltip.
-	const message = reply.payload?.message || (!reply.payload.file && reply.payload);
+	const message = reply.body;
 	const markerElement = message && this.marker.getElement();
 	if (markerElement) tooltip(markerElement, message);
       }
@@ -855,6 +862,22 @@ ${this.formatReplyInput()}`;
     this.needsRedisplay = true;
     this.ensureContent();
     return reply;
+  }
+  static async reverseGeocode(lat, lng) { // Return an address or descriptive string for something nearby.
+    const url = new URL('https://nominatim.openstreetmap.org/reverse');
+    const params = url.searchParams;
+    params.set('lat', lat);
+    params.set('lon', lng);
+    params.set('format', 'json');
+    params.set('addressdetails', 0);
+    console.log('reverseGeocode', url.href);
+    // By default, nominatim will use the local language for this location.
+    // We could specify the sender's language, but other people might not then be able to read it, and would reveal lang of poster.
+    const reply = await fetch(url);
+    if (!reply.ok) return '';
+    const json = await reply.json();
+    console.log('reverseGeocode result', json);
+    return json.display_name;
   }
   async postReply(event) { // Post a reply to this marker's tag, in response to a text-field change event.
     resetInactivityTimer();
@@ -913,7 +936,7 @@ ${this.formatReplyInput()}`;
       }
     });
   }
-  showNotification({issuedTime = this.issuedTime, body = '', agent = this.agent, alert = this.tag, lat = this.lat, lng = this.lng, hashtag = this.hashtag, force = false}) {
+  showNotification({issuedTime = this.issuedTime, body = this.label, agent = this.agent, alert = this.tag, lat = this.lat, lng = this.lng, hashtag = this.hashtag, force = false}) {
     // Give OS notification that comes back to here, unless act is us.
     // All notifications on the same alert (e.g., the post and each reply) have the same tag, so OS can collapse them.
     //console.log('alert showNotification', {lat, lng, hashtag, alert, agent, body, force});

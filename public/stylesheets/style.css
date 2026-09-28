@@ -635,6 +635,11 @@ md-menu-item minidenticon-svg {
     flex-direction: column;
     /* align-items: end; */
 }
+.attribution-row {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+}
 .alert {
     font-family: roboto;
 }
