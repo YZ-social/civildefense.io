@@ -34,7 +34,8 @@ console.log('store source', storeSource);
 
 const SUBSCRIPTION_TIMEOUT = 0; // No need, because we run deleteSubscriber on disconnect.
 const PUBLISH_TIMEOUT = 24 * 60 * 60e3;      // Delete after 24 hours.
-const TRACK_TIMEOUT = PUBLISH_TIMEOUT;
+const TRACK_TIMEOUT = PUBLISH_TIMEOUT;   // The time in which a sticky sub is tracked prior to being activated, by which it must be activated or will be abandoned.
+const ACTIVATED_STICKY_SUBSCRIPTION_TIMEOUT = 7 * PUBLISH_TIMEOUT; // How long a sticky sub lasts after activation.
 
 let invoke;
 export function setSender(receiver) { // Set the means by which we fire events over a direct connection.
@@ -44,12 +45,14 @@ export function setSender(receiver) { // Set the means by which we fire events o
 function directFireEvent(...rest) { // Send envelope to a subscribed hander.
   return invoke(...rest).catch(async error => { // Error sending, e.g., nodeTag is gone and we had not yet noticed.
     console.log(new Date(), error.message || error);
+    // invoke() has already terminated and removed the socket. But it is up to us to deleteSubscriber,
+    // and then immediately use the newly activated sticky subscription to push the message.
     const [nodeTag, id, envelope] = rest;
     await deleteSubscriber(nodeTag);
     const topic = envelope.topic;
     const topicId = await deriveTopicId(topic);
     const subscription = await store.get('sub', topicId, nodeTag);
-    if (subscription) push(envelope, subscription, PUBLISH_TIMEOUT); // Do not wait for push.
+    if (subscription) push(envelope, subscription, PUBLISH_TIMEOUT); // Do not wait for push to complete.
   });
 }
 
@@ -112,8 +115,8 @@ export async function deleteSubscriber(nodeTag) {
     const sub = await store.remove('sub', topicId, nodeTag);
     // Activate pending push subscription, if any, by moving it from 'track' to active 'sub'.
     const pushSubscription = await store.remove('track', topicId, nodeTag);
-    if (pushSubscription) {
-      await store.set('sub', topicId, nodeTag, pushSubscription, TRACK_TIMEOUT);
+    if (pushSubscription) { // This is the only place where we activate a sticky subscription.
+      await store.set('sub', topicId, nodeTag, pushSubscription, ACTIVATED_STICKY_SUBSCRIPTION_TIMEOUT);
     }
   }
 }
