@@ -1,4 +1,5 @@
 const { localStorage, URL } = globalThis;
+import DOMPurify from 'dompurify';
 import { v4 as uuidv4 } from 'uuid';
 import { minidenticonSvg } from 'minidenticons';
 import { agentTopic, agentPersistKey } from './versions.js';
@@ -85,7 +86,7 @@ export class Agent {
     //   const {dataURL} = await contact.assembleChunkedDataURL(payload);
     //   payload = dataURL;
     // }
-    this.updateValue(payload, 'public', type, false);
+    this.updateValue(DOMPurify.sanitize(payload), 'public', type, false);
     if (payload) this.trackedRegions[region][type] = tag;
     else delete this.trackedRegions[region][type];
   }
@@ -237,7 +238,7 @@ export class Agent {
     });
     privateHandle.oninput = event => {
       resetInactivityTimer();
-      this.updateValue(privateHandle.value || null, 'private', 'handle');
+      this.updateValue(DOMPurify.sanitize(privateHandle.value) || null, 'private', 'handle');
     };
     clickTip(systemAvatar, Int`Capture this unique image so that even if the user changes what they share, they will still be shown to you with this picture for alerts and replies by this user.`, event => {
       consume(event);
@@ -321,7 +322,7 @@ export class Agent {
     clickTip(myHandle, Int`Change the text label for you shown in the conversation for your alerts and replies.`, consume);
     myHandle.onchange = event => {
       resetInactivityTimer();
-      const value = myHandle.value || null;
+      const value = DOMPurify.sanitize(myHandle.value) || null;
       console.log('set my handle', value);
       myAgent.updateValue(value, 'public', 'handle');
       myAgent.persistPrivate(value, 'handle'); // So that we'll have it next session.

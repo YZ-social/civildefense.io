@@ -1,4 +1,5 @@
 const { localStorage } = globalThis; // For linters.
+import DOMPurify from 'dompurify';
 import { teach, showMessage } from './display.js';
 import { stripLeadingEmoji, canonicalTag } from './versions.js';
 import { Int } from './translations.js';
@@ -308,6 +309,7 @@ export const Hashtags = {
 	.replace(':', '.')        // Replace colon with some other separator.
 	.replace(/\s+/g, ' ')     // Replace multiple spaces with a single space
 	.normalize('NFD');        // Standardize different ways of making accents into decomposed form - but do not remove them.
+    tag = DOMPurify.sanitize(tag);
     console.log('tag:', tag);
     Alert.closePopup();
     if (!tag) return;

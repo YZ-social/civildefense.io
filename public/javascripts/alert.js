@@ -1,5 +1,6 @@
 import * as L from 'leaflet';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { generateVapidKeys } from './browser-push.js';
 import { Int } from './translations.js';
@@ -94,12 +95,13 @@ class AlertReply extends Reply {
     // and contents, and then have ensureContent() arrange in its delayed followup to replace the placeholder when the promise
     // resolves.
     const {payload} = properties;
-    const {message = payload, file:attachmentTopic} = payload;
+    let {message = payload, file:attachmentTopic} = payload;
+    message = DOMPurify.sanitize(message);
     if (attachmentTopic) {
       const contact = await networkPromise;
       // Before pushing data on to replies.
       const {dataURL:file, name, msgIds} = await contact.assembleChunkedDataURL(attachmentTopic);
-      Object.assign(properties, {message, file, name, attachmentTopic, msgIds});
+      Object.assign(properties, {message, file, name:DOMPurify.sanitize(name), attachmentTopic, msgIds});
     } else {
       properties.message = message;
     }
@@ -155,7 +157,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 
   // Conversation.ensure is the subscription handler, and it keeps track of the instances by tag, initializing a new one if needed.
   initialize({topic, payload, hashtag, tag, agent, issuedTime, ...rest}) { // Make appropriate instance for a new individual tag, or update aggregate.
-
+    hashtag = DOMPurify.sanitize(hashtag);
     const eventName = topic.name;
     const subscriptions = this.constructor.subscriptions;
     if (!Hashtags.isSubscribed(hashtag)) return null; // A subscribed event may have been in flight while unsubscribing. Caller destroys instance.
@@ -178,6 +180,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       aggregate.lerp(eventName, payload.lat, payload.lng); // ...but nudge the existing aggregate towards us.
     } else { // Does not exist yet
       let {lat, lng, label, originalPosting} = payload;
+      label = DOMPurify.sanitize(label);
       lat = parseFloat(lat);
       lng = parseFloat(lng);
       if (this.constructor.cellCountOverLimit(eventName)) aggregate = this; // If now over, treat this marker as an aggregate.
@@ -966,7 +969,7 @@ ${this.formatReplyInput()}`;
     ${name}
   </a>
 </div>`;
-      const messageDisplay = message ? `<div class="message">${marked.parse(text)}</div>` : '';
+      const messageDisplay = message ? `<div class="message">${DOMPurify.sanitize(marked.parse(text))}</div>` : '';
       let dataAttributes = `data-tag="${tag}" data-text="${message}"`;
       if (file) dataAttributes += ` data-file="${file}" data-name="${name}"`;
       return `<div class="reply" ${dataAttributes}>${this.formatAttribution(rest)}${attachment}${messageDisplay}</div>`;
