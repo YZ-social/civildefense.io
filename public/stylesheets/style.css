@@ -613,14 +613,16 @@ md-menu-item minidenticon-svg {
 }
 .reply {
     margin-top: 5px;
+    padding: 5px;
 }
 .reply > span {
     padding: 5px;
 }
-.reply > img, .reply > .attachment, .reply > a > img {
-    width: 100%;
+.reply > img, .reply > .attachment, .reply > a > img, .reply > .message {
     border-style: solid;
+    width: calc(100% - 6px);
 }
+
 .reply .attribution {
     border-style: solid solid none solid;
     border-radius: 12px 12px 0 0;
@@ -633,7 +635,7 @@ md-menu-item minidenticon-svg {
     border-width: 1px;
     border-radius: 0 0 12px 12px;
     border-style: solid;
-    width: 100%;
+    width: calc(100% - 12px);
     padding-left: 5px;
     padding-right: 5px;
     display: inline-block;
