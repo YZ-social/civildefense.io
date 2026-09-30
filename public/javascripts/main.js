@@ -428,6 +428,6 @@ initialize(false);
 
 if (isApple() && isMobile() && isStandalone()) { // No back button for in-scope links, so handle them with undocumented hack to force the to be opened in Safari (with a back button).
   document.querySelectorAll('a[target="yz.sidebar"]').forEach(a => {
-    a.onclick = event => window.open(`x-safari-${a.href}`, "_blank");
+    a.onclick = event => window.open(`x-safari-${a.href}`);
   });
 }
