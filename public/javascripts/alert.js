@@ -726,6 +726,11 @@ ${this.formatReplyInput()}`;
       const internalHighWater = Math.round(textarea.scrollHeight / parseFloat(getComputedStyle(textarea).lineHeight));
       input.rows = internalHighWater;
     };
+    if (navigator.maxTouchPoints <= 1) {
+      replyInput.onkeydown = event => {
+	if (event.key === 'Enter' && !event.shiftKey) replyButton.click();
+      };
+    }
     clickTip(replyButton, Int`Post your reply.`, event => this.postReply(event));
     clickTip(replyAttachButton, getText('.teach.attach'), event => { resetInactivityTimer(); fileChooser.click(); });
     fileChooser.onchange = event => {
