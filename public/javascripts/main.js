@@ -425,3 +425,9 @@ tooltip('#learnIdentity', Int`Click to learn about how you can choose to label y
 tooltip('#learnPWA', Int`Click to learn about installation, updates, and removal.`);
 
 initialize(false);
+
+if (isApple() && isMobile() && isStandalone()) { // No back button for in-scope links, so handle them with undocumented hack to force the to be opened in Safari (with a back button).
+  document.querySelectorAll('a[target="yz.sidebar"]').forEach(a => {
+    a.onclick = event => window.open(`x-safari-${a.href}`, "_blank");
+  });
+}
