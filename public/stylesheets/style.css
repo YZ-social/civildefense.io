@@ -460,6 +460,13 @@ md-outlined-icon-button minidenticon-svg, md-outlined-icon-button img {
 md-menu {
     min-width: 150px;
 }
+.leaflet-popup-content {
+    display: flex;
+    flex-direction: column;
+}
+.leaflet-popup-content > .attribution, .leaflet-popup-content > .reply-input {
+    flex-shrink: 0;
+}
 .attribution {
     padding: 5px;
     display: flex;
