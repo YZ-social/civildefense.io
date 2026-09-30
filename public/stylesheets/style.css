@@ -77,7 +77,7 @@ md-outlined-text-field {
     max-height: 80vh;
 }
 .leaflet-popup-content .scroller {
-    max-height: calc(80vh - 50px - 56px);
+    max-height: calc(80vh - 51px - 56px);
 }
 .leaflet-popup-content .scroller, .display-content {
     overflow: auto;
@@ -466,6 +466,9 @@ md-menu {
     flex-direction: row;
     align-items: center;
     gap: 5px;
+}
+.attribution md-outlined-icon-button, .attribution .hashtag {
+    flex-shrink: 0;
 }
 .attribution > div:last-child {
     margin-left: auto;

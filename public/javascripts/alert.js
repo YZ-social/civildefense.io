@@ -195,10 +195,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	this.constructor.clearEventMarkers(eventName, aggregate);
       } else {
 	this.noteEventName(eventName);
-	marker.bindPopup('', {
-	  className: 'alert',
-	  autoPanPaddingTopLeft: (localStorage.getItem('.firstConversation') || localStorage.getItem('.firstPublish')) ? null : [5, 140]
-	})
+	let leaveSpaceForTeachBalloons = !localStorage.getItem('firstConversation');
+	leaveSpaceForTeachBalloons ||= !localStorage.getItem('firstPublish') && Agent.isMine(agent);
+	let autoPanPaddingTopLeft = leaveSpaceForTeachBalloons ? [5, 140] : [5, 55]; // The default [5, 5] isn't enough.
+	// Alas, this does leave the first popup padding permanently with extra space, even though it isn't
+	// needed after the first opening.
+	marker.bindPopup('', {className: 'alert', autoPanPaddingTopLeft})
 	  .on('popupopen', event => this.ensureContent(event.popup))
 	  .on('popupclose', () => closeTeach());
 	tooltip(marker.getElement(), this.label);
@@ -231,7 +233,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   static async ensure({alert, ...data}) { // If alert is truthy, this was a supplemental publication about a reply to the specified alert.
     if (!alert) return super.ensure(data); // Normal initialize/update above.
     const existingAlert = this.getItem(alert);
-    if (!existingAlert) throw new Error(`No alert found for ${alert}. Maybe expired?`);
+    if (!existingAlert) return console.log('Skipping reply to missing alert', alert); // Deleted or expired.
     const { tag:replyTag } = data;
     // We are in Alert.ensure, with data that would normally appear for alertInstance.ensure() which we still call.
     // It creates the reply adds it to alertInstance.items and promises the reply.
@@ -687,32 +689,23 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
 
   needsRedisplay = true;
-  async ensureContent(popup = this.marker.getPopup()) { // Set content and handlers in popup if/as needed.
+  ensureContent(popup = this.marker.getPopup()) { // Set content and handlers in popup if/as needed.
     resetInactivityTimer();
-    if (!popup) return;
     if (!popup.isOpen()) return;
-    this.logAlert();
-    if (!this.subscribed) await this.ensureRepliesSubscribed();
-    if (!this.needsRedisplay) {
-      this.initializeHandlers(popup);
-      return;
-    }
+    if (!this.needsRedisplay) return;
     this.needsRedisplay = false;
+    this.logAlert();
+    if (!this.subscribed) this.ensureRepliesSubscribed();
     const {issuedTime, originalPosting, hashtag, agent}  = this;
     this.clearAvatars(popup);
     let content = `${this.formatAttribution({agent, issuedTime, originalPosting, hashtag})}
 <div class="scroller">${this.formatReplies()}</div>
 ${this.formatReplyInput()}`;
     popup.setContent(content);
-    const onFirstNewPopup = () => {
-      const popup = this.marker.getPopup();
-      if (!popup) delay(50).then(onFirstNewPopup);
-      popup.update();
-      this.initializeHandlers(popup);
-      teach('firstConversation');
-      if (Agent.isMine(this.agent)) teach('firstPublish');
-    };
-    onFirstNewPopup();
+    popup.update();
+    this.initializeHandlers(popup);
+    teach('firstConversation');
+    if (Agent.isMine(this.agent)) teach('firstPublish');
   }
 
   clearAvatars(popup = this.marker?.getPopup()) {
@@ -769,6 +762,10 @@ ${this.formatReplyInput()}`;
     for (const element of shareable) clickTip(element, element.closest('.reply') ?
 					      Int`Share though ${osName()} the text and attachments of this reply, with a link to open this alert.` :
 					      getText('.teach.share'), event => this.share(event));
+    for (const element of popupElement.querySelectorAll('[src]')) {
+      if (element.complete || element.readyState > 3) return;
+      element.onload = () => popup.update(); // Make sure there enough room.
+    }
   }
   initChangeHashtag(someParent) { // Init handler on the menu button, if any, as (re-) init of menu for open popup
     const changeHashtag = someParent.querySelector('.changeHashtag');
@@ -808,7 +805,7 @@ ${this.formatReplyInput()}`;
     const deleter = !hashtag && isOurs ? `<md-outlined-icon-button><md-icon class="material-icons">delete_forever</md-icon></md-outlined-icon-button>` : '';
     const pubtag = hashtag ? this.constructor.formatAttributionHashtag(agent, hashtag) : '';
     if (isOurs && !this.items.length) showMessage(Int`Change the topic or remove the alert with the topic button in the upper right of the conversation dialog.`, 'instructions');
-    return `<div>${deleter} ${pubtag}</div>`;
+    return `<div class="hashtag">${deleter} ${pubtag}</div>`;
   }
   formatAttribution({agent, issuedTime, originalPosting, hashtag = null}) { // Answer HTML for a row of sender/timestamp(s)/[deleter]+sharer+[hashtag]
     const sharer = `<md-outlined-icon-button class="share"><md-icon class="material-icons">ios_share</md-icon></md-outlined-icon-button>`;
@@ -865,7 +862,7 @@ ${this.formatReplyInput()}`;
       }
     }
     this.needsRedisplay = true;
-    this.ensureContent();
+    this.ensureContent(); // If not open, it will exit early.
     return reply;
   }
   static async reverseGeocode(lat, lng) { // Return an address or descriptive string for something nearby.
@@ -944,7 +941,6 @@ ${this.formatReplyInput()}`;
   showNotification({issuedTime = this.issuedTime, body = this.label, agent = this.agent, msgId = this.tag, alert = this.tag, lat = this.lat, lng = this.lng, hashtag = this.hashtag, force = false}) {
     // Give OS notification that comes back to here, unless act is us.
     // All notifications on the same alert (e.g., the post and each reply) have the same tag, so OS can collapse them.
-    console.log('alert showNotification', {lat, lng, hashtag, alert, agent, body, force});
     if (agent === Agent.tag || !notificationsAllowed()) return;
     postServiceMessage('notify', {lat, lng, issuedTime, hashtag, msgId, alert, body, force});
   }
@@ -953,22 +949,15 @@ ${this.formatReplyInput()}`;
   // If present the attachment will be an A element with download attribute, surrounding either an IMG, A/V player, or an attachment icon followed by the file name.
   formatReplies() { // Answer HTML for the replies and input box.
     const { items, agent, originalPosting } = this;
-    const formatReply = ({tag, message, file, name, hashtag, ...rest}) => {
-      const text = message  // Message text converts recognized urls to A/V players or links.
-	  .replace(/https?:\/\/\S+\.(mp3|aac|ogg|oga|opus|m4a|m3u|mpu|mpd)$/ig, url => `<audio controls src="${url}" crossorigin="anonymous"></audio>`) // show audio urls as players
-	  .replace(/https?:\/\/\S+\.(mp4|mov|webm|m3u8)$/ig, url => `<video controls src="${url}" crossorigin="anonymous"></video>`) // show video urls as players
-	  .replace(/(?<!")https?:\/\/\S+/g, url => `<a href="${url}" target="yz.sidebar">${url}</a>`); // show urls as links
-      let attachment = '';
-      if (file?.startsWith?.('data:image')) attachment = `<a href="${file}" download="${name}"><img class="attachment" src="${file}"></img></a>`;
-      else if (file?.startsWith?.('data:audio')) attachment = `<a href="${file}" download="${name}"><audio controls class="attachment" src="${file}"></audio></a>`;
-      else if (file?.startsWith?.('data:video')) attachment = `<a href="${file}" download="${name}"><video controls class="attachment" src="${file}"></video></a>`;
-      else if (file) attachment = `
+    const formatReply = ({tag, message, file = '', name, hashtag, ...rest}) => {
+      const text = message.replace(/(?<!")https?:\/\/\S+/g, url => this.formatURL(url));
+      let attachment = file && (this.formatURL(file, {name, wrapDefault:false}) || `
 <div class="attachment file">
   <a href="${file}" download="${name}">
     <md-icon class="material-icons">attachment</md-icon>
     ${name}
   </a>
-</div>`;
+</div>`);
       const messageDisplay = message ? `<div class="message">${DOMPurify.sanitize(marked.parse(text))}</div>` : '';
       let dataAttributes = `data-tag="${tag}" data-text="${message}"`;
       if (file) dataAttributes += ` data-file="${file}" data-name="${name}"`;
@@ -978,6 +967,46 @@ ${this.formatReplyInput()}`;
     return `
 <div class="replies">${formattedReplies}</div>
 <div class="attachment-preview"></div>`;
+  }
+  formatURL(url, {name, mime = this.getMIME(url), wrapDefault = true} = {}) { // Wrap as the appropriate player based on MIME type. Suitable for handling a replacement match.
+    if (mime === 'application/vnd.apple.mpegurl') mime = 'video'; // For our purposes here.
+    const dName = name ? `="${name}"` : '';
+    if (mime.startsWith('audio')) return `<a href="${url}" download${dName}><audio controls src="${url}"></audio></a>`;
+    if (mime.startsWith('video')) return `<a href="${url}" download${dName}><video controls src="${url}"></video></a>`;
+    if (mime.startsWith('image')) return `<a href="${url}" download${dName}><img src="${url}"></img></a>`;
+    if (wrapDefault) return `<a href="${url}" target="yz.sidebar">${url}</a>`;
+    return '';
+  }
+  getMIME(url) { // Answer the MIME type of url, as best we can.
+    // I wish we could get the Content-Type via HEAD, but CORS won't allow that.
+    const dataURLStart = 'data:';
+    if (url.startsWith('data:')) return url.slice(dataURLStart.length, url.indexOf(';'));
+    const extensionMap = {
+      mp3: 'audio/mpeg',
+      aac: 'audio/aac',
+      ogg: 'audio/ogg',
+      oga: 'audio/ogg',
+      opus: 'audio/ogg',
+      m4a: 'audio/mp4',
+      m3u8: 'audio/x-mpegurl',
+      mp3u: 'audio/x-mpegurl',
+      mpu: 'audio/x-mpegurl',
+      mpd: 'application/dash+xml',
+      // pls: 'audio/x-scpls' // Players gotta play
+      mp4: 'video/mp4',
+      mov: 'video/quicktime',
+      webm: 'video/webm',
+      m3u8: 'application/vnd.apple.mpegurl',
+      ts: 'video/mp2t',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      avif: 'image/avif',
+      avifs: 'image/avif-sequence'
+    };
+    const match = url.match(/\.(\w+)$/);
+    const extension = match?.[1];
+    return extensionMap[extension] || '';
   }
   formatReplyInput() {
     return `
