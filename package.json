@@ -20,7 +20,7 @@
     ".": "./index.js"
   },
   "dependencies": {
-    "@axona/protocol": "github:axona-net/axona-protocol#semver:^4.84.0",
+    "@axona/protocol": "github:axona-net/axona-protocol#semver:^4.99.0",
     "cors": "^2.8.6",
     "dompurify": "^3.4.16",
     "express": "^4.22.1",
