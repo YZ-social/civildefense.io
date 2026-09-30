@@ -20,11 +20,16 @@
 import { createClient } from 'redis';
 
 const publicationRolloverLimit = 1000;
-
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-const client = createClient({ url: REDIS_URL });
-client.on('error', err => console.error('Redis client error', err));
-await client.connect();
+let client;
+function open() {
+  client = createClient({ url: REDIS_URL });
+  client.on('error', err => console.error('Redis client error', err));
+  return client.connect();
+}
+function close() {
+  return client.quit();
+}
 
 function itemKey(type, topicId, subject) {
   return `civildefense.io:${type}:${topicId}:${subject}`;
@@ -93,9 +98,4 @@ async function topics(type) {
   return ids;
 }
 
-export const store = { get, set, remove, values, entries, topics };
-
-// Not part of the shared interface -- useful for tests/graceful shutdown.
-export async function close() {
-  await client.quit();
-}
+export const store = { get, set, remove, values, entries, topics, open, close };

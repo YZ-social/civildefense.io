@@ -18,6 +18,9 @@ const publicationRolloverLimit = 1000;
 const data = {pub: {}, sub: {}, track: {}};
 const timers = {pub: {}, sub: {}, track: {}};
 
+function open() { }
+function close() { }
+
 function bucketFor(collection, type, topicId) {
   return collection[type][topicId] ||= {};
 }
@@ -72,4 +75,4 @@ function topics(type) {
   return Object.keys(data[type]);
 }
 
-export const store = {set, get, remove, values, entries, topics};
+export const store = {set, get, remove, values, entries, topics, open, close};

@@ -80,7 +80,7 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   const app = express();
   app.use(logger(':date[iso] :status :method :url :res[content-length] - :response-time ms'));
   const server = http.createServer(app);
-  configureWebsocket(server);
+  await configureWebsocket(server);
 
   // if (argv.announce) { // The default is to not announce.
   //   let announce = null;

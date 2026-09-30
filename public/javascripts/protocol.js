@@ -5,7 +5,6 @@ let connect, createAuthorIdentity, geoCellId, geoCellCenter, WIRE_VERSION, KERNE
 
 // dht 1  -> Axona
 // dht 0  -> server
-// dht -1 -> in-memory on client only
 const defaultDHT = globalThis.process ? 1 : 0; // Browser defaults to no Axona. Server nodes and alert-bot default to Axona.
 export const dht = parseInt((globalThis.process ?
 			     globalThis.process.env.DHT :
@@ -89,7 +88,7 @@ if (dht < 1) {
     const inFlight = {};
     let disconnect, transport; // But do not call P2PWebNetwork.ice!!!
     const send = await new Promise(resolve => {
-      if (dht === 0) {
+	// We have not relation to operator.mumble here, as we go through a weboscket server.
 	const url = `${bridge}/${nodeTag}`;
 	const socket = transport = new WebSocket(url);
 	socket.onmessage = event => {
@@ -123,11 +122,6 @@ if (dht < 1) {
 	  onDisconnect();
 	};
 	disconnect = () => socket.close();
-      } else {
-	disconnect = () => null;
-	operator.setSender((nodeTag, id, ...rest) => handlers[id](...rest));
-	resolve((methodName, ...rest) => operator[methodName](...rest)); // send()
-      }
     });
 
     const peer = {

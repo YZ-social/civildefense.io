@@ -162,4 +162,4 @@ export async function unpublish(topic, msgId, {signWith}) {
   return {ok: true};
 }
 
-export const operators = {setSender, subscribe, unsubscribe, deleteSubscriber, publish, unpublish};
+export const operators = {setSender, subscribe, unsubscribe, deleteSubscriber, publish, unpublish, open:store.open, close:store.close};

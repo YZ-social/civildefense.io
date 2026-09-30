@@ -45,7 +45,8 @@ function heartbeat() {
   this.isAlive = true;
 }
 
-export function configureWebsocket(server) {
+export async function configureWebsocket(server) {
+  await operators.open();
   const wss = new WebSocketServer({ server });
   wss.on('connection', (ws, req) => {
     const nodeTag = req.url.slice(1);
