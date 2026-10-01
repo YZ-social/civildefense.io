@@ -186,11 +186,9 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
     pointer-events: auto;
 }
 .button-container {
-    bottom: 5px;
-    left: 10px;
+    bottom: 10px;
     position: absolute;
     display: flex;
-    gap: 5px;
 }
 
 .watching-hashtags {

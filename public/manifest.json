@@ -17,7 +17,7 @@
     "type": "image/png"
   }],
 
-  "comment": "In Chrome App Settings, the following sets the initial value of 'Opening supported links' (meaning in-scope links) to be 'Open in FairShare' (rather than 'Open in Chrome browser'.",
+  "comment": "In Chrome App Settings, the following sets the initial value of 'Opening supported links' (meaning in-scope links) to be 'Open in Civil Defense' (rather than 'Open in Chrome browser'.",
   "handle_links": "preferred",
   "launch_handler": {
     "client_mode": "navigate-existing"
