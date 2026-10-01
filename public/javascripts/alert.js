@@ -278,10 +278,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
     // The effects must be serialized, but a pending map update can always be skipped for something after it.
     // We don't want to stack up such changes, because the update can take several seconds on a bad network, during
     // which the user might just keep futzing with the map.
+    if (reason === 'newNode') this.subscriptionQueue = []; // Abandon anything previously pending.
     const queue = this.subscriptionQueue;
-    const inProgress = queue.length;
+    const inProgress = queue.length; // If already going, it will recurse. No need for us to update.
     queue.push(reason);
-    if (!inProgress) this.updatePendingSubscriptions();
+    if (inProgress) return Promise.resolve(); // TODO: Must be a promise, but best if it resolves only when queue resolves.
+    return this.updatePendingSubscriptions();
   }
   static async updatePendingSubscriptions() { // Process the queue.
     const contact = await networkPromise;
@@ -290,7 +292,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       return null; }
 
     const queue = this.subscriptionQueue;
-    const reason = queue[0];
+    const reason = queue.shift();
     let newKeys, oldKeys;
     if (reason === 'stickyChange') {
       await contact.resetPersisted();
@@ -301,8 +303,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       for (const alert of this.items) {
 	if (alert.subscribed) await alert.ensureRepliesSubscribed(true);
       }
-    } else if (queue.length > 1) { // Skip this map and just go on to whatever is pending.
-      queue.shift();
+    } else if (queue.length > 0) { // Skip this map and just go on to whatever is pending.
       return this.updatePendingSubscriptions();
     }
 
@@ -345,7 +346,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
     }
     contact.pushPersist();
     await Promise.all(promises);
-    queue.shift();
     //console.log('updated', promises.length);
     if (queue.length) return this.updatePendingSubscriptions(); // Handle anything now pending.
     return null;
@@ -877,13 +877,11 @@ ${this.formatReplyInput()}`;
     params.set('lon', lng);
     params.set('format', 'json');
     params.set('addressdetails', 0);
-    console.log('reverseGeocode', url.href);
     // By default, nominatim will use the local language for this location.
     // We could specify the sender's language, but other people might not then be able to read it, and would reveal lang of poster.
     const reply = await fetch(url);
     if (!reply.ok) return '';
     const json = await reply.json();
-    console.log('reverseGeocode result', json);
     return json.display_name;
   }
   async postReply(event) { // Post a reply to this marker's tag, in response to a text-field change event.

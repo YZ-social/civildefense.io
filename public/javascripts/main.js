@@ -22,7 +22,7 @@ export function delay(ms = 800, value = undefined) { // Promise resolves to valu
 }
 
 export var networkPromise = null;
-export async function resetInactivityTimer(clearMessage = true) { // if !networkPromise, initialize(false).
+export function resetInactivityTimer(clearMessage = true) { // if !networkPromise, initialize(false).
   // Historically, this also managed a timer that disconnected from network after a perdiod with no activity.
   //console.log('resetInactivityTimer, networkPromise:', networkPromise);
   if (clearMessage) showMessage('');
@@ -249,7 +249,6 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
     if (!subscribeOneShot) return;
     subscribeOneShot = false;
     resetInactivityTimer(false);
-    Alert.updateSubscriptions('newNode');
   };
   if (!geolocation) {
     showMessage(Int`Geolocation not supported. Using default location.`, 'error', 'fail');
@@ -287,7 +286,7 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
 let checking = false; // For debouncing.
 // On startup, get last persisted portals list, else the portal we came in on.
 //fixme let portals = new Set(JSON.parse(localStorage.getItem('portals') || `["${new URL('/kdht', window.location).href}"]`));
-async function initialize(event) { // Ensure there is a network promise and map, and reset geolocation:
+function initialize(event) { // Ensure there is a network promise and map, and reset geolocation:
   // Called with no event by startup and resetInactivityTimer, and with event by handlers for visibilitychange and online.
   // debounce
   // if !checkOnline(), return
@@ -299,7 +298,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
   try {
     // Always close about display, because notification permissions and the like can change in the OS while we're hidden, and safari and mobile chrome don't issue change events for them.
     closeAbout();
-    if (event) await delay(); // In some cases (iOS PWA), we may get online or visibilitychange BEFORE the previous network close event. So give that a moment.
+    if (event) delay().then(initialize); // In some cases (iOS PWA), we may get online or visibilitychange BEFORE the previous network close event. So give that a moment.
 
     // If networkPromise has not yet been set (or cleared by disconnect), we will be subscribing.
     const needsConnection = !networkPromise;
@@ -318,7 +317,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
       networkPromise = promise;
       console.log('Creating node.');
       Alert.clearPushData();
-      resolve(await P2PWebNetwork.create({pushPersistor: postServiceMessage && (dht === 0) && localStorage}));
+      resolve(P2PWebNetwork.create({pushPersistor: postServiceMessage && (dht === 0) && localStorage}));
       networkPromise.then(contact => {
 	globalThis.contact = contact; // For debugging.
 	// On leaving, we would like to copy stored data and politely say 'bye' (so others can clean up their connections). Alas:
@@ -336,6 +335,7 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	// causes errors in some browsers: window.onunload = () => contact.fastDisconnect();
 
 	showMessage(Int`Tap anywhere to mark a concern. Markers fade after 24 hours.`, 'instructions');
+	Alert.updateSubscriptions('newNode').then(Agent.initialize);
 	contact.detachment.then(onPurpose => { // On disconnect (whether initiated by us or not), message user and set up for reconnection.
 	  networkPromise = null;
 	  const message = onPurpose ? Int`Connection closed. Will reconnect on use.` :
@@ -347,8 +347,6 @@ async function initialize(event) { // Ensure there is a network promise and map,
 	});
       });
     }
-    await Agent.initialize();
-    if (event) await delay();
   } finally {
     checking = false;
   }

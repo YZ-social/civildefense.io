@@ -129,7 +129,7 @@ export const Hashtags = {
       // If there are alerts in flight, they will be rejected by Alert initialize because we will have already turned off the sub.
       // The remaining have needsRedisplay set so that their menus are correct.
       Alert.items.forEach(wrapper => (this.isSubscribed(wrapper.hashtag) && (wrapper.needsRedisplay = true)) || wrapper.destroy());
-      Alert.updateSubscriptions();
+      Alert.updateSubscriptions('hashtags');
     }
   },
   chipset: document.body.querySelector('.watching-hashtags'), // Element containing the user's chips.

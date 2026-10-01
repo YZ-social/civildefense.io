@@ -302,7 +302,7 @@ export class Agent {
     return this.current = this.ensure({tag, identity});
   }
   static async initialize() { // Initialize what the agent needs from the about screen
-    let tag = localStorage.getItem(this.usertagKey);
+    let tag = localStorage.getItem(Agent.usertagKey);
     const persistAs = tag || uuidv4(); // Give it SOMETHING to persistAs.
     const myIdentity = await P2PWebNetwork.createAuthorIdentity({persistAs});
     if (tag !== persistAs) { // Fix up persistence by moving it to where it need to go.
