@@ -64,6 +64,7 @@ export class P2PWebNetwork {
     network.info(`Connected ${peers} connections through ${bridgeUrl} in ${ms.toLocaleString()} ms.`);
     await network.resetPersisted();
     network.attached(network);
+    network.info('initial ICE connections', network.ice());
     return network;
   }
   static pushPersistKey = 'lastPushed';
@@ -195,7 +196,7 @@ export class P2PWebNetwork {
     // Using dataURL is not terribly efficient, but it is convenient, because formatReplies can return HTML strings with all the data in them,
     // instead of, e.g., needing javascript to later set properties of elements to createObjectURL of a Blob.
     data.dataURL = this.constructor.u82dataURL(data.bytes, data.mime);
-    this.debug('assembled', topic);
+    this.info('assembled', data.bytes.length, 'bytes in', data.topic);
     return data;
   }
 
