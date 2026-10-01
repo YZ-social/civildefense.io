@@ -51,7 +51,7 @@ export function getText(querySelector) {
 function isWebView() { return /CriOS|(WebView|wv|(iPhone|iPod|iPad)(?!.*Safari))/.test(navigator.userAgent); }
 function isApple() { return navigator.platform.startsWith('Mac') || ['iPhone', 'iPad'].includes(navigator.platform); }
 function isMobile() { return navigator.userAgentData?.mobile || /iPhone|iPad|iPod|Mobile/.test(navigator.userAgent); }
-function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches; }
+function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone; }
 export function osName() { return isApple() ? (isMobile() ? 'iOS' : 'OSX') : navigator.userAgentData?.platform || navigator.userAgent.match(/Android/)?.[0] || navigator.platform; }
 function mobilePlatformName() { return isMobile() && (isApple() ? 'iOS' : 'Android'); }
 function mobileVendorName() { return isMobile() && (isApple() ? 'Apple' : 'Android'); }
