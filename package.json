@@ -1,7 +1,7 @@
 {
   "name": "@yz-social/civildefense.io",
   "description": "Browser app to safely share live sightings on a map.",
-  "version": "5.3.2",
+  "version": "5.3.3",
   "keywords": [
     "map",
     "browser",
@@ -20,7 +20,7 @@
     ".": "./index.js"
   },
   "dependencies": {
-    "@axona/protocol": "github:axona-net/axona-protocol#semver:^4.100.0",
+    "@axona/protocol": "github:axona-net/axona-protocol#semver:^4.102.0",
     "cors": "^2.8.6",
     "dompurify": "^3.4.16",
     "express": "^4.22.1",
