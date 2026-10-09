@@ -345,6 +345,7 @@ button, .leaflet-control-zoom > a, .leaflet-popup-close-button, md-outlined-icon
 
 #checkForUpdates, #downloadUpdates, #updateContainer md-elevated-button {
     width: 150px;
+    padding-inline: 10px;
 }
 .source-updates {
     display: flex;
