@@ -16,24 +16,43 @@ function  flashElement(selector) {
   setTimeout(() => element.style.animation = 'pulse20border ease 2s 1', 100);
 }
 
-let yourLocation; // marker
-let lastLatitude, lastLongitude;
-export function updateLocation(lat, lng, zoom, positionLabel) { // initMap if necessary, and set our position.
-  //console.log('updateLocation', lat, lng, map, yourLocation);
-  // Can't call getCurrentPosition while watching. So set it here for use in recenterMap.
-  lastLatitude = lat;
-  lastLongitude = lng;
+// LOCATIONS
+//
+// Intrinsic:
+// geoLocation [lat,lng] as reported periodically by navigator.geolocation.watchPosition callback when available/permitted.
+// mapCenter [lat,lng,zoom] as reported by map moveend event.
+//      Starts session with same value as end of previous session, if any, else geoLocation if any, else San Fransisco.
+// destination [lat,lng,zoom?] as requested by following a url or touching a notification, if any.
+//      After showing startup mapCenter to orient user, map flies to destination, if any.
+//
+// Derived:
+// home [lat, lng] that the map recenter button flies to:
+//      Updates with geoLocation if available, else initialized at startup to startup mapCenter
+//      Shown on map (while in bounds) as a location marker, labeled as "Your location" or "Default location. Geolocation unavailable."
+// node location [lat, lng] for computing region using value of home at start of session
 
+let home; // Used by recenter button.
+let homeMarker; // Marks location of home.
+let startupMapCenter = null;
+const locationMarkerLabel = Int`Your Location`;
+const defaultMarkerLabel = Int`Default location. Geolocation unavailable.`;
+export function updateHome(location = null) { // initMap if necessary, and set our position.
+  startupMapCenter ||= localStorage.getItem('mapCenter') || location || [37.7749, -122.4194, 13]; // San Fransisco
+  //console.log('updateHome', {location, startupMapCenter, home});
+  home = location || home || startupMapCenter;
+  const label = location ? locationMarkerLabel : defaultMarkerLabel;
   if (!map) {
-    initMap(lat, lng, zoom, positionLabel);
+    initMap(startupMapCenter, label);
 
-    const url = new URL(location);
+    const url = new URL(window.location);
     const params = url.searchParams;
     const tags = params.get('tags');
     const tagsArray = tags?.split(',') || [];
     const highlight = params.get('highlight');
     tagsArray.forEach(tag => Hashtags.add(decodeURIComponent(tag)));
     Hashtags.onchange({resetSubscriptions: false}); // Too early to subscribe, but will be done during initialization.
+    // We start the map at the lat/lng/zoom specied by caller (e.g., geo or previous session) in order to orient the user,
+    // and then if there was a location specified in the URL, fly there.
     go({lat: params.get('lat'), lng: params.get('lng'), zoom: params.get('z'), alert: params.get('alert')});
     // We don't need the query parameters now. Get rid of them. They're annoying.
     if (params.size > 0) {
@@ -42,40 +61,33 @@ export function updateLocation(lat, lng, zoom, positionLabel) { // initMap if ne
     }
     if (highlight) flashElement(highlight);
     return;
+  } else {
+    homeMarker.getPopup().setContent(label);
   }
-  // Otherwise just update the yourLocation marker if appropriate (and not update zoom).
-  if (positionLabel) yourLocation.getPopup().setContent(positionLabel);
 
   // setLatLng can cause the map to autoPan to put the marker within bounds.
   // It seems like that shouldn't happen with autoPan:false, above, but it does.
   // So let's not even update it if it is outside the displayed area.
   // However, that means we will need to updateLocation from the last position on map moveend.
-  if (!map.getBounds().contains(L.latLng(lat, lng))) return;
+  if (!map.getBounds().contains(home)) return;
 
-  const latLng = [lat, lng];
-  setTimeout(() => yourLocation.setLatLng(latLng), 100); // It seems that yourLocation can be set, but not yet ready to be moved?
+  setTimeout(() => homeMarker.setLatLng(home), 100); // It seems that homeMarker can be set, but not yet ready to be moved?
 }
 
 export function recenterMap(event) {
   consume(event);
   closeAll();
-  const latLng = [lastLatitude, lastLongitude];
-  map.flyTo(latLng);
+  map.flyTo(home);
 }
 
 export var trackMap;
 
-export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate zoomed initial map and handlers for this position.
+function initMap([lat, lng, zoom], positionLabel) { // Set up appropriate zoomed initial map and handlers for this position.
   // Then show initial message and updateSubscriptions.
 
-  P2PWebNetwork.setSessionLocation({lat, lng});
-
-  // Map will be centered at the given current location marker, unless overriden by query parameters.
+  zoom ||= 14;
+  P2PWebNetwork.setSessionLocation({lat, lng}); // TODO: Arrange to capture an updated value whenever a new node is created
   let center = {lat, lng};
-  const queryParameters = new URLSearchParams(location.search);
-  if (queryParameters.has('lat')) center.lat = queryParameters.get('lat');
-  if (queryParameters.has('lng')) center.lng = queryParameters.get('lng');
-  if (queryParameters.has('z')) zoom = queryParameters.get('z');
 
   map = L.map('map', { // Ensuring the default values, in case they have changed in some library version.
     worldCopyJump: false,
@@ -116,7 +128,7 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
 
   // Add a marker at user's current location
   L.Icon.Default.prototype.options.crossOrigin = 'anonymous'; // Set default prop, as it is used on next line.
-  yourLocation = L.marker([lat, lng], {autoPan: false})
+  homeMarker = L.marker([lat, lng], {autoPan: false})
     .addTo(map)
     .bindPopup(positionLabel)
     .openPopup();
@@ -125,11 +137,11 @@ export function initMap(lat, lng, zoom, positionLabel) { // Set up appropriate z
   // upon interaction.
   map.on('movestart', () => {
     resetInactivityTimer();
-    map.closePopup(yourLocation.getPopup());
+    map.closePopup(homeMarker.getPopup());
   });
   map.on('moveend', async () => {
     await networkPromise;
-    updateLocation(lastLatitude, lastLongitude); // Might now be within map.
+    updateHome(home); // Might now be within map.
     Alert.updateSubscriptions();
   });
 

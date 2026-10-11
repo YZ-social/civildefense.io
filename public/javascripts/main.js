@@ -7,7 +7,7 @@ import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { getPointInCell, getSmallestCellSurrounding } from './s2.js';
 import { Alert, getShareableURL, share } from './alert.js';
 import { Hashtags } from './hashtags.js';
-import { map, updateLocation, recenterMap } from './map.js';
+import { map, updateHome, recenterMap } from './map.js';
 import { dht } from './protocol.js';
 import {postServiceMessage} from './service-manager.js'; // Comment this out and kill service-workers for reload-to-get-latest behavior during development.
 //const postServiceMessage = null;
@@ -208,12 +208,10 @@ function checkOnline() { //true if online and visible, else cancel inactivityTim
 
 export let positionWatch;
 let subscribeOneShot;
-const goodPositionLabel = Int`Your Location`;
 
-export let lastCells = null;
-function initializeGeolocation(subscribe = false) { // Arrange to constantly updateLocation, but:
-  // Arrange to constantly updateLocation when geolocation updates (or a default init if that's not possible).
-  // Once updateLocation has been called, updateSubscriptions() if the subscribe arg is true.
+function initializeGeolocation(subscribe = false) {
+  // Arrange to constantly updateHome when geolocation updates (or a default init if that's not possible).
+  // Once updateHome has been called, updateSubscriptions() if the subscribe arg is true.
   //
   // Non-geo cases:
   // if no support, message and defaultInit
@@ -229,23 +227,8 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
   const {geolocation} = navigator;  // Get user's geolocation
   console.log('Initializing geolocation.', subscribe ? 'Will subscribe.' : 'Has subscriptions.');
   subscribeOneShot = subscribe;
-  const initMap = (lat, lng) => {
-    let zoom = 14, positionLabel = goodPositionLabel;
-    if (lat === undefined) {
-      positionLabel = Int`Default location. Geolocation unavailable.`;
-      const level9Cell = localStorage.getItem('level9Cell');
-      if (level9Cell) { // Zoomed out near where we last where, but not too exact for security.
-	zoom = 12;
-	[lat, lng] = getPointInCell(BigInt(level9Cell));
-      } else { // If the user doesn't want to turn on geolocation, we whould certainly not use ipinfo.io or the like.
-	zoom = 13;
-	[lat, lng] = [37.7749, -122.4194]; // San Fransisco
-      }
-    } else {
-      lastCells = getSmallestCellSurrounding(lat, lng);
-    }
-    //console.log('initializeGeolocation updateLocation');
-    updateLocation(lat, lng, zoom, positionLabel);
+  const initMap = location => {
+    updateHome(location);
     if (!subscribeOneShot) return;
     subscribeOneShot = false;
     resetInactivityTimer(false);
@@ -260,18 +243,16 @@ function initializeGeolocation(subscribe = false) { // Arrange to constantly upd
     position => {
       const {latitude, longitude} = position.coords;
       //console.log('Location update.', map ? 'Map exists.' : 'Will create map.', subscribeOneShot ? 'Will subscribe fresh.' : 'Has subscriptions.');
-      initMap(latitude, longitude);
+      initMap([latitude, longitude]);
     }, error => {
       geolocation.clearWatch(positionWatch);
       console.warn(`Geolocation code ${error.code}. online:`, navigator.onLine, 'code:', error.code);
       if (navigator.onLine) {
-	if (error.code === GeolocationPositionError.PERMISSION_DENIED) {
-	  showMessage(Int`Location access denied. Using default location.`, 'error', error);
-	  delay(2e3).then(() => initMap());
-	} else {
-	  showMessage(Int`Unable to get location.`, 'error', error);
-	  delay(2e3).then(() => initMap());
-	}
+	const message = (error.code === GeolocationPositionError.PERMISSION_DENIED) ?
+	      Int`Location access denied. Using default location.` :
+	      Int`Unable to get location.`;
+	showMessage(message, 'error', error);
+	delay(2e3).then(() => initMap());
       } else {
 	showMessage(Int`No network connection.`, 'error');
       }

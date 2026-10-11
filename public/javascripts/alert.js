@@ -6,7 +6,7 @@ import { generateVapidKeys } from './browser-push.js';
 import { Int } from './translations.js';
 import { consume, teach, closeTeach, showMessage } from './display.js';
 import { map, trackMap } from './map.js';
-import { closeAll, postServiceMessage, networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, clickTip, getText, openAbout, delay, osName, lastCells } from './main.js';
+import { closeAll, postServiceMessage, networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, clickTip, getText, openAbout, delay, osName } from './main.js';
 import { Hashtags } from './hashtags.js';
 import { Agent } from './agent.js';
 import { Conversation, Reply } from './conversation.js';
@@ -233,7 +233,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   static async ensure({alert, ...data}) { // If alert is truthy, this was a supplemental publication about a reply to the specified alert.
     if (!alert) return super.ensure(data); // Normal initialize/update above.
     const existingAlert = this.getItem(alert);
-    if (!existingAlert) return console.log('Skipping reply to missing alert', alert); // Deleted or expired.
+    if (!existingAlert) return null; //console.log('Skipping reply to missing alert', alert); // Deleted or expired.
     const { tag:replyTag } = data;
     // We are in Alert.ensure, with data that would normally appear for alertInstance.ensure() which we still call.
     // It creates the reply adds it to alertInstance.items and promises the reply.
@@ -545,19 +545,17 @@ export class Alert extends Conversation { // A wrapper around L.marker
     if (this.shownCells) { // debugging
       this.shownCells.forEach(polygon => polygon.removeFrom(map));
       const mapPolys = newCells.map(cell => this.displayCell(cell));
-      const geoPolys = lastCells.map(cell => this.displayCell(cell, 'blue'));
-      this.shownCells = [...mapPolys, ...geoPolys];
+      // const geoCells = getSmallestCellSurrounding(...fixme geoLocation...);
+      //const geoPolys = geoCells.map(cell => this.displayCell(cell, 'blue'));
+      this.shownCells = [...mapPolys/*, ...homePolys*/];
     }
     // Alert.ensure will not pub multiple markers/notifications for the same alert, but let us not double subscriptions.
-    //fixme if (lastCells) lastCells.forEach(cell => newCells.includes(cell) || newCells.push(cell));
+    //fixme if (gdoCells) geoCells.forEach(cell => newCells.includes(cell) || newCells.push(cell));
     const newKeys = {};
     newCells.forEach(cell => Hashtags.getSubscribe().forEach(hash => { // Populate count with existing count (exctly carried over cell sizes), else 0.
       const eventName = alertTopic(cell, hash);
       newKeys[eventName] = this.subscriptions[eventName] || 0;
     }));
-    // Record a zoomed-out cell id in case next session does not have geolocation services.
-    let level9Cell = getSmallestCellId(center.lat, center.lng, 9);
-    if (level9Cell !== this.lastLevel9Cell) localStorage.setItem('level9Cell', this.lastLevel9Cell = level9Cell);
     return newKeys;
   }
 
