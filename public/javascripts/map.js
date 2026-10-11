@@ -37,7 +37,7 @@ let startupMapCenter = null;
 const locationMarkerLabel = Int`Your Location`;
 const defaultMarkerLabel = Int`Default location. Geolocation unavailable.`;
 export function updateHome(location = null) { // initMap if necessary, and set our position.
-  startupMapCenter ||= localStorage.getItem('mapCenter') || location || [37.7749, -122.4194, 13]; // San Fransisco
+  startupMapCenter ||= JSON.parse(localStorage.getItem('mapCenter')) || location || [37.7749, -122.4194, 13]; // San Fransisco
   //console.log('updateHome', {location, startupMapCenter, home});
   home = location || home || startupMapCenter;
   const label = location ? locationMarkerLabel : defaultMarkerLabel;
@@ -140,6 +140,8 @@ function initMap([lat, lng, zoom], positionLabel) { // Set up appropriate zoomed
     map.closePopup(homeMarker.getPopup());
   });
   map.on('moveend', async () => {
+    const {lat, lng} = map.getCenter();
+    localStorage.setItem('mapCenter', JSON.stringify([lat, lng, map.getZoom()]));
     await networkPromise;
     updateHome(home); // Might now be within map.
     Alert.updateSubscriptions();
