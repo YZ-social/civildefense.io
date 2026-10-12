@@ -338,7 +338,7 @@ export class Agent {
 	console.log('clearing avatar selection');
       };
       fileChooser.onchange = async event => {
-	myAgent.updateValue(this.spinner, 'public', 'avatar', false);
+	myAgent.updateValue(Agent.spinner, 'public', 'avatar', false);
 	const url = await myAgent.fileEvent(fileChooser, event, 'public');
 	console.log('set my avatar', url.slice(0, 50));
 	myAgent.persistPrivate(url, 'avatar'); // So that we'll have it next session.
