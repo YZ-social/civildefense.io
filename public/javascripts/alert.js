@@ -768,7 +768,7 @@ ${this.formatReplyInput()}`;
 	  .then(response => response.blob())
 	  .then(blob => {
 	    downloadable.href = URL.createObjectURL(blob);
-	    console.log({downloadable, dataurl, blob, objecturl: downloadable.src});
+	    console.log({downloadable, dataurl, blob, objecturl: downloadable.href});
 	  });
       }
       tooltip(downloadable, Int`Click to download ${downloadable.download}.`);
