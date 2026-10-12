@@ -101,7 +101,10 @@ img[src="qr.png"] {
     line-height: 1;
     margin-bottom: 0.75rem;
 }
-.hero h1 span { color: var(--red-light); }
+.hero h4 {
+    color: var(--white);
+}
+.hero h1 span, .hero h4 span { color: var(--red-light); }
 .hero h1 span.about { color: var(--white); }
 .cd {
     color: var(--red);
