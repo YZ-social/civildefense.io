@@ -53,6 +53,7 @@ function isApple() { return navigator.platform.startsWith('Mac') || ['iPhone', '
 function isMobile() { return navigator.userAgentData?.mobile || /iPhone|iPad|iPod|Mobile/.test(navigator.userAgent); }
 function isStandalone() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone; }
 export function osName() { return isApple() ? (isMobile() ? 'iOS' : 'OSX') : navigator.userAgentData?.platform || navigator.userAgent.match(/Android/)?.[0] || navigator.platform; }
+Object.assign(window, {isApple, isMobile, isStandalone, osName});
 function mobilePlatformName() { return isMobile() && (isApple() ? 'iOS' : 'Android'); }
 function mobileVendorName() { return isMobile() && (isApple() ? 'Apple' : 'Android'); }
 function mobileBrowserName() { return isApple() ? 'Safari' : 'Chrome'; }
