@@ -317,7 +317,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
       if (!eventName) console.log('sub to no eventName', {oldKeys, newKeys, dropped, added, handler});
       const region = topicRegion(eventName);
       const pushData = handler && await this.pushData;
-      if (handler) Agent.current?.trackPublicChanges(region); // Background. No need to await.
       return contact.subscribe({eventName, region, handler, pushData, pushPersist: null});
     };
     for (const key in newKeys) oldKeys.hasOwnProperty(key) || added.push(key);

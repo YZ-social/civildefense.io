@@ -242,8 +242,10 @@ export class P2PWebNetwork {
     if (owner) topic.owner = owner;
     const options = {signWith};
     this.debug('published', {topic, killTag, payload, issuedTime, rest, signWith:signWith.authorId});
-    if (payload) return await this.peer.pub(topic, {issuedTime, payload, ...rest}, options);
-    // The next would not normally happen, but until since:'latest' works, we need a way to send a null payload and have the handler delete the entry.
+    // A falsy payload is NOT a kill, because sometimes one needs to inject an explicitly empty value into the stream.
+    // Note that the same stream of published values can be subscribed since:all or since:latest, and so all published values
+    // must be retained (until rollover). If an app sets a value to "nothing" by killing the last value, a since:all will
+    // see the PREVIOUS value as the latest. Hence the need for apps to tombstone "nothing" with an empty pub rather than a kill.
     if (!killTag) return await this.peer.pub(topic, {issuedTime, payload, ...rest}, options);
     return await this.peer.kill(topic, killTag, options);
   }

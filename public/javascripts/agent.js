@@ -38,6 +38,7 @@ export class Agent {
     const scope = Agent.isMine(tag) ? 'public' : 'private';
     this.updateFromLocal(scope, 'handle');
     this.updateFromLocal(scope, 'avatar');
+    this.trackPublicChanges();
   }
   static isMine(tag) { // Is this one of mine?
     return tag === this.tag;
@@ -48,34 +49,32 @@ export class Agent {
   localPersistKey(type, tag = this.tag) { // for localStorage of our private data about this Agent.
     return agentPersistKey(type, tag);
   }
-  networkPersistKey(type, tag = this.tag) {
+  networkPersistKey(type, tag = this.tag) { // for network storage of the public data for this Agent - i.e., an eventName
     return agentTopic(type, tag);
+  }
+  async homeRegion(tag = this.tag) { // We currently do NOT publish agent metadata to each region in which the agent is referenced,
+    // but rather just to one region derived from the agent tag.
+    if (!this._homeRegion) {
+      const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(tag));
+      const bytes = new Uint8Array(hash);
+      const rawCode = bytes[0]; // hash is distributed uniformly, so it doesn't matter which we take.
+      this._homeRegion = rawCode < 0xcf ? rawCode : rawCode & 0x3f; // Wrap around when we get to reserved regions.
+    }
+    return this._homeRegion;
   }
   updateFromLocal(scope, type, tag = this.tag) { // get value locally, and then update (which may have side-effect)
     const value = localStorage.getItem(this.localPersistKey(type, tag));
     this.updateValue(value, scope, type, false); // Don't publish until we post.
   }
 
-  // A map may show multiple regions, and we want to show consistent attribution metadata for alerts in each.
-  // Thus we have to keep track of each region where we have activity, and subscribe to changes in each such region for
-  // each mentioned avatar instance. See trackPublicChanges.
-  //
-  // For our agent(s), we also need to keep track of the current msgId so that we can kill it properly when we change value.
-  // This will be different in each tracked region.
-  //
-  trackedRegions = {}; // region code => {avatar, handle} last msgIds for this agent as known.
-  trackPublicChanges(region) { // Subscribe to changes for this agent instance's metdata in this region.
-    // We do this for for each Agent.ensure that appears for an alert or reply.
-    // and also for our own Agent.current when subscribing to a topic, so that we have the right killTag even if we have not published THIS session.
-    if (this.trackedRegions[region]) return; // Already subscribed.
-    networkPromise.then(contact => {
-      this.trackedRegions[region] = {};
-      const owner = this.tag;
-      ['handle', 'avatar'].forEach(type => {
+  async trackPublicChanges(region = this.homeRegion()) { // Subscribe to changes for this agent instance's metdata.
+    const owner = this.tag;
+    const contact = await networkPromise;
+    region = await region;
+    await Promise.all(['handle', 'avatar'].map(type => {
 	const eventName = this.networkPersistKey(type);
 	contact.subscribe({eventName, region, owner, since: 'latest', handler: data => this.setPublicData({...data, type, region})});
-      });
-    });
+    }));
   }
   async setPublicData(data) { // Subscription to public data has fired. Update value, but do not not re-publish (e.g., if our agent).
     let {payload, tag, type, region, topic, ts} = data;
@@ -86,16 +85,13 @@ export class Agent {
     //   const {dataURL} = await contact.assembleChunkedDataURL(payload);
     //   payload = dataURL;
     // }
-    this.updateValue(DOMPurify.sanitize(payload), 'public', type, false);
-    if (payload) this.trackedRegions[region][type] = tag;
-    else delete this.trackedRegions[region][type];
+    if (payload) payload = DOMPurify.sanitize(payload);
+    this.updateValue(payload, 'public', type, false);
   }
   
   static agents = {}; // tag => Agent
-  static ensure({tag, identity, region}) { // Answer Agent for tag, creating it if necessary.
-    const agent = this.agents[tag] ||= new this({tag, identity});
-    if (region) agent.trackPublicChanges(region);
-    return agent;
+  static ensure({tag, identity}) { // Answer Agent for tag, creating it if necessary.
+    return this.agents[tag] ||= new this({tag, identity});
   }
 
   // Track values of various types and scope.
@@ -137,34 +133,16 @@ export class Agent {
     await Promise.all(['handle', 'avatar'].map(type => this.persistPublic(this.getValue('public', type) || null, type)));
   }
   async persistPublic(value, type) { // Publish (and we will act on subscription).
-    // We persist to ALL our tracked regions, so that anyone in those regions will get the latest metadata.
-    // Note that we might be tracking regions A and B, while someone else is tracking B and C.
-    // The other user will get the new value through B, and that will be THE value displayed on their machine.
-    // BUT... if the other user tracks B and gets the new value, and then moves into region C and gets a
-    // stale value, they will see the stale value in both regions going forward in that session until we update in that region.
     const eventName = this.networkPersistKey(type);
     const owner = this.tag;
     const contact = await networkPromise;
-
-    for (let region in this.trackedRegions) {
-      // First kill previous, if any.
-      // Publish doesn't know whether subscribers will be 'since' all or 'latest', so it must retain all unkilled.
-      // Thus if we only kill the last one when there is no value,
-      // a subscribe since:latest will produce the PREVIOUS value -- the last unkilled one.
-
-      const killTag = this.trackedRegions[region][type];
-      if (killTag) await contact.publish({eventName, region, owner, killTag, payload: null});
-
-      if (value) {
-	let payload = value;
-	// Our downsampling is such that we do not need to chunkify.
-	// if (type === 'avatar') {
-	// 	const blob = await P2PWebNetwork.dataURL2blob(value);
-	// 	payload = (await contact.chunkifyBlob({blob, region})).topic;
-	// }
-	contact.publish({eventName, region, owner, payload});
-      }
-    }
+    const region = await this.homeRegion();
+    // Our downsampling is such that we do not need to chunkify.
+    // if (type === 'avatar') {
+    // 	const blob = await P2PWebNetwork.dataURL2blob(value);
+    // 	payload = (await contact.chunkifyBlob({blob, region})).topic;
+    // }
+    contact.publish({eventName, region, owner, payload: value});
   }
 
   // We represent handles and avatars by inserting stuff into given elements.
@@ -347,3 +325,4 @@ export class Agent {
     });
   }
 }
+window.Agent = Agent;
