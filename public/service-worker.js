@@ -251,7 +251,7 @@ async function showNotification({lat, lng, issuedTime, hashtag, msgId, alert, bo
   const icon = new URL('./images/civil-defense-192.png', base).href;
   const queryString = `./?tags=${encodeURIComponent(hashtag)}&lat=${lat}&lng=${lng}&alert=${alert}`;
   const url = new URL(queryString, base).href; // For opening page when it has been closed.
-  const data = {lat, lng, url, issuedTime};
+  const data = {lat, lng, alert, url};
   // If we turn on {tag: alert||msgId, renotify: true} again, beware of cancelling notifications for deleted replies.
   // See https://docs.google.com/document/d/1ZMC0JLlUbC5XnOP-oyseSUrEhByfGjPgam9mo7B9qls/edit?usp=sharing
   const options = {icon, timestamp, body, data, tag: msgId};
@@ -263,8 +263,8 @@ async function showNotification({lat, lng, issuedTime, hashtag, msgId, alert, bo
 function showNotificationFromEnvelope({deleted, message, msgId}) { // We get the generic, application-independent envelope.
   console.log('received push', msgId, deleted ? 'cancel' : '');
   if (deleted) return cancelNotification(msgId);
-  const {issuedTime, hashtag, payload} = message;
-  let {lat, lng, message:body, name = '', alert} = payload;
+  const {issuedTime, hashtag, payload, alert} = message;
+  let {lat, lng, message:body, name = ''} = payload;
   body ||= name;
   return showNotification({alert, msgId, lat, lng, issuedTime, hashtag, body});
 }
