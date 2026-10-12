@@ -767,8 +767,8 @@ ${this.formatReplyInput()}`;
 	fetch(dataurl)
 	  .then(response => response.blob())
 	  .then(blob => {
-	    downloadable.src = URL.createObjectURL(blob);
-	    console.log({downloadable, dataurl, objecturl: downloadable.src});
+	    downloadable.href = URL.createObjectURL(blob);
+	    console.log({downloadable, dataurl, blob, objecturl: downloadable.src});
 	  });
       }
       tooltip(downloadable, Int`Click to download ${downloadable.download}.`);
