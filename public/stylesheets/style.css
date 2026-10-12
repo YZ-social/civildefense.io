@@ -649,7 +649,8 @@ md-menu-item minidenticon-svg {
 .attribution-metadata {
     display: flex;
     flex-direction: column;
-    /* align-items: end; */
+    max-height: 50px;
+    overflow-y: auto;
 }
 .attribution-row {
     display: flex;
