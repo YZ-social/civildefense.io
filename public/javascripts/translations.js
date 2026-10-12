@@ -58,7 +58,8 @@ const translations = {
   ['Permissions can be re-enabled through the']: {es: "Los permisos se pueden volver a habilitar a través de"},
   ['app']: {es: "Aplicación"},
   ['browser site settings']: {es: "configuración del sitio en el navegador"},
-  
+
+  ['#titleLabel']: {en: "About CivilDefense", es: "Sobre la Defensa Civil"},
   ['#aboutReport']: {en: "Report immediate concerns to the public by tapping their location on the map.", es: "Informa de cualquier problema inmediato al público pulsando su ubicación en el mapa."},
   ['#aboutShared']: {en: "These locations are shared over anonymous p2p with other users in your area.", es: "Estas ubicaciones se comparten a través de redes P2P anónimas con otros usuarios de tu zona."},
   ['#aboutFade']: {en: "Reported concerns will fade away over 24 hours.", es: "Las preocupaciones manifestadas se disiparán en 24 horas."},

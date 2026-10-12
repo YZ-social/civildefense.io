@@ -81,10 +81,10 @@
 
       <div id="aboutContainer" class="hidden">
 	<div class="display-content">
-          <h1>
-	    <a id="learnMore" href="about/index.html" target="yz.sidebar"><md-icon class="material-icons">help</md-icon></a>
-	    <span id="titleLabel">Civil Defense</span><span id="titleHostname"></span>
-	  </h1>
+	  <a id="learnMore" href="about/index.html" target="yz.sidebar">
+            <h2><span id="titleLabel">Civil Defense</span><md-icon class="material-icons">help</md-icon></h2>
+	    <span id="titleHostname"></span>
+	  </a>
           <ul>
             <li id="aboutReport"></li>
             <li id="aboutShared"></li>
@@ -97,26 +97,35 @@
           <!--   <span id="aboutAnyone3"></span> -->
           <!-- </p> -->
 	  <hr>
+
 	  <div>
-	    <a id="learnNotification" href="about/notification.html" target="yz.sidebar"><md-icon class="material-icons">help</md-icon></a>
+	    <a id="learnNotification" href="about/notification.html" target="yz.sidebar">
+	      <h2>Notifications<md-icon class="material-icons">help</md-icon></h2>
+	    </a>
 	    <label>
 	      <md-checkbox id="showNotifications" touch-target="wrapper"></md-checkbox>
 	      <span id="showNotificationsLabel"></span>
 	    </label>
 	  </div>
+
+	  <a id="learnIdentity" href="about/identity.html" target="yz.sidebar">
+	    <h2>Identitity<md-icon class="material-icons">help</md-icon></h2>
+	  </a>
 	  <div class="handle-avatar">
-	    <a id="learnIdentity" href="about/identity.html" target="yz.sidebar"><md-icon class="material-icons">help</md-icon></a>
 	    <md-outlined-text-field id="myHandle" placeholder="anonymous"></md-outlined-text-field>
 	    <md-outlined-icon-button id="myAvatar"></md-outlined-icon-button>
 	  </div>
+
 	  <hr>
+	  <a id="learnPWA" href="about/pwa.html" target="yz.sidebar">
+	    <h2>App<md-icon class="material-icons">help</md-icon></h2>
+	  </a>
           <div class="source-updates">
 	    <md-elevated-button id="checkForUpdates"></md-elevated-button>
             <md-elevated-button id="downloadUpdates" class="hidden"></md-elevated-button>
             <span id="updateStatus"></span>
           </div>
 	  <p class="pwa">
-	    <a id="learnPWA" href="about/pwa.html" target="yz.sidebar"><md-icon class="material-icons">help</md-icon></a>
 	    <small>
 	      <label for="scriptChooser"> <span id="version">Version</span></label>
 	      <span id="appVersion"></span>,

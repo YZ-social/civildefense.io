@@ -344,17 +344,15 @@ document.body.addEventListener('animationend', event => {
   event.target.style.animation = '';
 });
 
-const titleLabel = document.querySelector('#titleLabel');
-titleLabel.textContent = Int([titleLabel.textContent]);
-const titleHostname = document.querySelector('#titleHostname');
-titleHostname.textContent = ` @${location.hostname}`;
-document.querySelector('head > title').innerHTML = titleLabel.textContent + titleHostname.textContent;
+document.querySelector('head > title').innerHTML = `${Int`Civil Defense`}@${location.hostname}`;
+
 // Set up text for the browser language.
 function initText(selector, content = selector) {
   const element = document.querySelector(selector);
   const text = Int([content]);
   element.textContent = text;
 }
+initText('#titleLabel');
 initText('#aboutReport');
 initText('#aboutShared');
 initText('#aboutFade');
