@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CivilDefense: Notificaciones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <img class="hero-logo" src="civil-defense.png" alt="Logotipo de Defensa Civil">
+      <h1>La <a href="/" target="civildefense"><span>App</span></a> de <a href="index.html"><span class="about">Defensa Civil</span></a></h1>
+    </div>
+  </header>
+
+  <main class="content-wrap">
+
+    <h1>Notificaciones sin un feed</h1>
+
+    <p>Cuando otra persona coloca una alerta en la parte del mapa que estás observando, sobre un <a href="index.html#topic">tema</a> que estás mostrando en ese momento, la verás de inmediato. También puedes pedirle a la app que te envíe una notificación del sistema. Al tocar la notificación se abrirá la alerta en la app, para que puedas ver la conversación sobre ella.</p>
+
+    <p>Debes activar esta función de forma expresa, usando el botón «<span class="cd">CD</span>» de la app. Entonces el sistema te preguntará si quieres habilitar las notificaciones.
+      <ul>
+	<li>Si respondes «sí», después podrás activar y desactivar las notificaciones desde el mismo lugar de la app.</li>
+	<li>Si respondes «no», o si más tarde desactivas las notificaciones en la configuración del navegador o del sistema, tendrás que volver a habilitarlas desde la configuración del navegador o del sistema. En los <i>dispositivos móviles de Apple</i>, las notificaciones solo están disponibles cuando Civil Defense está <a href="pwa.html">instalada</a>.</li>
+    </ul></p>
+
+    <div class="hero-inner">
+      <a href="/?highlight=%23aboutButton" target="civildefense"><img class="hero-logo" src="civil-defense.png" alt="Logotipo de Defensa Civil"></a>
+    </div>
+
+    <p>Si habilitas las notificaciones, también las verás en estos casos:
+      <ul>
+	<li>Si otra persona coloca una alerta cerca de tu posición actual sobre un tema que estás siguiendo, incluso si estás mirando otra zona del mapa.</li>
+	<li>Si alguien responde a una alerta que has abierto dentro del mapa actual.</li>
+      </ul>
+    </p>
+
+    <h2>Privacidad</h2>
+
+    <p>Si la app CivilDefense está en ejecución, la notificación se genera por completo en el mismo dispositivo, sin pasar por ningún otro servicio.</p>
+    <p>Sin embargo, las plataformas móviles pueden ser muy agresivas al cerrar las apps que has abierto pero que no se están mostrando en pantalla. En ese caso, la alerta debe «empujarse» (como un mensaje de texto) en dos pasos:
+      <ol>
+	<li>Primero, la red de CivilDefense necesita enviar el mensaje, igual que lo haría si la app estuviera en ejecución, pero ahora a través de un «servicio push».
+	  <ul>
+	    <li>Actualmente, esto proviene de civildefense.io.</li>
+	    <li>En la <a href="index.html#broadcast">próxima versión principal</a>, provendrá de la propia red entre pares (peer-to-peer).</li>
+	  </ul>
+	  En cualquier caso, la red cifra el mensaje y lo envía al servicio push. Ante el servicio push no se identifica como proveniente de civildefense.io, sino con una clave única creada solo para tu sesión más reciente de la app Civil Defense.
+	</li>
+	<li>Segundo, el servidor push (Apple o Google) envía el mensaje a tu dispositivo. Ellos saben que recibiste un mensaje push, pero no la aplicación, el tema, el remitente ni el contenido.</li>
+      </ol>
+    </p>
+
+    <hr class="rule">
+
+    <div class="centered">
+      <img src="serving-you.jpg" alt="Cartel de la Semana de la Defensa Civil: A su servicio en tiempos de emergencia">
+    </div>
+
+  </main>
+<footer>
+  <p><a href="/?lang=es" target="civildefense">civildefense.io</a> &mdash; Mapeo colaborativo seguro y gratuito para poblaciones vulnerables.</p>
+</footer>
+  
+</body>
+</html>
