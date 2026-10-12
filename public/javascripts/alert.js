@@ -760,7 +760,17 @@ ${this.formatReplyInput()}`;
 	this.deleteReply(event.currentTarget.closest('.reply'));
       });
     }
+    const isIOS = osName() === 'iOS';
     for (const downloadable of popupElement.querySelectorAll('[download]')) {
+      if (isIOS) {
+	const dataurl = downloadable.href;
+	fetch(dataurl)
+	  .then(response => response.blob())
+	  .then(blob => {
+	    downloadable.src = URL.createObjectURL(blob);
+	    console.log({downloadable, dataurl, objecturl: downloadable.src});
+	  });
+      }
       tooltip(downloadable, Int`Click to download ${downloadable.download}.`);
     }
     const shareable = popupElement.querySelectorAll('.share');
