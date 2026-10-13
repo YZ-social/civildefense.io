@@ -993,7 +993,6 @@ ${this.formatReplyInput()}`;
   formatURL(url, {name, mime = this.getMIME(url), wrapDefault = true} = {}) { // Wrap as the appropriate player based on MIME type. Suitable for handling a replacement match.
     if (mime === 'application/vnd.apple.mpegurl') mime = 'video'; // For our purposes here.
     const dName = name ? `="${name}"` : '';
-    console.log({url, name, mime, wrapDefault, dName});
     if (mime.startsWith('audio')) return `<a download${dName}><audio controls src="${url}"></audio></a>`;
     if (mime.startsWith('video')) return `<a download${dName}><video controls src="${url}"></video></a>`;
     if (mime.startsWith('image')) return `<a download${dName}><img src="${url}"></img></a>`;
