@@ -51,8 +51,8 @@ export function teach(classname) {
   document.body.classList.toggle(classname, true);
   document.querySelectorAll('.teach').forEach(element => element.onclick = closeTeach);
 }
-export function closeTeach() { // All of them.
-  document.body.classList.toggle('firstConversation', false);
-  document.body.classList.toggle('firstPublish', false);
-  document.body.classList.toggle('firstTopics', false);
+export function closeTeach({topics = true, publish = true, conversation = true} = {}) { // All of them.
+  if (conversation) document.body.classList.toggle('firstConversation', false);
+  if (publish) document.body.classList.toggle('firstPublish', false);
+  if (topics) document.body.classList.toggle('firstTopics', false);
 }

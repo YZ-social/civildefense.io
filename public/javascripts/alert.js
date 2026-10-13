@@ -695,6 +695,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     }
     this.needsRedisplay = false;
     this.logAlert();
+    closeTeach({conversation:false, publish:false});
     if (!this.subscribed) this.ensureRepliesSubscribed();
     const {issuedTime, originalPosting, hashtag, agent}  = this;
     this.clearAvatars(popup);
