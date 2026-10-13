@@ -32,7 +32,7 @@ export function getShareableURL(tag = null, tags = Hashtags.getSubscribe()) { //
 }
 export async function share(properties) {  // Invoke platform share API on properties.
   if (!navigator.share) {
-    showMessage(navigator.userAgent.includes('Firefox') ? Int`In Firefox, sharing must be explicitly enabled through the <a target="yz.sidebar" href="https://developer.mozilla.org/en-US/docs/Mozilla/Firefox/Experimental_features#webshare_api">dom.webshare.enabled</a> preference in about:config.` : Int`This browser does not support sharing.`);
+    showMessage(navigator.userAgent.includes('Firefox') ? Int`In Firefox, sharing must be explicitly enabled through the <a target="yz.sidebar" rel="noopener" href="https://developer.mozilla.org/en-US/docs/Mozilla/Firefox/Experimental_features#webshare_api">dom.webshare.enabled</a> preference in about:config.` : Int`This browser does not support sharing.`);
     return;
   }
   if (properties.files) {
@@ -703,7 +703,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 ${this.formatReplyInput()}`;
     popup.setContent(content);
     popup.update();
-    this.initializeHandlers(popup);
+    setTimeout(() => this.initializeHandlers(popup), 100);
     teach('firstConversation');
     if (Agent.isMine(this.agent)) teach('firstPublish');
   }
@@ -762,16 +762,25 @@ ${this.formatReplyInput()}`;
     }
     const isIOS = osName() === 'iOS';
     for (const downloadable of popupElement.querySelectorAll('[download]')) {
-      if (isIOS) {
-	const dataurl = downloadable.href;
-	fetch(dataurl)
-	  .then(response => response.blob())
-	  .then(blob => {
-	    downloadable.href = URL.createObjectURL(blob);
-	    console.log({downloadable, dataurl, blob, objecturl: downloadable.href});
-	  });
-      }
-      tooltip(downloadable, Int`Click to download ${downloadable.download}.`);
+      // Some platforms (e.g., ios) do a terrible job with download of a data url.
+      // Here we uniformly try to make them more digestable.
+      clickTip(downloadable, Int`Click to open ${downloadable.download} in a new tab for downloading.`, () => {
+	const player = downloadable.firstElementChild;
+	const url = downloadable.href || player.src;
+	if (url.startsWith('data:')) {
+	  fetch(url)
+	    .then(response => response.blob())
+	    .then(blob => {
+	      const objectURL = URL.createObjectURL(blob);
+	      const proxy = window.open(objectURL, "_blank");
+	      URL.revokeObjectURL(objectURL);
+	      console.log({downloadable, player, url, blob, objectURL, proxy});
+	    });
+	} else {
+	  console.log('directly opening', url);
+	  window.open(url, "_blank");
+	}
+      });
     }
     const shareable = popupElement.querySelectorAll('.share');
     for (const element of shareable) clickTip(element, element.closest('.reply') ?
@@ -971,7 +980,7 @@ ${this.formatReplyInput()}`;
     ${name}
   </a>
 </div>`);
-      const messageDisplay = message ? `<div class="message">${DOMPurify.sanitize(marked.parse(text))}</div>` : '';
+      const messageDisplay = message ? `<div class="message">${DOMPurify.sanitize(marked.parse(text), { ADD_ATTR: ['target'] })}</div>` : '';
       let dataAttributes = `data-tag="${tag}" data-text="${message}"`;
       if (file) dataAttributes += ` data-file="${file}" data-name="${name}"`;
       return `<div class="reply" ${dataAttributes}>${this.formatAttribution(rest)}${attachment}${messageDisplay}</div>`;
@@ -984,10 +993,11 @@ ${this.formatReplyInput()}`;
   formatURL(url, {name, mime = this.getMIME(url), wrapDefault = true} = {}) { // Wrap as the appropriate player based on MIME type. Suitable for handling a replacement match.
     if (mime === 'application/vnd.apple.mpegurl') mime = 'video'; // For our purposes here.
     const dName = name ? `="${name}"` : '';
-    if (mime.startsWith('audio')) return `<a href="${url}" download${dName}><audio controls src="${url}"></audio></a>`;
-    if (mime.startsWith('video')) return `<a href="${url}" download${dName}><video controls src="${url}"></video></a>`;
-    if (mime.startsWith('image')) return `<a href="${url}" download${dName}><img src="${url}"></img></a>`;
-    if (wrapDefault) return `<a href="${url}" target="yz.sidebar">${url}</a>`;
+    console.log({url, name, mime, wrapDefault, dName});
+    if (mime.startsWith('audio')) return `<a download${dName}><audio controls src="${url}"></audio></a>`;
+    if (mime.startsWith('video')) return `<a download${dName}><video controls src="${url}"></video></a>`;
+    if (mime.startsWith('image')) return `<a download${dName}><img src="${url}"></img></a>`;
+    if (wrapDefault) return `<a href="${url}" target="yz.sidebar" rel="noopener">${url}</a>`;
     return '';
   }
   getMIME(url) { // Answer the MIME type of url, as best we can.
