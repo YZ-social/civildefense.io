@@ -2,7 +2,7 @@
 <html>
   <head>
     <script>
-      location = `identity-${navigator.language.split('-')[0].toLowerCase()}.html${location.hash}`;
+      location = `identity-${({es:'es'})[navigator.language.split('-')[0].toLowerCase()] || 'en'}.html${location.hash}`;
     </script>
   </head>
 </html>  

@@ -2,7 +2,7 @@
 <html>
   <head>
     <script>
-      location = `pwa-${navigator.language.split('-')[0].toLowerCase()}.html${location.hash}`;
+      location = `pwa-${({es:'es'})[navigator.language.split('-')[0].toLowerCase()] || 'en'}.html${location.hash}`;
     </script>
   </head>
 </html>  
