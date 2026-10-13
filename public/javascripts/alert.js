@@ -688,6 +688,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   needsRedisplay = true;
   ensureContent(popup = this.marker.getPopup()) { // Set content and handlers in popup if/as needed.
     resetInactivityTimer();
+    if (!popup) return; // When deleting reply after alert is already gone.
     if (!popup.isOpen()) return;
     if (!this.needsRedisplay) {
       this.initializeHandlers(popup);
