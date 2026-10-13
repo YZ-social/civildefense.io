@@ -346,6 +346,7 @@ document.body.addEventListener('animationend', event => {
 });
 
 document.querySelector('head > title').innerHTML = `${Int`Civil Defense`}@${location.hostname}`;
+document.querySelector('#appSource').innerHTML = location.hostname;
 
 // Set up text for the browser language.
 function initText(selector, content = selector) {
@@ -354,6 +355,9 @@ function initText(selector, content = selector) {
   element.textContent = text;
 }
 initText('#titleLabel');
+initText('#learnNotifications2');
+initText('#learnIdentity2');
+initText('#learnPWA2');
 initText('#aboutReport');
 initText('#aboutShared');
 initText('#aboutFade');
@@ -398,7 +402,7 @@ if (isStandalone()) {
 }
 
 tooltip('#learnMore', Int`Click to see more information in another tab about what you can do with this app and how it is resistant to tracking, censorship, and takedown.`);
-tooltip('#learnNotification', Int`Click to learn about receiving operating system notifications.`);
+tooltip('#learnNotifications', Int`Click to learn about receiving operating system notifications.`);
 tooltip('#learnIdentity', Int`Click to learn about how you can choose to label yourself and how to recognize other users.`);
 tooltip('#learnPWA', Int`Click to learn about installation, updates, and removal.`);
 
