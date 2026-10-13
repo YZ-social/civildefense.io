@@ -11,6 +11,7 @@ export function Int(strings, ...values) { // A tagged template function that con
     return result + translated + value;
   }, '');
 }
+window.Int = Int;
 
 const translations = {
   ['Civil Defense']: {es: "Defensa Civil"},
@@ -109,7 +110,8 @@ const translations = {
   
   ['Show conversation for this ']: {es: "Mostrar la conversación de esta alerta de "},
   [' alert.']: {es: "."},
-  ['Click to download.']: {es: "Haz clic para descargar."},
+  ['Click to open ']: {es: "Haz clic para abrir "},
+  [' in a new tab']: {es: " en una nueva pestaña."},
   ['Zoom in to show more detail in the map.']: {es: "Amplía la imagen para mostrar más detalles en el mapa."},
   ['Zoom out to show a larger area in the map.']: {es: "Aleja la vista para mostrar un área más amplia en el mapa."},
   ['Change the text label for you shown in the conversation for your alerts and replies.']: {es: "Cambia la etiqueta de texto que se muestra en la conversación para tus alertas y respuestas."},

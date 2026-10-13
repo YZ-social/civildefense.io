@@ -764,7 +764,7 @@ ${this.formatReplyInput()}`;
     for (const downloadable of popupElement.querySelectorAll('[download]')) {
       // Some platforms (e.g., ios) do a terrible job with download of a data url.
       // Here we uniformly try to make them more digestable.
-      clickTip(downloadable, Int`Click to open ${downloadable.download} in a new tab for downloading.`, () => {
+      clickTip(downloadable, Int`Click to open ${downloadable.download} in a new tab.`, () => {
 	const player = downloadable.firstElementChild;
 	const url = downloadable.href || player.src;
 	if (url.startsWith('data:')) {
