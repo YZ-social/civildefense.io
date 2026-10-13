@@ -703,7 +703,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 ${this.formatReplyInput()}`;
     popup.setContent(content);
     popup.update();
-    this.initializeHandlers(popup);
+    setTimeout(() => this.initializeHandlers(popup), 100);
     teach('firstConversation');
     if (Agent.isMine(this.agent)) teach('firstPublish');
   }
@@ -761,17 +761,8 @@ ${this.formatReplyInput()}`;
       });
     }
     const isIOS = osName() === 'iOS';
-    for (const downloadable of popupElement.querySelectorAll('[download]')) {
-      if (isIOS) {
-	const dataurl = downloadable.href;
-	fetch(dataurl)
-	  .then(response => response.blob())
-	  .then(blob => {
-	    downloadable.href = URL.createObjectURL(blob);
-	    console.log({downloadable, dataurl, blob, objecturl: downloadable.href});
-	  });
-      }
-      tooltip(downloadable, Int`Click to download ${downloadable.download}.`);
+    for (const downloadable of popupElement.querySelectorAll('a[target="_blank"]')) {
+      tooltip(downloadable, Int`Click to open ${downloadable.download} in a new tab.`);
     }
     const shareable = popupElement.querySelectorAll('.share');
     for (const element of shareable) clickTip(element, element.closest('.reply') ?
@@ -966,7 +957,7 @@ ${this.formatReplyInput()}`;
       const text = message.replace(/(?<!")https?:\/\/\S+/g, url => this.formatURL(url));
       let attachment = file && (this.formatURL(file, {name, wrapDefault:false}) || `
 <div class="attachment file">
-  <a href="${file}" download="${name}">
+  <a href="${file}" target="_blank"">
     <md-icon class="material-icons">attachment</md-icon>
     ${name}
   </a>
@@ -983,11 +974,10 @@ ${this.formatReplyInput()}`;
   }
   formatURL(url, {name, mime = this.getMIME(url), wrapDefault = true} = {}) { // Wrap as the appropriate player based on MIME type. Suitable for handling a replacement match.
     if (mime === 'application/vnd.apple.mpegurl') mime = 'video'; // For our purposes here.
-    const dName = name ? `="${name}"` : '';
-    if (mime.startsWith('audio')) return `<a href="${url}" download${dName}><audio controls src="${url}"></audio></a>`;
-    if (mime.startsWith('video')) return `<a href="${url}" download${dName}><video controls src="${url}"></video></a>`;
-    if (mime.startsWith('image')) return `<a href="${url}" download${dName}><img src="${url}"></img></a>`;
-    if (wrapDefault) return `<a href="${url}" target="yz.sidebar">${url}</a>`;
+    if (mime.startsWith('audio')) return `<a href="${url}" target="_blank"><audio controls src="${url}"></audio></a>`;
+    if (mime.startsWith('video')) return `<a href="${url}" target="_blank"><video controls src="${url}"></video></a>`;
+    if (mime.startsWith('image')) return `<a href="${url}" target="_blank"><img src="${url}"></img></a>`;
+    if (wrapDefault) return `<a href="${url}" target="_blank">${url}</a>`;
     return '';
   }
   getMIME(url) { // Answer the MIME type of url, as best we can.
