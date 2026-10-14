@@ -793,7 +793,7 @@ ${this.formatReplyInput()}`;
 					      getText('.teach.share'), event => this.share(event));
     for (const element of popupElement.querySelectorAll('[src]')) {
       if (element.complete || element.readyState > 3) return;
-      element.onload = () => popup.update(); // Make sure there enough room.
+      element.onload = () => setTimeout(() => popup.update(), 100); // Make sure there enough room.
     }
   }
   initChangeHashtag(someParent) { // Init handler on the menu button, if any, as (re-) init of menu for open popup
