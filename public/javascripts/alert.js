@@ -135,7 +135,7 @@ class AlertReply extends Reply {
     const asAlertSupplement = Alert.removeItem(this.tag); // If from normal subscription, it will NOT be present.
     super.delete();
     if (asAlertSupplement) { // We did not arrive here through alertInstance.ensure(), which does the following:
-      alertInstance.needsRedisplay = true;
+      alertInstance.needsRedisplay ||= 'reply';
       alertInstance.ensureContent();
     }
     // See service worker showNotification comments regarding cancel.
@@ -202,7 +202,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	// needed after the first opening.
 	marker.bindPopup('', {className: 'alert', autoPanPaddingTopLeft})
 	  .on('popupopen', event => this.ensureContent(event.popup))
-	  .on('popupclose', () => closeTeach());
+	  .on('popupclose', () => { closeTeach(); this.needsRedisplay = 'all'; });
 	tooltip(marker.getElement(), this.label);
 	if (tag === openOnReceive) {
 	  openOnReceive = false;
@@ -673,7 +673,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const newIcon = this.makeIcon(extendedHashtag, wrapper.tag);
       marker.setIcon(newIcon);
       wrapper.hashtag = extendedHashtag;
-      wrapper.needsRedisplay = true; // See comment for initializeHandlers. We need to clear and rebuild content on re-open.
+      wrapper.needsRedisplay = 'all'; // See comment for initializeHandlers. We need to clear and rebuild content on re-open.
       const popup = marker.getPopup();
       if (!popup?.isOpen()) return; // Either an aggregate or closed.
       // Fix what's showing now without flashing everything. Make sure menu works.
@@ -685,16 +685,24 @@ export class Alert extends Conversation { // A wrapper around L.marker
     });
   }
 
-  needsRedisplay = true;
+  needsRedisplay = 'all';
   ensureContent(popup = this.marker.getPopup()) { // Set content and handlers in popup if/as needed.
     resetInactivityTimer();
     if (!popup) return; // When deleting reply after alert is already gone.
+    const { needsRedisplay } = this;
     if (!popup.isOpen()) return;
-    if (!this.needsRedisplay) {
+    if (!needsRedisplay) {
       this.initializeHandlers(popup);
       return;
     }
-    this.needsRedisplay = false;
+    this.needsRedisplay = '';
+    if (needsRedisplay === 'reply') {
+      const content = popup.getElement();
+      const scroller = content.querySelector('div.scroller');
+      scroller.innerHTML = this.formatReplies();
+      this.initializeHandlers(popup);
+      return;
+    }
     this.logAlert();
     closeTeach({conversation:false, publish:false});
     if (!this.subscribed) this.ensureRepliesSubscribed();
@@ -714,7 +722,7 @@ ${this.formatReplyInput()}`;
     popup?.getElement()?.querySelectorAll('.correspondent[data-tag]')
       .forEach(element => Agent.ensure({tag: element.dataset.tag}).removeElement(element, 'mixed', element.classList.contains('avatar') ? 'avatar' : 'handle'));
   }
-  initializeHandlers(popup) { // subtle: Leaflet pupup will recreate from last setContent string. Need to re-establish handlers.
+  initializeHandlers(popup) { // subtle: Leaflet popup will recreate from last setContent string. Need to re-establish handlers.
     const popupElement = popup.getElement();
     const replyInput = popupElement.querySelector('.reply-input');
     const replyButton = replyInput.querySelector('md-filled-icon-button');
@@ -762,7 +770,6 @@ ${this.formatReplyInput()}`;
 	this.deleteReply(event.currentTarget.closest('.reply'));
       });
     }
-    const isIOS = osName() === 'iOS';
     for (const downloadable of popupElement.querySelectorAll('[download]')) {
       // Some platforms (e.g., ios) do a terrible job with download of a data url.
       // Here we uniformly try to make them more digestable.
@@ -858,7 +865,7 @@ ${this.formatReplyInput()}`;
     const {lat, lng, hashtag, tag, issuedTime, originalPosting = issuedTime} = this;
     console.log("updatePost", {newHashtag, lat, lng, hashtag, tag, issuedTime, originalPosting, self:this});
     if (!newHashtag) return Alert.publish({lat, lng, tag, originalPosting, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
-    if (newHashtag === hashtag) return this.needsRedisplay = true;
+    if (newHashtag === hashtag) return this.needsRedisplay = 'all';
     const cancel = {lat, lng, tag, hashtag}; // Cancel old hashtag as we publish newHashtag, below.
     Hashtags.setPublish(newHashtag);
     Hashtags.onchange({redisplaySubscribers: false, resetSubscriptions: false});
@@ -887,7 +894,7 @@ ${this.formatReplyInput()}`;
 	}
       }
     }
-    this.needsRedisplay = true;
+    this.needsRedisplay ||= 'reply';
     this.ensureContent(); // If not open, it will exit early.
     return reply;
   }
