@@ -1,7 +1,7 @@
 const { Request, Response, URL, clients} = self;
 // Little point in trying to automatically pull this through package.json, as we need a byte change in THIS file to trigger a new worker.
-const serviceVersion = '5.4.1';
-const releaseNotesURL = 'https://docs.google.com/document/d/1AZyJUv7et_3fqG6_k0wv5D7sVFDF0UjBw_SuTF-1F_I/edit?usp=sharing';
+const serviceVersion = '5.4.2';
+const releaseNotesURL = 'https://docs.google.com/document/d/1bx9r9UB-UZ_9qCmdEaZr6hOGqOjmDEVoStfiDU7YM64/edit?usp=sharing';
 
 const cacheList = [ // The files we need.
   "/",
@@ -191,9 +191,6 @@ self.addEventListener('fetch', event => {
 async function cacheSource(version, event) { // Cache source in the given version.
   console.log(`service-worker ${serviceVersion} is caching source in cache ${version}.`);
   const cache = await caches.open(version);
-  await Promise.all(cacheList.map(file => cache.add(file)
-				  .catch(error => console.error(file + ' ' + error.message))));
-
   await Promise.all([
     // These are referenced within material web, but missing. Turns out we don't need them,
     // but let's cache empty responses to keep the console cleaner.
@@ -207,6 +204,10 @@ async function cacheSource(version, event) { // Cache source in the given versio
     "https://esm.run/npm/lit@3.3.3/directives/live.js/+esm",
   ].map(url => cache.put(new Request(url),
                          new Response("", {headers: { "Content-Type": "text/javascript" }}))));
+
+  await Promise.all(cacheList.map(file => cache.add(file)
+				  .catch(error => console.error(file + ' ' + error.message))));
+
   return version;
 }
 
