@@ -477,10 +477,13 @@ md-menu {
     flex-shrink: 0;
 }
 .attribution > div:last-child {
+    max-width: 35%;
+    text-align: end;
     margin-left: auto;
     display: flex;
     align-items: center;
 }
+.attribution > div:last-child > md-outlined-button { white-space: normal; }
 
 .teach {
     position: absolute;
@@ -655,7 +658,8 @@ md-menu-item minidenticon-svg {
 .attribution-row {
     display: flex;
     flex-direction: row;
-    gap: 10px;
+    column-gap: 10px;
+    flex-wrap: wrap;
 }
 .alert {
     font-family: roboto;
