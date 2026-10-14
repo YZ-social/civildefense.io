@@ -82,6 +82,38 @@ export function recenterMap(event) {
 
 export var trackMap;
 
+function installOneLevelWheelZoom(map) { // One wheel notch changes zoom by one level.
+  // Leaflet's scroll-wheel handler scales with the reported scroll distance, and its
+  // sigmoid allows up to four levels in one gesture. A Windows wheel notch often reports
+  // a large delta, or a burst of events, so one click can run the zoom to the limit.
+  // Step by zoomDelta on the first event, and treat the rest of that burst as the same notch.
+  const container = map.getContainer();
+  let notchTimer = null;
+  let notchConsumed = false;
+  container.addEventListener('wheel', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.deltaY) return;
+    if (!notchConsumed) {
+      notchConsumed = true;
+      const step = map.options.zoomDelta || 1;
+      const direction = event.deltaY > 0 ? -1 : 1; // Positive deltaY is wheel-down: zoom out.
+      const next = map.getZoom() + direction * step;
+      // A zoom animation in progress ignores further setZoom calls for ~250ms.
+      // Clear it so this notch lands, and don't start another animation.
+      if (map._animatingZoom) {
+        map._animatingZoom = false;
+        map._mapPane?.classList.remove('leaflet-zoom-anim');
+      }
+      map.stop();
+      map.setZoomAround(map.mouseEventToContainerPoint(event), next, {animate: false});
+    }
+    clearTimeout(notchTimer);
+    // Events closer together than this belong to the same physical notch.
+    notchTimer = setTimeout(() => { notchConsumed = false; }, 100);
+  }, {passive: false});
+}
+
 function initMap([lat, lng, zoom], positionLabel) { // Set up appropriate zoomed initial map and handlers for this position.
   // Then show initial message and updateSubscriptions.
 
@@ -95,8 +127,10 @@ function initMap([lat, lng, zoom], positionLabel) { // Set up appropriate zoomed
     zoom,
     minZoom: 2,
     zoomControl: navigator.maxTouchPoints <= 1, // Only when no multi-touch.
-    maxBounds: [[90, 180], [-90, -180]]
+    maxBounds: [[90, 180], [-90, -180]],
+    scrollWheelZoom: false // Replaced by installOneLevelWheelZoom.
   }).stopLocate(); // Just in case some library version initates this.
+  installOneLevelWheelZoom(map);
 
   // Add OpenStreetMap tiles
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
