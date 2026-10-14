@@ -976,7 +976,7 @@ ${this.formatReplyInput()}`;
   // If present the attachment will be an A element with download attribute, surrounding either an IMG, A/V player, or an attachment icon followed by the file name.
   formatReplies() { // Answer HTML for the replies and input box.
     const { items, agent, originalPosting } = this;
-    const formatReply = ({tag, message, file = '', name, hashtag, ...rest}) => {
+    const formatReply = ({tag, message = '', file = '', name, hashtag, ...rest}) => {
       const text = message.replace(/(?<!")https?:\/\/\S+/g, url => this.formatURL(url));
       let attachment = file && (this.formatURL(file, {name, wrapDefault:false}) || `
 <div class="attachment file">
@@ -985,8 +985,8 @@ ${this.formatReplyInput()}`;
     ${name}
   </a>
 </div>`);
-      const parsed = message ?? marked.parse(text);
-      const sanitized = parsed ?? DOMPurify.sanitize(parsed, { ADD_ATTR: ['target']});
+      const parsed = marked.parse(text);
+      const sanitized = DOMPurify.sanitize(parsed, { ADD_ATTR: ['target']});
       const messageDisplay = message ? `<div class="message">${sanitized}</div>` : '';
       let dataAttributes = `data-tag="${tag}" data-text="${DOMPurify.sanitize(message, { ALLOWED_TAGS: ['#text'] })}"`;
       if (file) dataAttributes += ` data-file="${file}" data-name="${name}"`;
@@ -1095,3 +1095,4 @@ ${this.formatReplyInput()}`;
   }
 }
 globalThis.Alert = Alert; // for debugging
+globalThis.marked = marked;
