@@ -96,7 +96,7 @@ class AlertReply extends Reply {
     // resolves.
     const {payload} = properties;
     let {message = payload, file:attachmentTopic} = payload;
-    message = DOMPurify.sanitize(message);
+    message = DOMPurify.sanitize(message, { ADD_ATTR: ['target']});
     if (attachmentTopic) {
       const contact = await networkPromise;
       // Before pushing data on to replies.
@@ -877,7 +877,7 @@ ${this.formatReplyInput()}`;
       if (reply === this.items[0]) { // If first sorted reply, and there's a message, update the tooltip.
 	const message = reply.body;
 	const markerElement = message && this.marker.getElement();
-	if (markerElement) tooltip(markerElement, message);
+	if (markerElement) tooltip(markerElement, DOMPurify.sanitize(message, { ALLOWED_TAGS: ['#text'] }));
       }
       if (reply === this.items[this.items.length - 1]) { // If last reply so far (even if first), show ring and update fader.
 	const ringElement = this.startFader('.alert-commented', remaining);
@@ -982,8 +982,10 @@ ${this.formatReplyInput()}`;
     ${name}
   </a>
 </div>`);
-      const messageDisplay = message ? `<div class="message">${DOMPurify.sanitize(marked.parse(text), { ADD_ATTR: ['target'] })}</div>` : '';
-      let dataAttributes = `data-tag="${tag}" data-text="${message}"`;
+      const parsed = message ?? marked.parse(text);
+      const sanitized = parsed ?? DOMPurify.sanitize(parsed, { ADD_ATTR: ['target']});
+      const messageDisplay = message ? `<div class="message">${sanitized}</div>` : '';
+      let dataAttributes = `data-tag="${tag}" data-text="${DOMPurify.sanitize(message, { ALLOWED_TAGS: ['#text'] })}"`;
       if (file) dataAttributes += ` data-file="${file}" data-name="${name}"`;
       return `<div class="reply" ${dataAttributes}>${this.formatAttribution(rest)}${attachment}${messageDisplay}</div>`;
     };
