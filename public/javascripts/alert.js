@@ -923,6 +923,8 @@ ${this.formatReplyInput()}`;
     const files = inputElement.parentElement.querySelector('input[type="file"]').files;
     if (!message && !files.length) return;
     inputElement.value = '';
+    inputElement.blur();
+    inputElement.rows = 1;
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     const contact = await networkPromise;
     if (files.length) {
@@ -1095,4 +1097,3 @@ ${this.formatReplyInput()}`;
   }
 }
 globalThis.Alert = Alert; // for debugging
-globalThis.marked = marked;
