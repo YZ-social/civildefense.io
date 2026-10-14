@@ -34,15 +34,14 @@ function  flashElement(selector) {
 let home; // Used by recenter button.
 let homeMarker; // Marks location of home.
 let startupMapCenter = null;
-const locationMarkerLabel = Int`Your Location`;
-const defaultMarkerLabel = Int`Default location. Geolocation unavailable.`;
 export function updateHome(location = null) { // initMap if necessary, and set our position.
   startupMapCenter ||= JSON.parse(localStorage.getItem('mapCenter')) || location || [37.7749, -122.4194, 13]; // San Fransisco
   //console.log('updateHome', {location, startupMapCenter, home});
   home = location || home || startupMapCenter;
-  const label = location ? locationMarkerLabel : defaultMarkerLabel;
   if (!map) {
-    initMap(startupMapCenter, label);
+    const [lat, lng] = home;
+    P2PWebNetwork.setSessionLocation({lat, lng}); // TODO: Arrange to capture an updated value whenever a new node is created
+    initMap(startupMapCenter);
 
     const url = new URL(window.location);
     const params = url.searchParams;
@@ -60,9 +59,6 @@ export function updateHome(location = null) { // initMap if necessary, and set o
       history.replaceState(null, '', url);
     }
     if (highlight) flashElement(highlight);
-    return;
-  } else {
-    homeMarker.getPopup().setContent(label);
   }
 
   // setLatLng can cause the map to autoPan to put the marker within bounds.
@@ -70,8 +66,17 @@ export function updateHome(location = null) { // initMap if necessary, and set o
   // So let's not even update it if it is outside the displayed area.
   // However, that means we will need to updateLocation from the last position on map moveend.
   if (!map.getBounds().contains(home)) return;
-
-  setTimeout(() => homeMarker.setLatLng(home), 100); // It seems that homeMarker can be set, but not yet ready to be moved?
+  if (homeMarker) {
+    homeMarker.setLatLng(home);
+    return;
+  }
+  // Add a marker at user's current location
+  L.Icon.Default.prototype.options.crossOrigin = 'anonymous'; // Set default prop, as it is used on next line.
+  const label = location ? Int`Your Location` : Int`Default location. Geolocation unavailable.`;
+  homeMarker = L.marker(home, {autoPan: false})
+    .addTo(map)
+    .bindPopup(label)
+    .openPopup();
 }
 
 export function recenterMap(event) {
@@ -82,11 +87,10 @@ export function recenterMap(event) {
 
 export var trackMap;
 
-function initMap([lat, lng, zoom], positionLabel) { // Set up appropriate zoomed initial map and handlers for this position.
+function initMap([lat, lng, zoom]) { // Set up appropriate zoomed initial map and handlers for this position.
   // Then show initial message and updateSubscriptions.
 
   zoom ||= 14;
-  P2PWebNetwork.setSessionLocation({lat, lng}); // TODO: Arrange to capture an updated value whenever a new node is created
   let center = {lat, lng};
 
   map = L.map('map', { // Ensuring the default values, in case they have changed in some library version.
@@ -126,18 +130,12 @@ function initMap([lat, lng, zoom], positionLabel) { // Set up appropriate zoomed
   trackMap();
   map.on('move', trackMap);
 
-  // Add a marker at user's current location
-  L.Icon.Default.prototype.options.crossOrigin = 'anonymous'; // Set default prop, as it is used on next line.
-  homeMarker = L.marker([lat, lng], {autoPan: false})
-    .addTo(map)
-    .bindPopup(positionLabel)
-    .openPopup();
   // We close the popup on move, because the map will try to keep an open popup from straddling the bounds,
   // which can be confusing. It also closes when another marker is made, so it's nice to just close it
   // upon interaction.
   map.on('movestart', () => {
     resetInactivityTimer();
-    map.closePopup(homeMarker.getPopup());
+    map.closePopup(homeMarker?.getPopup());
   });
   map.on('moveend', async () => {
     const {lat, lng} = map.getCenter();
