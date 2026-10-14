@@ -569,8 +569,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // I.e., one / minute, but allowing bursts up to maxPublish. After that, one can still publish, but kill the oldest.
   // We keep enough data in memory that we can reproduce what to kill,m even if Alert has since scrolled off the map and been destroyed.
   static maxPublish = 5;
-  static publishing = false;
   static lastPublished = []; // Last published lat, lng, hashtag
+  static publishQueue = Promise.resolve();
   // Publish an alert to all applicable eventNames, canceling as required. Promises tag (msgId).
   static async publish({lat, lng,
 			originalPosting = undefined,
@@ -579,12 +579,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
 			cancel = undefined, // First unpublish the specified data, if any. Complicated default.
 			issuedTime = Date.now(), tag, alert, label,
 			...rest
-		       }) {
+			}) {
     // We call all the publishing at once and return tag, without waiting for each to occur.
     // However, the 'unpublishing' (if any) is invoked first.
-    if (this.publishing) { console.log('skiping overlapping publish'); return null; } // do not stack them up.
-    try {
-      this.publishing = true;
+    return this.publishQueue.then(async () => {
       const geocodePromise = (label === undefined) && payload && !alert && await this.reverseGeocode(lat, lng);
       const cells = getContainingCells(lat, lng);
       const eventNames = cells.map(cell => alertTopic(cell, hashtag));
@@ -629,9 +627,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 
       console.log('Published', {cells, n: cells.length, region, hashtag, tag, payload, oldCells, oldHash, oldTag});
       return tag;
-    } finally {
-      this.publishing = false;
-    }
+    });
   }
   static zoomOn(lat, lng, hashtag = '', zoom = map.getZoom() + 1) {
     if (hashtag) showMessage(Int`There are already at least ${this.aggregateLimit} alerts of type "${hashtag}" in the colored region. Zooming in to get a better look.`);
@@ -946,7 +942,7 @@ ${this.formatReplyInput()}`;
     // However, to make dedupe work, we rely on a "pun": In both of the two ways to publish, we rely on
     // the parameters being the same so that the computed msgId is the same so that duplicates can be deduped.
     if (this.items.length) await contact.publish({eventName: alert, region, payload, hashtag, alert, issuedTime}); // To alert-specific topic.
-    else await this.constructor.publish({lat, lng, payload, hashtag, alert, issuedTime}); // To all containing cells.
+    else await Alert.publish({lat, lng, payload, hashtag, alert, issuedTime}); // To all containing cells.
     Agent.current.persistPublicMetadata();
   }
   deleteReply(replyElement) {
