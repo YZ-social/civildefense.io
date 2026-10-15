@@ -87,48 +87,59 @@ export function recenterMap(event) {
 
 export var trackMap;
 
-function isLikelyTrackpad(event) { // Chrome/Safari: a trackpad's wheelDeltaY is -3 × deltaY. A mouse notch is not.
-  if (event.deltaMode !== 0 || !event.deltaY || typeof event.wheelDeltaY !== 'number') return false;
-  return Math.abs(event.wheelDeltaY + 3 * event.deltaY) < 1;
+function isMouseWheel(event) { // Notch zoom is for a mouse. A trackpad keeps Leaflet's smooth zoom.
+  if (event.ctrlKey || !event.deltaY) return false; // Pinch-zoom stays with Leaflet.
+  if (event.deltaMode !== 0) return true; // Lines or pages: one mouse event is one notch.
+  if (typeof event.wheelDeltaY !== 'number' || !event.wheelDeltaY) return false;
+  // Chrome on Windows reports a mouse as wheelDeltaY / deltaY ≈ -1.2 (120 units per 100 pixels).
+  // A Windows two-finger swipe is integer pixels at -1. A Mac trackpad is -3.
+  return Math.abs(event.wheelDeltaY / event.deltaY + 1.2) < 0.08;
 }
 
-function isDiscreteMouseNotch(event) { // A notched wheel, rather than a trackpad or Magic Mouse stream.
-  // Pinch-zoom and fine pixel streams stay with Leaflet's scrollWheelZoom.
-  if (event.ctrlKey || !event.deltaY || isLikelyTrackpad(event)) return false;
-  if (event.deltaMode !== 0) return true; // Lines or pages: classic mouse, including "one screen at a time".
-  return Math.abs(event.deltaY) >= 50; // Pixel-mode notch. Chrome on Windows is often ≥ 100, and scales with "lines per scroll".
-}
-
-function installOneLevelWheelZoom(map) { // One discrete wheel notch changes zoom by one level.
-  // Leaflet scales zoom with the reported scroll distance, and its sigmoid allows up to
-  // four levels per gesture. A Windows notch often reports a large delta (or a burst), so
-  // one click can run the zoom to the limit. A trackpad is a stream of small deltas, and
-  // treating that whole stream as one notch shuts scrolling off. Leave those to Leaflet,
-  // and only clamp a discrete notch.
+function installOneLevelWheelZoom(map) { // One mouse-wheel click changes zoom by one level.
+  // Chrome reports one Windows mouse notch as about 100 pixels. Some mouse drivers spread
+  // that notch across a few seconds of tiny events, and the next click continues the stream
+  // with no gap. Leaflet then steps one level per batch until min or max zoom. Add the
+  // pixels up and zoom once per notch. A wheel that is not recognized as a mouse stays with Leaflet.
+  const notchPx = 100;
   const container = map.getContainer();
-  let notchTimer = null;
-  let notchConsumed = false;
+  let dir = 0;
+  let credit = 0; // Pixels still covered by zooms already issued.
+  const zoomOne = (event) => {
+    const step = map.options.zoomDelta || 1;
+    const direction = event.deltaY > 0 ? -1 : 1; // Positive deltaY is wheel-down: zoom out.
+    const next = map.getZoom() + direction * step;
+    // A zoom animation in progress ignores further setZoom calls for ~250ms.
+    if (map._animatingZoom) {
+      map._animatingZoom = false;
+      map._mapPane?.classList.remove('leaflet-zoom-anim');
+    }
+    map.stop();
+    map.setZoomAround(map.mouseEventToContainerPoint(event), next, {animate: false});
+  };
   container.addEventListener('wheel', event => {
-    if (!isDiscreteMouseNotch(event)) return;
+    if (!isMouseWheel(event)) return;
     event.preventDefault();
     event.stopPropagation();
-    if (!notchConsumed) {
-      notchConsumed = true;
-      const step = map.options.zoomDelta || 1;
-      const direction = event.deltaY > 0 ? -1 : 1; // Positive deltaY is wheel-down: zoom out.
-      const next = map.getZoom() + direction * step;
-      // A zoom animation in progress ignores further setZoom calls for ~250ms.
-      // Clear it so this notch lands, and don't start another animation.
-      if (map._animatingZoom) {
-        map._animatingZoom = false;
-        map._mapPane?.classList.remove('leaflet-zoom-anim');
-      }
-      map.stop();
-      map.setZoomAround(map.mouseEventToContainerPoint(event), next, {animate: false});
+    if (event.deltaMode !== 0) { // A line or page event is already one notch, not 100 pixels.
+      zoomOne(event);
+      return;
     }
-    clearTimeout(notchTimer);
-    // Further large events this close belong to the same physical notch.
-    notchTimer = setTimeout(() => { notchConsumed = false; }, 100);
+    const sign = Math.sign(event.deltaY);
+    if (sign !== dir) { // A reversed wheel spends its pixels on the new direction.
+      dir = sign;
+      credit = 0;
+    }
+    const pixels = Math.abs(event.deltaY);
+    if (credit <= 0) {
+      zoomOne(event);
+      credit = notchPx;
+    }
+    credit -= pixels;
+    while (credit < 0) {
+      zoomOne(event);
+      credit += notchPx;
+    }
   }, {capture: true, passive: false});
 }
 
