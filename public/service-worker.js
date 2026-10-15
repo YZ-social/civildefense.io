@@ -1,6 +1,6 @@
 const { Request, Response, URL, clients} = self;
 // Little point in trying to automatically pull this through package.json, as we need a byte change in THIS file to trigger a new worker.
-const serviceVersion = '5.4.3';
+const serviceVersion = '5.4.4';
 const releaseNotesURL = 'https://docs.google.com/document/d/10zY9_R2-b7NxTRrkVlyVwkaeqBM-yI5Csrha28Pw3K0/edit?usp=sharing';
 
 const cacheList = [ // The files we need.
@@ -213,7 +213,7 @@ async function cacheSource(version, event) { // Cache source in the given versio
 
 // The service worker is stopped and restarted for events, and so we can't keep an in-memory set of issued alerts.
 // Here we keep it in cache, and manually clean up expired entries.
-const alertCache = 'alerts-' + serviceVersion;
+const alertCache = 'seenNotifications';
 function hasSeenAlert(seenKey) { // Have we noted seenKey before?
   return caches.open(alertCache).then(cache => cache.match(seenKey));
 }
