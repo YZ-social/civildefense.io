@@ -1066,10 +1066,10 @@ expect === samples.replace(regex, myFunction);
     // TODO: Preserve attribution data. Maybe by including the tag reply tag in the url, and metadata in the text?
     const shareable = event.currentTarget.closest('[data-text]');
     const {text, file, name = 'unknown'} = shareable.dataset;
-    const {lat, lng} = this;
+    const {lat, lng, hashtag, label} = this;
     console.log('Share', shareable.dataset);
     const url = getShareableURL(this.tag, [this.hashtag]).href;
-    let textBase = `New CivilDefense.io alert @${lat},${lng}`;
+    let textBase = `CivilDefense.io ${hashtag} alert @${label || `${lat},${lng}`}`;
     const extendedText = text ? `${textBase}\n${text}` : textBase;
     const data = {text: extendedText, url};
     if (file) data.files = [await P2PWebNetwork.dataURL2blob(file, name)];
