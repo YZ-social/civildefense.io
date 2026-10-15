@@ -88,11 +88,11 @@ export function recenterMap(event) {
 export var trackMap;
 
 function isMouseWheel(event) { // Notch zoom is for a mouse. A trackpad keeps Leaflet's smooth zoom.
-  if (event.ctrlKey || !event.deltaY) return false; // Pinch-zoom stays with Leaflet.
+  if (event.ctrlKey || !event.deltaY) return false; // Pinch-zoom is a wheel event with ctrlKey set.
   if (event.deltaMode !== 0) return true; // Lines or pages: one mouse event is one notch.
   if (typeof event.wheelDeltaY !== 'number' || !event.wheelDeltaY) return false;
   // Chrome on Windows reports a mouse as wheelDeltaY / deltaY ≈ -1.2 (120 units per 100 pixels).
-  // A Windows two-finger swipe is integer pixels at -1. A Mac trackpad is -3.
+  // A two-finger swipe on this trackpad is integer pixels at -1. Chrome and Safari report a Mac trackpad near -3.
   return Math.abs(event.wheelDeltaY / event.deltaY + 1.2) < 0.08;
 }
 
@@ -138,7 +138,7 @@ function installOneLevelWheelZoom(map) { // One mouse-wheel click changes zoom b
     requestZoom(lastEvent, direction);
   });
   container.addEventListener('wheel', event => {
-    if (!isMouseWheel(event)) return;
+    if (!isMouseWheel(event)) return; // Do not preventDefault. Leaflet's scroll zoom still has to see trackpad and pinch events.
     event.preventDefault();
     event.stopPropagation();
     if (event.deltaMode !== 0) { // A line or page event is already one notch, not 100 pixels.
