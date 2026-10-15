@@ -1,7 +1,7 @@
 const { Request, Response, URL, clients} = self;
 // Little point in trying to automatically pull this through package.json, as we need a byte change in THIS file to trigger a new worker.
-const serviceVersion = '5.4.2';
-const releaseNotesURL = 'https://docs.google.com/document/d/1AZyJUv7et_3fqG6_k0wv5D7sVFDF0UjBw_SuTF-1F_I/edit?usp=sharing';
+const serviceVersion = '5.4.5';
+const releaseNotesURL = 'https://docs.google.com/document/d/10zY9_R2-b7NxTRrkVlyVwkaeqBM-yI5Csrha28Pw3K0/edit?usp=sharing';
 
 const cacheList = [ // The files we need.
   "/",
@@ -95,6 +95,7 @@ const cacheList = [ // The files we need.
 
   "leaflet/leaflet.css",
   "leaflet/leaflet-src.esm.js",
+  "leaflet/leaflet-src.esm.js.map",
   "leaflet/images/marker-icon.png",
   "leaflet/images/marker-icon-2x.png",
   "leaflet/images/marker-shadow.png",
@@ -102,8 +103,11 @@ const cacheList = [ // The files we need.
   "pica/pica.min.js",
   "minidenticons/minidenticons.min.js",
   "marked/marked.esm.js",
+  "marked/marked.esm.js.map",
   "dompurify/purify.es.mjs",
+  "dompurify/purify.es.mjs.map",
   "s2js/s2js.esm.js",
+  "s2js/s2js.esm.js.map",
   "bigfloat/esm/index.js",
   "bigfloat/esm/BigFloat32",
   "bigfloat/esm/BigFloat53",
@@ -187,9 +191,6 @@ self.addEventListener('fetch', event => {
 async function cacheSource(version, event) { // Cache source in the given version.
   console.log(`service-worker ${serviceVersion} is caching source in cache ${version}.`);
   const cache = await caches.open(version);
-  await Promise.all(cacheList.map(file => cache.add(file)
-				  .catch(error => console.error(file + ' ' + error.message))));
-
   await Promise.all([
     // These are referenced within material web, but missing. Turns out we don't need them,
     // but let's cache empty responses to keep the console cleaner.
@@ -203,12 +204,16 @@ async function cacheSource(version, event) { // Cache source in the given versio
     "https://esm.run/npm/lit@3.3.3/directives/live.js/+esm",
   ].map(url => cache.put(new Request(url),
                          new Response("", {headers: { "Content-Type": "text/javascript" }}))));
+
+  await Promise.all(cacheList.map(file => cache.add(file)
+				  .catch(error => console.error(file + ' ' + error.message))));
+
   return version;
 }
 
 // The service worker is stopped and restarted for events, and so we can't keep an in-memory set of issued alerts.
 // Here we keep it in cache, and manually clean up expired entries.
-const alertCache = 'alerts-' + serviceVersion;
+const alertCache = 'seenNotifications';
 function hasSeenAlert(seenKey) { // Have we noted seenKey before?
   return caches.open(alertCache).then(cache => cache.match(seenKey));
 }

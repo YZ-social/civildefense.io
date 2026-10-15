@@ -135,7 +135,7 @@ class AlertReply extends Reply {
     const asAlertSupplement = Alert.removeItem(this.tag); // If from normal subscription, it will NOT be present.
     super.delete();
     if (asAlertSupplement) { // We did not arrive here through alertInstance.ensure(), which does the following:
-      alertInstance.needsRedisplay = true;
+      alertInstance.needsRedisplay ||= 'reply';
       alertInstance.ensureContent();
     }
     // See service worker showNotification comments regarding cancel.
@@ -202,7 +202,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	// needed after the first opening.
 	marker.bindPopup('', {className: 'alert', autoPanPaddingTopLeft})
 	  .on('popupopen', event => this.ensureContent(event.popup))
-	  .on('popupclose', () => closeTeach());
+	  .on('popupclose', () => { closeTeach(); this.needsRedisplay = 'all'; });
 	tooltip(marker.getElement(), this.label);
 	if (tag === openOnReceive) {
 	  openOnReceive = false;
@@ -569,8 +569,8 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // I.e., one / minute, but allowing bursts up to maxPublish. After that, one can still publish, but kill the oldest.
   // We keep enough data in memory that we can reproduce what to kill,m even if Alert has since scrolled off the map and been destroyed.
   static maxPublish = 5;
-  static publishing = false;
   static lastPublished = []; // Last published lat, lng, hashtag
+  static publishQueue = Promise.resolve();
   // Publish an alert to all applicable eventNames, canceling as required. Promises tag (msgId).
   static async publish({lat, lng,
 			originalPosting = undefined,
@@ -579,12 +579,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
 			cancel = undefined, // First unpublish the specified data, if any. Complicated default.
 			issuedTime = Date.now(), tag, alert, label,
 			...rest
-		       }) {
+			}) {
     // We call all the publishing at once and return tag, without waiting for each to occur.
     // However, the 'unpublishing' (if any) is invoked first.
-    if (this.publishing) { console.log('skiping overlapping publish'); return null; } // do not stack them up.
-    try {
-      this.publishing = true;
+    return this.publishQueue.then(async () => {
       const geocodePromise = (label === undefined) && payload && !alert && await this.reverseGeocode(lat, lng);
       const cells = getContainingCells(lat, lng);
       const eventNames = cells.map(cell => alertTopic(cell, hashtag));
@@ -629,9 +627,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 
       console.log('Published', {cells, n: cells.length, region, hashtag, tag, payload, oldCells, oldHash, oldTag});
       return tag;
-    } finally {
-      this.publishing = false;
-    }
+    });
   }
   static zoomOn(lat, lng, hashtag = '', zoom = map.getZoom() + 1) {
     if (hashtag) showMessage(Int`There are already at least ${this.aggregateLimit} alerts of type "${hashtag}" in the colored region. Zooming in to get a better look.`);
@@ -673,7 +669,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const newIcon = this.makeIcon(extendedHashtag, wrapper.tag);
       marker.setIcon(newIcon);
       wrapper.hashtag = extendedHashtag;
-      wrapper.needsRedisplay = true; // See comment for initializeHandlers. We need to clear and rebuild content on re-open.
+      wrapper.needsRedisplay = 'all'; // See comment for initializeHandlers. We need to clear and rebuild content on re-open.
       const popup = marker.getPopup();
       if (!popup?.isOpen()) return; // Either an aggregate or closed.
       // Fix what's showing now without flashing everything. Make sure menu works.
@@ -685,16 +681,24 @@ export class Alert extends Conversation { // A wrapper around L.marker
     });
   }
 
-  needsRedisplay = true;
+  needsRedisplay = 'all';
   ensureContent(popup = this.marker.getPopup()) { // Set content and handlers in popup if/as needed.
     resetInactivityTimer();
     if (!popup) return; // When deleting reply after alert is already gone.
+    const { needsRedisplay } = this;
     if (!popup.isOpen()) return;
-    if (!this.needsRedisplay) {
+    if (!needsRedisplay) {
       this.initializeHandlers(popup);
       return;
     }
-    this.needsRedisplay = false;
+    this.needsRedisplay = '';
+    if (needsRedisplay === 'reply') {
+      const content = popup.getElement();
+      const scroller = content.querySelector('div.scroller');
+      scroller.innerHTML = this.formatReplies();
+      this.initializeHandlers(popup);
+      return;
+    }
     this.logAlert();
     closeTeach({conversation:false, publish:false});
     if (!this.subscribed) this.ensureRepliesSubscribed();
@@ -714,7 +718,7 @@ ${this.formatReplyInput()}`;
     popup?.getElement()?.querySelectorAll('.correspondent[data-tag]')
       .forEach(element => Agent.ensure({tag: element.dataset.tag}).removeElement(element, 'mixed', element.classList.contains('avatar') ? 'avatar' : 'handle'));
   }
-  initializeHandlers(popup) { // subtle: Leaflet pupup will recreate from last setContent string. Need to re-establish handlers.
+  initializeHandlers(popup) { // subtle: Leaflet popup will recreate from last setContent string. Need to re-establish handlers.
     const popupElement = popup.getElement();
     const replyInput = popupElement.querySelector('.reply-input');
     const replyButton = replyInput.querySelector('md-filled-icon-button');
@@ -762,7 +766,6 @@ ${this.formatReplyInput()}`;
 	this.deleteReply(event.currentTarget.closest('.reply'));
       });
     }
-    const isIOS = osName() === 'iOS';
     for (const downloadable of popupElement.querySelectorAll('[download]')) {
       // Some platforms (e.g., ios) do a terrible job with download of a data url.
       // Here we uniformly try to make them more digestable.
@@ -790,7 +793,7 @@ ${this.formatReplyInput()}`;
 					      getText('.teach.share'), event => this.share(event));
     for (const element of popupElement.querySelectorAll('[src]')) {
       if (element.complete || element.readyState > 3) return;
-      element.onload = () => popup.update(); // Make sure there enough room.
+      element.onload = () => setTimeout(() => popup.update(), 100); // Make sure there enough room.
     }
   }
   initChangeHashtag(someParent) { // Init handler on the menu button, if any, as (re-) init of menu for open popup
@@ -858,7 +861,7 @@ ${this.formatReplyInput()}`;
     const {lat, lng, hashtag, tag, issuedTime, originalPosting = issuedTime} = this;
     console.log("updatePost", {newHashtag, lat, lng, hashtag, tag, issuedTime, originalPosting, self:this});
     if (!newHashtag) return Alert.publish({lat, lng, tag, originalPosting, hashtag, payload: null, cancel: null}); // Remove post with null payload, cancel.
-    if (newHashtag === hashtag) return this.needsRedisplay = true;
+    if (newHashtag === hashtag) return this.needsRedisplay = 'all';
     const cancel = {lat, lng, tag, hashtag}; // Cancel old hashtag as we publish newHashtag, below.
     Hashtags.setPublish(newHashtag);
     Hashtags.onchange({redisplaySubscribers: false, resetSubscriptions: false});
@@ -887,7 +890,7 @@ ${this.formatReplyInput()}`;
 	}
       }
     }
-    this.needsRedisplay = true;
+    this.needsRedisplay ||= 'reply';
     this.ensureContent(); // If not open, it will exit early.
     return reply;
   }
@@ -920,6 +923,8 @@ ${this.formatReplyInput()}`;
     const files = inputElement.parentElement.querySelector('input[type="file"]').files;
     if (!message && !files.length) return;
     inputElement.value = '';
+    inputElement.blur();
+    inputElement.rows = 1;
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     const contact = await networkPromise;
     if (files.length) {
@@ -939,7 +944,7 @@ ${this.formatReplyInput()}`;
     // However, to make dedupe work, we rely on a "pun": In both of the two ways to publish, we rely on
     // the parameters being the same so that the computed msgId is the same so that duplicates can be deduped.
     if (this.items.length) await contact.publish({eventName: alert, region, payload, hashtag, alert, issuedTime}); // To alert-specific topic.
-    else await this.constructor.publish({lat, lng, payload, hashtag, alert, issuedTime}); // To all containing cells.
+    else await Alert.publish({lat, lng, payload, hashtag, alert, issuedTime}); // To all containing cells.
     Agent.current.persistPublicMetadata();
   }
   deleteReply(replyElement) {
@@ -973,8 +978,17 @@ ${this.formatReplyInput()}`;
   // If present the attachment will be an A element with download attribute, surrounding either an IMG, A/V player, or an attachment icon followed by the file name.
   formatReplies() { // Answer HTML for the replies and input box.
     const { items, agent, originalPosting } = this;
-    const formatReply = ({tag, message, file = '', name, hashtag, ...rest}) => {
-      const text = message.replace(/(?<!")https?:\/\/\S+/g, url => this.formatURL(url));
+    const formatReply = ({tag, message = '', file = '', name, hashtag, ...rest}) => {
+      /*
+let regex, samples, expect;
+function myFunction(url) { return '{' + url + '}'; }
+regex = /(?<!["('])https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*(?<![.,]))/g;
+samples = `https://foo.bar "https://ignored.com" \'https://ignored.com\' (https://also.ignored.com) https://a.com/b https://no-trailing.com, https://also-no-trailing.com. https://final.com`;
+expect = `{https://foo.bar} "https://ignored.com" 'https://ignored.com' (https://also.ignored.com) {https://a.com/b} {https://no-trailing.com}, {https://also-no-trailing.com}. {https://final.com}`;
+expect === samples.replace(regex, myFunction);
+      */
+      const regex = /(?<!["('])https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*(?<![.,]))/g;
+      const text = message.replace(regex, url => this.formatURL(url));
       let attachment = file && (this.formatURL(file, {name, wrapDefault:false}) || `
 <div class="attachment file">
   <a href="${file}" download="${name}">
@@ -982,8 +996,8 @@ ${this.formatReplyInput()}`;
     ${name}
   </a>
 </div>`);
-      const parsed = message ?? marked.parse(text);
-      const sanitized = parsed ?? DOMPurify.sanitize(parsed, { ADD_ATTR: ['target']});
+      const parsed = marked.parse(text);
+      const sanitized = DOMPurify.sanitize(parsed, { ADD_ATTR: ['target']});
       const messageDisplay = message ? `<div class="message">${sanitized}</div>` : '';
       let dataAttributes = `data-tag="${tag}" data-text="${DOMPurify.sanitize(message, { ALLOWED_TAGS: ['#text'] })}"`;
       if (file) dataAttributes += ` data-file="${file}" data-name="${name}"`;

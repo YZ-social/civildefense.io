@@ -627,7 +627,7 @@ md-menu-item minidenticon-svg {
 .reply > span {
     padding: 5px;
 }
-.reply > img, .reply > .attachment, .reply > a > img, .reply > .message {
+.reply > img, .reply > .attachment, .reply > a > img, .reply > a > video, .reply > .message {
     border-style: solid;
     width: calc(100% - 6px);
 }

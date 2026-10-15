@@ -54,8 +54,10 @@ async function cacheSource(version) {
   const {promise, resolve} = Promise.withResolvers();
   resolveCached = resolve;
   await postServiceMessage('cacheSource', version);
-  await promise;
-  console.log(`source ${version} is cached.`);
+  await Promise.race([
+    promise.then(() => console.log(`source ${version} is cached.`)),
+    delay(6e3).then(() => console.log('skipping rest of source cache until restart'))
+  ]);
 }
 
 const checkButton = document.getElementById('checkForUpdates');
