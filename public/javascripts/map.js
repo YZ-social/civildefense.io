@@ -82,18 +82,31 @@ export function recenterMap(event) {
 
 export var trackMap;
 
-function installOneLevelWheelZoom(map) { // One wheel notch changes zoom by one level.
-  // Leaflet's scroll-wheel handler scales with the reported scroll distance, and its
-  // sigmoid allows up to four levels in one gesture. A Windows wheel notch often reports
-  // a large delta, or a burst of events, so one click can run the zoom to the limit.
-  // Step by zoomDelta on the first event, and treat the rest of that burst as the same notch.
+function isLikelyTrackpad(event) { // Chrome/Safari: a trackpad's wheelDeltaY is -3 × deltaY. A mouse notch is not.
+  if (event.deltaMode !== 0 || !event.deltaY || typeof event.wheelDeltaY !== 'number') return false;
+  return Math.abs(event.wheelDeltaY + 3 * event.deltaY) < 1;
+}
+
+function isDiscreteMouseNotch(event) { // A notched wheel, rather than a trackpad or Magic Mouse stream.
+  // Pinch-zoom and fine pixel streams stay with Leaflet's scrollWheelZoom.
+  if (event.ctrlKey || !event.deltaY || isLikelyTrackpad(event)) return false;
+  if (event.deltaMode !== 0) return true; // Lines or pages: classic mouse, including "one screen at a time".
+  return Math.abs(event.deltaY) >= 50; // Pixel-mode notch. Chrome on Windows is often ≥ 100, and scales with "lines per scroll".
+}
+
+function installOneLevelWheelZoom(map) { // One discrete wheel notch changes zoom by one level.
+  // Leaflet scales zoom with the reported scroll distance, and its sigmoid allows up to
+  // four levels per gesture. A Windows notch often reports a large delta (or a burst), so
+  // one click can run the zoom to the limit. A trackpad is a stream of small deltas, and
+  // treating that whole stream as one notch shuts scrolling off. Leave those to Leaflet,
+  // and only clamp a discrete notch.
   const container = map.getContainer();
   let notchTimer = null;
   let notchConsumed = false;
   container.addEventListener('wheel', event => {
+    if (!isDiscreteMouseNotch(event)) return;
     event.preventDefault();
     event.stopPropagation();
-    if (!event.deltaY) return;
     if (!notchConsumed) {
       notchConsumed = true;
       const step = map.options.zoomDelta || 1;
@@ -109,9 +122,9 @@ function installOneLevelWheelZoom(map) { // One wheel notch changes zoom by one 
       map.setZoomAround(map.mouseEventToContainerPoint(event), next, {animate: false});
     }
     clearTimeout(notchTimer);
-    // Events closer together than this belong to the same physical notch.
+    // Further large events this close belong to the same physical notch.
     notchTimer = setTimeout(() => { notchConsumed = false; }, 100);
-  }, {passive: false});
+  }, {capture: true, passive: false});
 }
 
 function initMap([lat, lng, zoom], positionLabel) { // Set up appropriate zoomed initial map and handlers for this position.
@@ -127,8 +140,7 @@ function initMap([lat, lng, zoom], positionLabel) { // Set up appropriate zoomed
     zoom,
     minZoom: 2,
     zoomControl: navigator.maxTouchPoints <= 1, // Only when no multi-touch.
-    maxBounds: [[90, 180], [-90, -180]],
-    scrollWheelZoom: false // Replaced by installOneLevelWheelZoom.
+    maxBounds: [[90, 180], [-90, -180]]
   }).stopLocate(); // Just in case some library version initates this.
   installOneLevelWheelZoom(map);
 
