@@ -105,24 +105,45 @@ function installOneLevelWheelZoom(map) { // One mouse-wheel click changes zoom b
   const container = map.getContainer();
   let dir = 0;
   let credit = 0; // Pixels still covered by zooms already issued.
-  const zoomOne = (event) => {
+  let queued = 0; // Notches that arrived during Leaflet's zoom animation.
+  let lastEvent = null;
+  let zooming = false;
+  // Same call Leaflet's scroll-wheel handler uses, so the 0.25s transform plays.
+  // A zoom started while one is playing is ignored, so hold those notches until zoomend.
+  const zoomBy = (event, direction) => {
     const step = map.options.zoomDelta || 1;
-    const direction = event.deltaY > 0 ? -1 : 1; // Positive deltaY is wheel-down: zoom out.
-    const next = map.getZoom() + direction * step;
-    // A zoom animation in progress ignores further setZoom calls for ~250ms.
-    if (map._animatingZoom) {
-      map._animatingZoom = false;
-      map._mapPane?.classList.remove('leaflet-zoom-anim');
-    }
-    map.stop();
-    map.setZoomAround(map.mouseEventToContainerPoint(event), next, {animate: false});
+    const current = map.getZoom();
+    const next = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), current + direction * step));
+    if (next === current) return false;
+    map.setZoomAround(map.mouseEventToContainerPoint(event), next);
+    return true;
   };
+  const requestZoom = (event, direction) => {
+    lastEvent = event;
+    if (zooming || map._animatingZoom) {
+      queued += direction;
+      return;
+    }
+    zooming = true;
+    if (!zoomBy(event, direction)) {
+      zooming = false;
+      queued = 0;
+    }
+  };
+  map.on('zoomend', () => {
+    zooming = false;
+    if (!queued) return;
+    const direction = Math.sign(queued);
+    queued -= direction;
+    requestZoom(lastEvent, direction);
+  });
   container.addEventListener('wheel', event => {
     if (!isMouseWheel(event)) return;
     event.preventDefault();
     event.stopPropagation();
     if (event.deltaMode !== 0) { // A line or page event is already one notch, not 100 pixels.
-      zoomOne(event);
+      const direction = event.deltaY > 0 ? -1 : 1;
+      requestZoom(event, direction);
       return;
     }
     const sign = Math.sign(event.deltaY);
@@ -131,13 +152,14 @@ function installOneLevelWheelZoom(map) { // One mouse-wheel click changes zoom b
       credit = 0;
     }
     const pixels = Math.abs(event.deltaY);
+    const direction = sign > 0 ? -1 : 1; // Positive deltaY is wheel-down: zoom out.
     if (credit <= 0) {
-      zoomOne(event);
+      requestZoom(event, direction);
       credit = notchPx;
     }
     credit -= pixels;
     while (credit < 0) {
-      zoomOne(event);
+      requestZoom(event, direction);
       credit += notchPx;
     }
   }, {capture: true, passive: false});
