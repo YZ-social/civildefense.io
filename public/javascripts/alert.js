@@ -979,7 +979,16 @@ ${this.formatReplyInput()}`;
   formatReplies() { // Answer HTML for the replies and input box.
     const { items, agent, originalPosting } = this;
     const formatReply = ({tag, message = '', file = '', name, hashtag, ...rest}) => {
-      const text = message.replace(/(?<!")https?:\/\/\S+/g, url => this.formatURL(url));
+      /*
+let regex, samples, expect;
+function myFunction(url) { return '{' + url + '}'; }
+regex = /(?<!["('])https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*(?<![.,]))/g;
+samples = `https://foo.bar "https://ignored.com" \'https://ignored.com\' (https://also.ignored.com) https://a.com/b https://no-trailing.com, https://also-no-trailing.com. https://final.com`;
+expect = `{https://foo.bar} "https://ignored.com" 'https://ignored.com' (https://also.ignored.com) {https://a.com/b} {https://no-trailing.com}, {https://also-no-trailing.com}. {https://final.com}`;
+expect === samples.replace(regex, myFunction);
+      */
+      const regex = /(?<!["('])https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*(?<![.,]))/g;
+      const text = message.replace(regex, url => this.formatURL(url));
       let attachment = file && (this.formatURL(file, {name, wrapDefault:false}) || `
 <div class="attachment file">
   <a href="${file}" download="${name}">
