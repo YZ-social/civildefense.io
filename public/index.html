@@ -17,7 +17,7 @@
     <link rel="help" href="about/index.html" />
     <link rel="apple-touch-icon" href="images/civil-defense-180-white-square.png" />
     <link rel="stylesheet" href="leaflet/leaflet.css" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display-=swap" />
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
     <link rel="stylesheet" href="stylesheets/style.css" />
     <script type="importmap">
@@ -81,10 +81,8 @@
 
       <div id="aboutContainer" class="hidden">
 	<div class="display-content">
-	  <a id="learnMore" href="about/index.html" target="yz.sidebar">
-            <h2><span id="titleLabel">Civil Defense</span><md-icon class="material-icons">help</md-icon></h2>
-	    <span id="titleHostname"></span>
-	  </a>
+          <h2>
+	    <a id="learnMore" href="about/index.html" target="yz.sidebar"><span id="titleLabel">Civil Defense</span><md-icon class="material-icons">help</md-icon></a></h2>
           <ul>
             <li id="aboutReport"></li>
             <li id="aboutShared"></li>
@@ -99,27 +97,21 @@
 	  <hr>
 
 	  <div>
-	    <a id="learnNotifications" href="about/notification.html" target="yz.sidebar">
-	      <h2><span id="learnNotifications2">Notifications</span><md-icon class="material-icons">help</md-icon></h2>
-	    </a>
+	      <h2><a id="learnNotifications" href="about/notification.html" target="yz.sidebar"><span id="learnNotifications2">Notifications</span><md-icon class="material-icons">help</md-icon></a></h2>
 	    <label>
 	      <md-checkbox id="showNotifications" touch-target="wrapper"></md-checkbox>
 	      <span id="showNotificationsLabel"></span>
 	    </label>
 	  </div>
 
-	  <a id="learnIdentity" href="about/identity.html" target="yz.sidebar">
-	    <h2><span id="learnIdentity2">Identitity</span><md-icon class="material-icons">help</md-icon></h2>
-	  </a>
+	    <h2><a id="learnIdentity" href="about/identity.html" target="yz.sidebar"><span id="learnIdentity2">Identitity</span><md-icon class="material-icons">help</md-icon></a></h2>
 	  <div class="handle-avatar">
 	    <md-outlined-text-field id="myHandle" placeholder="anonymous"></md-outlined-text-field>
 	    <md-outlined-icon-button id="myAvatar"></md-outlined-icon-button>
 	  </div>
 
 	  <hr>
-	  <a id="learnPWA" href="about/pwa.html" target="yz.sidebar">
-	    <h2><span id="learnPWA2">App</span> @<span id="appSource"></span><md-icon class="material-icons">help</md-icon></h2>
-	  </a>
+	    <h2><a id="learnPWA" href="about/pwa.html" target="yz.sidebar"><span id="learnPWA2">App</span> @<span id="appSource"></span><md-icon class="material-icons">help</md-icon></a></h2>
           <div class="source-updates">
 	    <md-elevated-button id="checkForUpdates"></md-elevated-button>
             <md-elevated-button id="downloadUpdates" class="hidden"></md-elevated-button>
