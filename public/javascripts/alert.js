@@ -109,7 +109,7 @@ class AlertReply extends Reply {
     this.showNotification();
     return this;
   }
-  update({topic, ts, alert, ...rest}) { // Ignore some.
+  update({topic, ts, alert, hashtag, ...rest}) { // Ignore some.
     return super.update({...rest});
   }
   get body() {
@@ -227,7 +227,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     await contact.subscribe({eventName: tag, region, handler: data => this.ensure(data),
 			     pushData: await this.constructor.pushData});
   }
-  update({topic, ts, ...rest}) { // Called when handling an existing Conversation. super confirms that nothing immutable has changed.
+  update({topic, ts, hashtag, ...rest}) { // Called when handling an existing Conversation. super confirms that nothing immutable has changed.
     return super.update({...rest}); // topic and ts vary with level, and so must not be part of ensure/update checks.
   }
   static async ensure({alert, ...data}) { // If alert is truthy, this was a supplemental publication about a reply to the specified alert.
