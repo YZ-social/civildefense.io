@@ -70,6 +70,8 @@ if (dht < 1) {
   }
   publishChunkedBytes = (peer, u8, {name, mime}) => {
     const str = bytesToB64(u8);
+    const max = 15 * 1024 * 1024; // What std/chunk.js currently does
+    if (str.length > max) return Promise.reject(new Error(`File "${name || 'unkown file'}" with ${u8.byteLength.toLocaleString()} bytes (${str.length.toLocaleString()} after serializing for transport) exceeds the current maximum file size of ${max.toLocaleString()} bytes.`));
     return {topic: {name, mime, str}};
   };
   receiveChunkedBytes = (peer, {name, mime, str}, options) => {

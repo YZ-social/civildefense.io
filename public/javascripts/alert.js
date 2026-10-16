@@ -927,25 +927,31 @@ ${this.formatReplyInput()}`;
     inputElement.rows = 1;
     inputElement.querySelector('md-filled-icon-button').toggleAttribute('disabled', true);
     const contact = await networkPromise;
-    if (files.length) {
-      const {topic:file, msgIds} = await contact.chunkifyBlob({blob: files[0], region});
-      payload.file = file;
+    try {
+      if (files.length) {
+	const {topic:file, msgIds} = await contact.chunkifyBlob({blob: files[0], region});
+	payload.file = file;
+      }
+      // A reply can be sent to the alert-specific topic that clients subscribe to when they open a conversation on that alert,
+      // or it can be sent to all the containing cells, just like an alert.
+      //
+      // We generally want to do only the first, so that it is only received (and generates a notification) for those
+      // actually interested in the conversation around that alert. However, it is useful to send the FIRST
+      // reply to all the containing cells, so that they know there is a conversation and can get a notification with the message,
+      // even if they don't yet know they want to follow that conversation.
+      //
+      // It is ok (but unnecessary) if we send both ways, or if there is a race between two people to be first such that
+      // both send to all the containing cells. The AlertReply.ensure mechanism will handle either and dedupe.
+      // However, to make dedupe work, we rely on a "pun": In both of the two ways to publish, we rely on
+      // the parameters being the same so that the computed msgId is the same so that duplicates can be deduped.
+      if (this.items.length) await contact.publish({eventName: alert, region, payload, hashtag, alert, issuedTime}); // To alert-specific topic.
+      else await Alert.publish({lat, lng, payload, hashtag, alert, issuedTime}); // To all containing cells.
+      Agent.current.persistPublicMetadata();
+    } catch (error) {
+      this.needsRedisplay = 'reply';
+      this.ensureContent();
+      showMessage(error.message);
     }
-    // A reply can be sent to the alert-specific topic that clients subscribe to when they open a conversation on that alert,
-    // or it can be sent to all the containing cells, just like an alert.
-    //
-    // We generally want to do only the first, so that it is only received (and generates a notification) for those
-    // actually interested in the conversation around that alert. However, it is useful to send the FIRST
-    // reply to all the containing cells, so that they know there is a conversation and can get a notification with the message,
-    // even if they don't yet know they want to follow that conversation.
-    //
-    // It is ok (but unnecessary) if we send both ways, or if there is a race between two people to be first such that
-    // both send to all the containing cells. The AlertReply.ensure mechanism will handle either and dedupe.
-    // However, to make dedupe work, we rely on a "pun": In both of the two ways to publish, we rely on
-    // the parameters being the same so that the computed msgId is the same so that duplicates can be deduped.
-    if (this.items.length) await contact.publish({eventName: alert, region, payload, hashtag, alert, issuedTime}); // To alert-specific topic.
-    else await Alert.publish({lat, lng, payload, hashtag, alert, issuedTime}); // To all containing cells.
-    Agent.current.persistPublicMetadata();
   }
   deleteReply(replyElement) {
     // We won't be here unless we are the signer, so we will have permission to kill the publication.

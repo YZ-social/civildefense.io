@@ -196,7 +196,7 @@ export class P2PWebNetwork {
     // Using dataURL is not terribly efficient, but it is convenient, because formatReplies can return HTML strings with all the data in them,
     // instead of, e.g., needing javascript to later set properties of elements to createObjectURL of a Blob.
     data.dataURL = this.constructor.u82dataURL(data.bytes, data.mime);
-    this.info('assembled', data.bytes.length, 'bytes in', data.topic);
+    this.info('assembled', data.bytes.length, data.mime, 'bytes in', data.name || 'unnamed file');
     return data;
   }
 
