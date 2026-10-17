@@ -709,6 +709,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     this.clearAvatars(popup);
     let content = `${this.formatAttribution({agent, issuedTime, originalPosting, hashtag})}
 <div class="scroller">${this.formatReplies()}</div>
+<div class="attachment-preview"></div>
 ${this.formatReplyInput()}`;
     popup.setContent(content);
     popup.update();
@@ -727,6 +728,7 @@ ${this.formatReplyInput()}`;
     const replyButton = replyInput.querySelector('md-filled-icon-button');
     const replyAttachButton = replyInput.querySelector('md-tonal-icon-button');
     const fileChooser = popupElement.querySelector('input[type="file"]');
+    const filenameDisplay = popupElement.querySelector('.attachment-preview');
     replyInput.onfocus = event => resetInactivityTimer();
     replyInput.oninput = event => {
       replyButton.removeAttribute('disabled');
@@ -745,7 +747,6 @@ ${this.formatReplyInput()}`;
     fileChooser.onchange = event => {
       resetInactivityTimer();
       replyButton.removeAttribute('disabled');
-      let filenameDisplay = popupElement.querySelector('.attachment-preview');
       filenameDisplay.textContent = fileChooser.files.length ? (fileChooser.files[0].name || 'camera') : '';
     };
     this.initChangeHashtag(popupElement);
@@ -923,8 +924,11 @@ ${this.formatReplyInput()}`;
     // However, these must be included anyway in case the receiving user clicks on an out-of-band
     // notification at a later time, without the alert being on the map at that moment.
     let payload = {message, lat, lng};
-    const files = inputElement.parentElement.querySelector('input[type="file"]').files;
+    const inputs = inputElement.parentElement;
+    const files = inputs.querySelector('input[type="file"]').files;
+    const filenameDisplay = inputs.querySelector('.attachment-preview');
     if (!message && !files.length) return;
+    filenameDisplay.textContent = '';
     inputElement.value = '';
     inputElement.blur();
     inputElement.rows = 1;
@@ -1014,8 +1018,7 @@ expect === samples.replace(regex, myFunction);
     };
     const formattedReplies = items.map(formatReply).join('');
     return `
-<div class="replies">${formattedReplies}</div>
-<div class="attachment-preview"></div>`;
+<div class="replies">${formattedReplies}</div>`;
   }
   formatURL(url, {name, mime = this.getMIME(url), wrapDefault = true} = {}) { // Wrap as the appropriate player based on MIME type. Suitable for handling a replacement match.
     if (mime === 'application/vnd.apple.mpegurl') mime = 'video'; // For our purposes here.
