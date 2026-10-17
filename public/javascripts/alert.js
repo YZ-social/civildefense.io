@@ -201,7 +201,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	// Alas, this does leave the first popup padding permanently with extra space, even though it isn't
 	// needed after the first opening.
 	marker.bindPopup('', {className: 'alert', autoPanPaddingTopLeft})
-	  .on('popupopen', event => this.ensureContent(event.popup))
+	  .on('popupopen', event => this.ensureContent())
 	  .on('popupclose', () => { closeTeach(); this.needsRedisplay = 'all'; });
 	tooltip(marker.getElement(), this.label);
 	if (tag === openOnReceive) {
@@ -682,10 +682,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
 
   needsRedisplay = 'all';
-  ensureContent(popup = this.marker.getPopup()) { // Set content and handlers in popup if/as needed.
+  ensureContent(needsRedisplay = this.needsRedisplay) { // Set content and handlers in popup if/as needed.
     resetInactivityTimer();
+    const popup = this.marker.getPopup();
     if (!popup) return; // When deleting reply after alert is already gone.
-    const { needsRedisplay } = this;
     if (!popup.isOpen()) return;
     if (!needsRedisplay) {
       this.initializeHandlers(popup);
@@ -696,6 +696,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const content = popup.getElement();
       const scroller = content.querySelector('div.scroller');
       scroller.innerHTML = this.formatReplies();
+      // Let Leaflet know about the new content so that it can move the map to keep it fitting.
+      popup.setContent(content.querySelector('.leaflet-popup-content').innerHTML);
+      popup.update();
       this.initializeHandlers(popup);
       return;
     }
@@ -793,7 +796,7 @@ ${this.formatReplyInput()}`;
 					      getText('.teach.share'), event => this.share(event));
     for (const element of popupElement.querySelectorAll('[src]')) {
       if (element.complete || element.readyState > 3) return;
-      element.onload = () => setTimeout(() => popup.update(), 100); // Make sure there enough room.
+      element.onload = () => setTimeout(() => this.ensureContent('reply'), 100); // Make sure there enough room.
     }
   }
   initChangeHashtag(someParent) { // Init handler on the menu button, if any, as (re-) init of menu for open popup
