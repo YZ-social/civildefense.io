@@ -181,7 +181,7 @@ self.addEventListener('activate', async event => {
   // Apply to running clients now, so that first fresh install sees updatefound event.
   // Otherwise, the service worker wouldn't fire until the code NEXT time the page loads after
   // registration, and thus the initial load would not see any updatefound events.
-  event.waitUntil(self.clients.claim().then(expireStaleAlerts));
+  event.waitUntil(self.clients.claim().then(() => expireStaleAlerts(0)));
 });
 
 self.addEventListener('fetch', event => {
@@ -221,12 +221,8 @@ function noteSeenAlert(seenKey, issuedTime) { // Record seenKey and it's expirat
   return caches.open(alertCache).then(cache => cache.put(seenKey, new Response(issuedTime.toString())));
 }
 const ALERT_EXPIRATION_MS = 24 * 60 * 60e3;
-let lastMaintenance = 0;
-const SERVICE_INTERVAL = 60 * 60e3;
-async function expireStaleAlerts() { // Maintenance: declutter notifications and cache storage.
+async function expireStaleAlerts(increment) { // Maintenance: declutter notifications and cache storage.
   const now = Date.now();
-  if (now < lastMaintenance + SERVICE_INTERVAL) return;
-  lastMaintenance = now;
   const cache = await caches.open(alertCache);
   const firstSafeIssuedTime = Date.now() - ALERT_EXPIRATION_MS;
   const firstSafeIssuedString = firstSafeIssuedTime.toString();
@@ -235,9 +231,17 @@ async function expireStaleAlerts() { // Maintenance: declutter notifications and
     if (!response) console.error('how can there not be a response at', key);
     else if (firstSafeIssuedString > await response.text()) {console.log('removing stale seen', key); cache.delete(key); }
   }
-  for (const notification of await self.registration.getNotifications()) {
+  // The next line cannot be called immediately after registration.showNotification on Chrome.
+  // It breaks the notification so that it isn't clickable.
+  const notifications = await self.registration.getNotifications();
+  let count = increment;
+  for (const notification of notifications) {
     if (firstSafeIssuedTime > notification.data.issuedTime) {console.log('removing stale alert', notification.close());}
+    else count++;
   }
+  if (count > 0) await navigator.setAppBadge(count);
+  else await navigator.clearAppBadge();
+  return count;
 }
 
 async function showNotification({lat, lng, issuedTime, hashtag, msgId, alert, body = '', force = false}) { // Promise to show a platform notification. There are two paths to here:
@@ -260,9 +264,9 @@ async function showNotification({lat, lng, issuedTime, hashtag, msgId, alert, bo
   // If we turn on {tag: alert||msgId, renotify: true} again, beware of cancelling notifications for deleted replies.
   // See https://docs.google.com/document/d/1ZMC0JLlUbC5XnOP-oyseSUrEhByfGjPgam9mo7B9qls/edit?usp=sharing
   const options = {icon, timestamp, body, data, tag: msgId};
-  console.log('showNotification', {msgId, hashtag, options});
+  const count = await expireStaleAlerts(1); // BEFORE creating new notifications. See comment about Chrome.
+  console.log('showNotification', {msgId, hashtag, options, count});
   await self.registration.showNotification(hashtag, options);
-  return expireStaleAlerts();
 }
 
 function showNotificationFromEnvelope({deleted, message, msgId}) { // We get the generic, application-independent envelope.
@@ -282,6 +286,7 @@ async function cancelNotification(tag, body = '') { // Cancel those that match t
       await new Promise(resolve => setTimeout(resolve, 1e3));
     }
   }
+  await expireStaleAlerts(0);
 }
 
 self.addEventListener('message', event => {
@@ -310,20 +315,21 @@ self.addEventListener('push', event => event.waitUntil(showNotificationFromEnvel
 self.addEventListener('notificationclick', event => {
   const {notification} = event;
   const {title, body, tag, data} = notification;
-  notification.close();
-  if (!data) return console.log('no data in notification', notification);
-  // This looks to see if the current is already open and focuses if it is. Else opens one.
-  event.waitUntil(
-    clients
-      .matchAll({type: 'window', includeUncontrolled: true})
-      .then(async clientList => {
-        for (const client of clientList) {
-	  console.log('notificationclick found client', notification, clientList);
-	  return client.focus().then(() => client.postMessage({method: 'go', params: {alert: tag, ...data}}));
-        }
-	// Client has been closed. Open one.
-	console.log('notificationclick  opening client', notification);
-	return clients.openWindow(data.url);
-      }),
-  );
+  event.waitUntil(new Promise(async resolve => {
+    await expireStaleAlerts(-1);
+    notification.close();
+    if (!data) return resolve(console.log('no data in notification', notification));
+    // Look to see if the current is already open and focuses if it is. Else opens one.
+    const clientList = await clients.matchAll({type: 'window', includeUncontrolled: true});
+    for (const client of clientList) {
+      console.log('notificationclick found client', notification, clientList);
+      await client.focus();
+      await client.postMessage({method: 'go', params: {alert: tag, ...data}});
+      return resolve();
+    }
+    // Client has been closed. Open one.
+    console.log('notificationclick  opening client', notification);
+    await clients.openWindow(data.url);
+    return resolve();
+  }));
 });
