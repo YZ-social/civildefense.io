@@ -78,6 +78,7 @@ md-outlined-text-field {
 }
 .leaflet-popup-content .scroller {
     max-height: calc(80vh - 51px - 56px);
+    scroll-behavior: smooth;
 }
 .leaflet-popup-content .scroller, .display-content {
     overflow: auto;

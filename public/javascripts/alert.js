@@ -681,6 +681,14 @@ export class Alert extends Conversation { // A wrapper around L.marker
     });
   }
 
+  wasPinned = true;
+  isNearBottom(scroller) { // Has the user scrolled to near the bottom of the specified element
+    const THRESHOLD = 10;
+    if (!scroller) {console.log('no scroller'); return true; }
+    const {scrollHeight, scrollTop, clientHeight} = scroller;
+    console.log({scrollHeight, scrollTop, clientHeight, THRESHOLD});
+    return scrollHeight - scrollTop - clientHeight <= THRESHOLD;
+  }
   needsRedisplay = 'all';
   ensureContent(needsRedisplay = this.needsRedisplay) { // Set content and handlers in popup if/as needed.
     resetInactivityTimer();
@@ -692,9 +700,10 @@ export class Alert extends Conversation { // A wrapper around L.marker
       return;
     }
     this.needsRedisplay = '';
+    const content = popup.getElement();
+    const scroller = content.querySelector('div.scroller');
+    this.wasPinned = this.isNearBottom(scroller);
     if (needsRedisplay === 'reply') {
-      const content = popup.getElement();
-      const scroller = content.querySelector('div.scroller');
       scroller.innerHTML = this.formatReplies();
       // Let Leaflet know about the new content so that it can move the map to keep it fitting.
       popup.setContent(content.querySelector('.leaflet-popup-content').innerHTML);
@@ -707,11 +716,11 @@ export class Alert extends Conversation { // A wrapper around L.marker
     if (!this.subscribed) this.ensureRepliesSubscribed();
     const {issuedTime, originalPosting, hashtag, agent}  = this;
     this.clearAvatars(popup);
-    let content = `${this.formatAttribution({agent, issuedTime, originalPosting, hashtag})}
+    let contentHTML = `${this.formatAttribution({agent, issuedTime, originalPosting, hashtag})}
 <div class="scroller">${this.formatReplies()}</div>
 <div class="attachment-preview"></div>
 ${this.formatReplyInput()}`;
-    popup.setContent(content);
+    popup.setContent(contentHTML);
     popup.update();
     setTimeout(() => this.initializeHandlers(popup), 100);
     teach('firstConversation');
@@ -796,9 +805,12 @@ ${this.formatReplyInput()}`;
 					      Int`Share though ${osName()} the text and attachments of this reply, with a link to open this alert.` :
 					      getText('.teach.share'), event => this.share(event));
     for (const element of popupElement.querySelectorAll('[src]')) {
-      if (element.complete || element.readyState > 3) return;
+      if (element.complete || element.readyState > 3) continue;
       element.onload = () => setTimeout(() => this.ensureContent('reply'), 100); // Make sure there enough room.
     }
+    const lastReply = window.lastReply = popupElement.querySelector('.replies > div:last-child');
+    console.log('lastReply:', {lastReply, wasPinned:this.wasPinned});
+    if (lastReply && this.wasPinned) setTimeout(() => lastReply.scrollIntoView(), 100);
   }
   initChangeHashtag(someParent) { // Init handler on the menu button, if any, as (re-) init of menu for open popup
     const changeHashtag = someParent.querySelector('.changeHashtag');
