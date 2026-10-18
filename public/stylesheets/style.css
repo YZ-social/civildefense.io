@@ -690,7 +690,7 @@ input[type="file"] {
     filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.4));
 }
 
-#modal, #aboutContainer, #updateContainer, #correspondentContainer {
+#modal, #aboutContainer, #updateContainer, #correspondentContainer, #hashtagDisposition {
     position: absolute;
     top: 0;
     width: 100vw;
@@ -731,6 +731,7 @@ input[type="file"] {
     min-width: 300px;
     min-height: 300px;
 }
+.linkChoice { margin-top: 15px; }
 .pwa {
     display: flex;
     align-items: center;

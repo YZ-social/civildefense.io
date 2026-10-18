@@ -1,6 +1,6 @@
 const { localStorage, URL, URLSearchParams } = globalThis;
 import * as L from 'leaflet';
-import { Int } from './translations.js';
+import { Int, language } from './translations.js';
 import { consume, teach } from './display.js';
 import { Agent } from './agent.js';
 import { networkPromise, closeAll } from './main.js';
@@ -34,7 +34,7 @@ function  flashElement(selector) {
 let home; // Used by recenter button.
 let homeMarker; // Marks location of home.
 let startupMapCenter = null;
-export function updateHome(location = null) { // initMap if necessary, and set our position.
+export async function updateHome(location = null) { // initMap if necessary, and set our position.
   startupMapCenter ||= JSON.parse(localStorage.getItem('mapCenter')) || location || [37.7749, -122.4194, 13]; // San Fransisco
   //console.log('updateHome', {location, startupMapCenter, home});
   home = location || home || startupMapCenter;
@@ -47,8 +47,45 @@ export function updateHome(location = null) { // initMap if necessary, and set o
     const params = url.searchParams;
     const tags = params.get('tags');
     const tagsArray = tags?.split(',') || [];
+    const decodedTagsArray = tagsArray.map(decodeURIComponent);
     const highlight = params.get('highlight');
-    tagsArray.forEach(tag => Hashtags.add(decodeURIComponent(tag)));
+    if (decodedTagsArray.length) {
+      const subscribed = Hashtags.getSubscribe();
+      const extra = subscribed.filter(tag => !decodedTagsArray.includes(tag));
+      if (extra.length) {
+	const {promise, resolve} = Promise.withResolvers();
+	const listFormatter = new window.Intl.ListFormat(language, { type: "conjunction" });
+	const format = tags => listFormatter.format(tags.map(tag => `"${tag}"`));
+	window.linkHad.textContent = Int`The link recommends only the topics ${format(decodedTagsArray)}.`;
+	window.linkCTA.textContent = Int`What should be done with your additional existing topics?`;
+	window.linkOff.textContent = Int`Toggle off extra topics for now`;
+	window.linkOffExplanation.textContent = Int`You can toggle ${format(extra)} on again later.`;
+	window.linkRemove.textContent = Int`Remove extra topics entirely`;
+	window.linkRemoveExplanation.textContent = Int`You can add them again later with "add topic".`;
+	window.linkKeep.textContent = Int`Leave them alone`;
+	window.linkKeepExplanation.textContent = Int`You can toggle them off individually yourself.`;
+	const dialog = window.hashtagDisposition;
+	dialog.classList.toggle('hidden', false);  // Do not use openDisplay, as the user might accidentally dismiss by clicking anywhere.
+	const close = action => {
+	  dialog.classList.toggle('hidden', true);
+	  resolve(action);
+	};
+	window.linkOff.onclick = () => close('toggle');
+	window.linkRemove.onclick = () => close('remove');
+	window.linkKeep.onclick = () => close('keep');
+	const answer = await promise;
+	switch (answer) {
+	case 'toggle':
+	  extra.forEach(tag => Hashtags.toggleChip(Hashtags.getChip(tag), false));
+	  break;
+	case 'remove':
+	  extra.forEach(tag => Hashtags.remove(Hashtags.getChip(tag)));
+	  break;
+	default:
+	}
+      }
+    }
+    decodedTagsArray.forEach(tag => Hashtags.add(tag));
     Hashtags.onchange({resetSubscriptions: false}); // Too early to subscribe, but will be done during initialization.
     // We start the map at the lat/lng/zoom specied by caller (e.g., geo or previous session) in order to orient the user,
     // and then if there was a location specified in the URL, fly there.
