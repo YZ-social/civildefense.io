@@ -568,7 +568,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // The app (not the network) restricts the user to publish up to maxPublish alerts over the last maxPublish minutes.
   // I.e., one / minute, but allowing bursts up to maxPublish. After that, one can still publish, but kill the oldest.
   // We keep enough data in memory that we can reproduce what to kill,m even if Alert has since scrolled off the map and been destroyed.
-  static maxPublish = 1; //fixme 10;
+  static maxPublish = 10;
   static lastPublished = []; // Last published lat, lng, hashtag
   static publishQueue = Promise.resolve();
   // Publish an alert to all applicable eventNames, canceling as required. Promises tag (msgId).
