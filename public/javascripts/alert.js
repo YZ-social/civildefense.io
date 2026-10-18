@@ -4,7 +4,7 @@ import DOMPurify from 'dompurify';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { generateVapidKeys } from './browser-push.js';
 import { Int } from './translations.js';
-import { consume, teach, closeTeach, showMessage } from './display.js';
+import { openDisplay, consume, teach, closeTeach, showMessage } from './display.js';
 import { map, trackMap } from './map.js';
 import { closeAll, postServiceMessage, networkPromise, resetInactivityTimer, notificationsAllowed, tooltip, clickTip, getText, openAbout, delay, osName } from './main.js';
 import { Hashtags } from './hashtags.js';
@@ -568,7 +568,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   // The app (not the network) restricts the user to publish up to maxPublish alerts over the last maxPublish minutes.
   // I.e., one / minute, but allowing bursts up to maxPublish. After that, one can still publish, but kill the oldest.
   // We keep enough data in memory that we can reproduce what to kill,m even if Alert has since scrolled off the map and been destroyed.
-  static maxPublish = 5;
+  static maxPublish = 1; //fixme 10;
   static lastPublished = []; // Last published lat, lng, hashtag
   static publishQueue = Promise.resolve();
   // Publish an alert to all applicable eventNames, canceling as required. Promises tag (msgId).
@@ -601,8 +601,14 @@ export class Alert extends Conversation { // A wrapper around L.marker
 	const periodStart = Date.now() - (this.maxPublish * 60e3); // maxPublish minutes ago.
 	this.lastPublished = this.lastPublished.filter(past => past.issuedTime >= periodStart);
 	if (cancel === undefined && this.lastPublished.length > this.maxPublish) { // Unless specified otherwise, cancel oldest over maxPublish.
-	  setTimeout(() => showMessage(Int`Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.`),
-		     3e3); // If immediate, it will get covered by instructions on the new alert.
+	  const message = Int`Too many posts. (10 allowed every 10 minutes.) Removing oldest from this period.`;
+	  if (localStorage.getItem('firstExcessive')) {
+	    setTimeout(() => showMessage(message), 3e3); // If immediate, it will get covered by instructions on the new alert.
+	  } else {
+	    localStorage.setItem('firstExcessive', 1);
+	    closeAll();
+	    openDisplay('modal', null, message);
+	  }
 	  cancel = this.lastPublished.shift();
 	}
       }

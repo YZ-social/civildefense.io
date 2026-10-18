@@ -136,7 +136,7 @@ export function closeAll() { // Close anything that might be open.
   closeAbout();
   Alert.closePopup();
   Hashtags.closeSelector();
-  ['aboutContainer', 'updateContainer', 'correspondentContainer', 'qrContainer']
+  ['aboutContainer', 'updateContainer', 'correspondentContainer', 'modal']
     .forEach(tag => document.getElementById(tag).classList.toggle('hidden', true));
 }
 let notificationPermissionInterval;
@@ -162,7 +162,7 @@ document.getElementById('scriptChooser').onchange = event => { // Run a script m
 };
 
 clickTip('#qrButton', Int`Display QR code that can be scanned by a friend to show the same map on their device.`, event => { // generate (and display) qr code on-demand (in case url changes)
-  const content = openDisplay('qrContainer', event, '');
+  const content = openDisplay('modal', event, '');
   const qr = new QRCodeStyling({
     width: 300,
     height: 300,

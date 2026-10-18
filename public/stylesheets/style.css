@@ -690,7 +690,7 @@ input[type="file"] {
     filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.4));
 }
 
-#qrContainer, #aboutContainer, #updateContainer, #correspondentContainer {
+#modal, #aboutContainer, #updateContainer, #correspondentContainer {
     position: absolute;
     top: 0;
     width: 100vw;
@@ -709,7 +709,7 @@ input[type="file"] {
     border-radius: 12px;
     box-shadow: 0 3px 14px rgba(0, 0, 0, 0.4);
 }
-.display-content > * {
+.display-content > :not(svg) {
     margin-top: 10px;
 }
 .display-content ul {
@@ -726,9 +726,10 @@ input[type="file"] {
 #correspondentContainer .handle {
     color: var(--md-sys-color-secondary);
 }
-#qrContainer > .display-content {
-    padding: 0;
-    min-width: unset;
+#modal > .display-content {
+    margin: auto;
+    min-width: 300px;
+    min-height: 300px;
 }
 .pwa {
     display: flex;

@@ -146,7 +146,7 @@ const translations = {
   ['" in the colored region. Zooming in to get a better look.']: {es: '" en la región coloreada. Ampliando la imagen para verla mejor.'},
 
 
-  ['Too many posts. (5 allowed every 5 minutes.) Removing oldest from this period.']: {es: "Demasiadas publicaciones. (Se permiten 5 cada 5 minutos). Eliminando las más antiguas de este período."},
+  ['Too many posts. (10 allowed every 10 minutes.) Removing oldest from this period.']: {es: "Demasiadas publicaciones. (Se permiten 10 cada 10 minutos). Eliminando las más antiguas de este período."},
   ['#wipe']: {en: "Wipe all CivilDefense data.", es: "Eliminar todos los datos de la Defensa Civil."},
   ['Installed']: {es: "Instalada"}
 };
