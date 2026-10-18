@@ -205,14 +205,14 @@ export const Hashtags = {
     delete this.canonical2extended[canonicalTag(chip.label)];
     this.onchange({redisplaySubscribers, resetSubscriptions: false});
   },
-  toggleChip(chip) { // Switch whether the topic is or is not subscribed.
+  toggleChip(chip, selected = chip.selected) { // Switch whether the topic is or is not subscribed.
     // Now selected => hashtags[label] becomes 'pub' (selected and the publisher) and clear old pub
     // NOT now selected => hashtags[label] becomes false (through mechanism as follows)
     //    but if publisher => set alt publisher if possible, else remember as backupPublisher
     const label = chip.label;
 
     // chip.selected is new state, after clicking.
-    if (chip.selected) return this.setPublish(label);  // Become publisher, clearing old publisher.
+    if (selected) return this.setPublish(label);  // Become publisher, clearing old publisher.
 
     // Not selected:
 

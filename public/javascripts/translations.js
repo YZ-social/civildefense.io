@@ -1,4 +1,4 @@
-const language = new URL(location).searchParams.get('lang') || navigator.language;
+export const language = new URL(location).searchParams.get('lang') || navigator.language;
 const lang = language.split('-')[0].toLowerCase(); // Get the language the the user has their browser to.
 
 export function Int(strings, ...values) { // A tagged template function that converts to lang.
