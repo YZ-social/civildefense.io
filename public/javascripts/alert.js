@@ -623,7 +623,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       const region = P2PWebNetwork.regionCode(lat, lng);
       if (geocodePromise) payload.label = await geocodePromise;
       else if (typeof(label) === 'string') payload.label = label;
-      console.log('publish', {region, tag, payload, issuedTime, hashtag, alert, geocodePromise, rest});
+      //console.log('publish', {region, tag, payload, issuedTime, hashtag, alert, geocodePromise, rest});
       const pubs = await Promise.all(eventNames.map(eventName =>
 	contact.publish({eventName, region, killTag: tag, payload: tag ? null : payload, issuedTime, hashtag, alert, ...rest})));
       if (limitAsAlert) {
@@ -692,7 +692,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
     const THRESHOLD = 10;
     if (!scroller) {console.log('no scroller'); return true; }
     const {scrollHeight, scrollTop, clientHeight} = scroller;
-    console.log({scrollHeight, scrollTop, clientHeight, THRESHOLD});
     return scrollHeight - scrollTop - clientHeight <= THRESHOLD;
   }
   needsRedisplay = 'all';
@@ -815,7 +814,6 @@ ${this.formatReplyInput()}`;
       element.onload = () => setTimeout(() => this.ensureContent('reply'), 100); // Make sure there enough room.
     }
     const lastReply = window.lastReply = popupElement.querySelector('.replies > div:last-child');
-    console.log('lastReply:', {lastReply, wasPinned:this.wasPinned});
     if (lastReply && this.wasPinned) setTimeout(() => lastReply.scrollIntoView(), 100);
   }
   initChangeHashtag(someParent) { // Init handler on the menu button, if any, as (re-) init of menu for open popup
