@@ -515,8 +515,8 @@ md-filter-chip[label="🆘 help"], md-filter-chip[label="🆘 ayuda"] {
 #aboutButton {
     anchor-name: --cdOptions;
 }
-md-filter-chip:first-of-type {
-    anchor-name: --firstTopicChip;
+md-filter-chip:last-of-type {
+    anchor-name: --lastTopicChip;
 }
 .newtag {
     anchor-name: --combobox-newtag;
@@ -531,7 +531,7 @@ body:not(.firstConversation) .firstConversation {
     position-anchor: --share;
     bottom: calc(anchor(top) + 60px);
     left: anchor(--popup left);
-    max-width: min(45vw, 310px);
+    max-width: min(40vw, 310px);
 }
 .teach.correspondent {
     position-anchor: --correspondentAvatar;
@@ -542,7 +542,7 @@ body:not(.firstConversation) .firstConversation {
     position-anchor: --changeHashtag;
     bottom: calc(anchor(top) + 60px);
     right: anchor(--popup right);
-    width: min(45vw, 310px);
+    width: min(40vw, 310px);
 }
 .teach.attach {
     position-anchor: --attach;
@@ -557,7 +557,7 @@ body:not(.firstConversation) .firstConversation {
     background: linear-gradient(var(--md-sys-color-primary), color-mix(in srgb, var(--md-sys-color-primary), white 40%));
 }
 .teach.toggleTopic {
-    position-anchor: --firstTopicChip;
+    position-anchor: --lastTopicChip;
     bottom: calc(anchor(top) + 15px);
     right: anchor(right);
 }
