@@ -1,7 +1,7 @@
 const { Request, Response, URL, clients} = self;
 // Little point in trying to automatically pull this through package.json, as we need a byte change in THIS file to trigger a new worker.
-const serviceVersion = '5.4.8';
-const releaseNotesURL = 'https://docs.google.com/document/d/1ZqUxm0Fyiqj9anKYvsOiAdfbQ7pPkJWVk5UhmxRd7GE/edit?usp=sharing';
+const serviceVersion = '5.4.9';
+const releaseNotesURL = 'https://docs.google.com/document/d/135Dv5xclh9X22Sm_34lR0ASYp4K5ooY3CWMR_dEYu-8/edit?usp=sharing';
 
 const cacheList = [ // The files we need.
   "/",
