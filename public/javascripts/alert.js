@@ -230,14 +230,43 @@ export class Alert extends Conversation { // A wrapper around L.marker
   update({topic, ts, hashtag, ...rest}) { // Called when handling an existing Conversation. super confirms that nothing immutable has changed.
     return super.update({...rest}); // topic and ts vary with level, and so must not be part of ensure/update checks.
   }
+  static pendingReplies = {};
   static async ensure({alert, ...data}) { // If alert is truthy, this was a supplemental publication about a reply to the specified alert.
-    if (!alert) return super.ensure(data); // Normal initialize/update above.
+    if (!alert) {
+      const alertInstance = await super.ensure(data); // Normal initialize/update above.
+
+      if (!alertInstance) { // This action was to delete alert. Remove any pending reply, as there is no no way to apply it.
+	delete this.pendingReplies[data.tag];
+	return null;
+      }
+      // Process any pending reply now that we have an alertInstance.
+      const alertTag = alertInstance?.tag;
+      const pendingReplyData = this.pendingReplies[alertTag];
+      delete this.pendingReplies[alertTag];
+      if (pendingReplyData) this.ensure({alert: alertTag, ...pendingReplyData}); // Don't wait.
+      return alertInstance;
+    }
+
+    // Handle supplemental publication of a reply.
     const existingAlert = this.getItem(alert);
-    if (!existingAlert) return null; //console.log('Skipping reply to missing alert', alert); // Deleted or expired.
-    const { tag:replyTag } = data;
+    if (!existingAlert) { // Stash or delete the reply pending arrival of the referenced alert.
+      // If the alert came in first, then existingAlert is true and we can proceed.
+      // Buf if the reply came first, we really don't want to try to ensure({tag: alert, ...}) with the
+      // partial data that we have here. E.g.:
+      // - What if alert alert never arrives?
+      // - What if the alert is deleted without deleting the reply?
+      // - What should be shown for author? (And what do we do with the Agent.ensure machinery?)
+      // - Should we supress the dat-integrity mechanisms against changing data that we do not yet have here such as label?
+      // So instead, we keep all the alert and display mechanisms as is, but simply hold on to
+      // the not-yet-usable reply until the alert comes in or the reply is deleted.
+      if (data.payload) this.pendingReplies[alert] = data;
+      else delete this.pendingReplies[alert];
+      return null;
+    }
     // We are in Alert.ensure, with data that would normally appear for alertInstance.ensure() which we still call.
     // It creates the reply adds it to alertInstance.items and promises the reply.
     // Here we ALSO add that reply to Alert.items, so that a killed publication event will find/destroy it.
+    const { tag:replyTag } = data;
     const reply = await existingAlert.ensure(data);
     this.setItem(replyTag, reply);
     return reply;
