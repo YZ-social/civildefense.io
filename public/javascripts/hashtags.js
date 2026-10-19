@@ -175,7 +175,7 @@ export const Hashtags = {
 	if (chip.classList.contains('pub')) return false;
 	return this.setPublish(chip.label);
       });
-      clickTip(element, Int`Toggle whether alerts for this topic shown on the map. Separately, a radio button is shown when selected and sets this as the initial topic of the next alert you make, while an x button is shown when deselected and removes the topic.`, event => { // Toggle action on whole chip.
+      clickTip(element, Int`Toggle whether alerts for this topic are shown on the map. Separately, a radio button is shown when selected and sets this as the initial topic of the next alert you make, while an x button is shown when deselected and removes the topic.`, event => { // Toggle action on whole chip.
 	event.stopPropagation();
 	resetInactivityTimer();
 	const chip = event.target;
