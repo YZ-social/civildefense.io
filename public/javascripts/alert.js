@@ -138,8 +138,11 @@ class AlertReply extends Reply {
       alertInstance.needsRedisplay ||= 'reply';
       alertInstance.ensureContent();
     }
+  }
+  async destroy() {
+    super.destroy();
     // See service worker showNotification comments regarding cancel.
-    if (notificationsAllowed()) postServiceMessage('cancelNotification', [this.tag]);
+    postServiceMessage('cancelNotification', [this.tag]); // Do not check for allowed, as it may have been on before and not now.
   }
 }
 
@@ -295,6 +298,9 @@ export class Alert extends Conversation { // A wrapper around L.marker
   }
   delete() { // If ensure gets an empty body, cancel any associated notification.
     if (notificationsAllowed()) postServiceMessage('cancelNotification', [this.tag]);
+    // The deleting owner might not be the owner of each reply, and thus cannot cancel them on the network.
+    // However, we can reclaim our local memory, and close any associated notifications.
+    for (const reply of this.items) reply.destroy();
     return super.delete();
   }
 
@@ -611,7 +617,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 			}) {
     // We call all the publishing at once and return tag, without waiting for each to occur.
     // However, the 'unpublishing' (if any) is invoked first.
-    return this.publishQueue.then(async () => {
+    return this.publishQueue = this.publishQueue.then(async () => {
       const geocodePromise = (label === undefined) && payload && !alert && await this.reverseGeocode(lat, lng);
       const cells = getContainingCells(lat, lng);
       const eventNames = cells.map(cell => alertTopic(cell, hashtag));

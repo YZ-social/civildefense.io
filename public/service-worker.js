@@ -3,6 +3,10 @@ const { Request, Response, URL, clients} = self;
 const serviceVersion = '5.4.11';
 const releaseNotesURL = 'https://docs.google.com/document/d/1kk8Y79gPlujYz_bVW3UZe13rhyt8XdZ5a9lQ8UeYi54/edit?usp=sharing';
 
+function delay(ms) { // Promise to resolve in the specified number of milliseconds.
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 const cacheList = [ // The files we need.
   "/",
   "/index.html", // Just in case anyone is specifying that.
@@ -181,7 +185,7 @@ self.addEventListener('activate', async event => {
   // Apply to running clients now, so that first fresh install sees updatefound event.
   // Otherwise, the service worker wouldn't fire until the code NEXT time the page loads after
   // registration, and thus the initial load would not see any updatefound events.
-  event.waitUntil(self.clients.claim().then(() => expireStaleAlerts(0)));
+  event.waitUntil(self.clients.claim().then(() => expireStaleAlerts(0, 'activate')));
 });
 
 self.addEventListener('fetch', event => {
@@ -214,37 +218,54 @@ async function cacheSource(version, event) { // Cache source in the given versio
 // The service worker is stopped and restarted for events, and so we can't keep an in-memory set of issued alerts.
 // Here we keep it in cache, and manually clean up expired entries.
 const alertCache = 'seenNotifications';
-function hasSeenAlert(seenKey) { // Have we noted seenKey before?
-  return caches.open(alertCache).then(cache => cache.match(seenKey));
-}
-function noteSeenAlert(seenKey, issuedTime) { // Record seenKey and it's expiration timestamp.
-  return caches.open(alertCache).then(cache => cache.put(seenKey, new Response(issuedTime.toString())));
-}
 const ALERT_EXPIRATION_MS = 24 * 60 * 60e3;
-async function expireStaleAlerts(increment) { // Maintenance: declutter notifications and cache storage.
+async function issuableAlert(notificationTag, issuedTime) { // Returns true IFF we are not expired and have not previously asked.
   const now = Date.now();
+  const expiration = now - ALERT_EXPIRATION_MS;
   const cache = await caches.open(alertCache);
-  const firstSafeIssuedTime = Date.now() - ALERT_EXPIRATION_MS;
-  const firstSafeIssuedString = firstSafeIssuedTime.toString();
+  if (issuedTime < expiration) { // Check BEFORE consulting cache, which doesn't keep expired stuff.
+    await cache.delete(notificationTag);
+    return false;
+  }
+  const response = await cache.match(notificationTag);
+  console.log('issueableAlert', {notificationTag, response});
+  if (response) return false;
+  await cache.put(notificationTag, Response.json(issuedTime));
+  return true;
+}
+async function expireStaleAlerts(increment = 0, source) { // Maintenance: declutter notifications and cache storage.
+  const now = Date.now();
+  const expiration = now - ALERT_EXPIRATION_MS;
+  const cache = await caches.open(alertCache);
+  const notifications = await self.registration.getNotifications();
+
+  // Remove stale cache data.
   for (const key of await cache.keys()) {
     const response = await cache.match(key);
-    if (!response) console.error('how can there not be a response at', key);
-    else if (firstSafeIssuedString > await response.text()) {console.log('removing stale seen', key); cache.delete(key); }
+    const issued = await response.json();
+    if (issued > expiration ) continue;
+    console.log('removing stale seen', key);
+    cache.delete(key);
   }
-  // The next line cannot be called immediately after registration.showNotification on Chrome.
-  // It breaks the notification so that it isn't clickable.
-  const notifications = await self.registration.getNotifications();
-  let count = increment;
-  for (const notification of notifications) {
-    if (firstSafeIssuedTime > notification.data.issuedTime) {console.log('removing stale alert', notification.close());}
-    else count++;
-  }
+  // Collect stale notifications.
+  const toCancel = notifications.filter(notification => notification.timestamp < expiration);
+  const count = increment + notifications.length - toCancel.length;
+  console.log('setAppBadge', {source, increment, notifications, toCancel, count});
   if (count > 0) await navigator.setAppBadge(count);
   else await navigator.clearAppBadge();
+  // Cancel them.
+  toCancel.forEach(notification => notification.close());
   return count;
 }
 
-async function showNotification({lat, lng, issuedTime, hashtag, msgId, alert, body = '', force = false}) { // Promise to show a platform notification. There are two paths to here:
+
+// Chrome has a bug such that calling registration.getNotifications right after registration.showNotification will break the notification.
+// The notification won't be clickable, and it won't be listed in getNotifications.
+// Similarly, notification.close will still be present in getNotifications if called too soon.
+// We cannot control how quickly showNotifications or canceNotification calls will happen (e.g., from opening an alert with lots of replies, or lots of pushes),
+// and so we serialize each call, with a delay.
+let notificationQueue = Promise.resolve();
+function showNotification({lat, lng, issuedTime, hashtag, msgId, alert, body = '', force = false}) { // Promise to show a platform notification. There are two paths to here:
   // 1. The app handles data from network connections, and determines that it should alert the user.
   //    In this case, the app sends the data to this service worker.
   // 2. An upstream node would like to send the data over the network, but finds that we are not connected,
@@ -252,21 +273,24 @@ async function showNotification({lat, lng, issuedTime, hashtag, msgId, alert, bo
   // Abstractly, this function could be in either app or service worker, but the app might not be running
   // in path 2, so it has to be here if we want to have the code in just one place.
   // Any filtering (e.g., do not show notifications for one's own alerts) happens upstream of here. (We don't know the Agent.current and the sender isn't in the notification.)
-  const seen = !force && await hasSeenAlert(msgId); // If we click on a notification for an off-screen alert, we may process the alert again and try to notify again.
-  if (seen) return null;
-  noteSeenAlert(msgId, issuedTime);
-  const base = location.href;
-  const timestamp = issuedTime;
-  const icon = new URL('./images/civil-defense-192.png', base).href;
-  const queryString = `./?tags=${encodeURIComponent(hashtag)}&lat=${lat}&lng=${lng}&alert=${alert}`;
-  const url = new URL(queryString, base).href; // For opening page when it has been closed.
-  const data = {lat, lng, alert, url};
-  // If we turn on {tag: alert||msgId, renotify: true} again, beware of cancelling notifications for deleted replies.
-  // See https://docs.google.com/document/d/1ZMC0JLlUbC5XnOP-oyseSUrEhByfGjPgam9mo7B9qls/edit?usp=sharing
-  const options = {icon, timestamp, body, data, tag: msgId};
-  const count = await expireStaleAlerts(1); // BEFORE creating new notifications. See comment about Chrome.
-  console.log('showNotification', {msgId, hashtag, options, count});
-  await self.registration.showNotification(hashtag, options);
+  // force could be used for special messages (e.g., that your sticky subscription is about to expire), but is not used yet.
+  return notificationQueue = notificationQueue.then(async () => {
+    if (!await issuableAlert(msgId, issuedTime)) return;
+    const base = location.href;
+    const timestamp = issuedTime;
+    const icon = new URL('./images/civil-defense-192.png', base).href;
+    const queryString = `./?tags=${encodeURIComponent(hashtag)}&lat=${lat}&lng=${lng}&alert=${alert}`;
+    const url = new URL(queryString, base).href; // For opening page when it has been closed.
+    const data = {lat, lng, alert, url};
+    // If we turn on {tag: alert||msgId, renotify: true} again, beware of cancelling notifications for deleted replies.
+    // See https://docs.google.com/document/d/1ZMC0JLlUbC5XnOP-oyseSUrEhByfGjPgam9mo7B9qls/edit?usp=sharing
+    const options = {icon, timestamp, body, data, tag: msgId};
+    // Debugging note: msgId will be alertCache from the issuableAlert test, but will not be counted in expireStaleAlerts.
+    const count = await expireStaleAlerts(1, 'showNotification'); // BEFORE creating new notifications. See comment about Chrome.
+    console.log('showNotification', {msgId, hashtag, options, count});
+    await self.registration.showNotification(hashtag, options);
+    await delay(500); // Allow chrome to get out of the way of the OS before the next one in our serialization.
+  });
 }
 
 function showNotificationFromEnvelope({deleted, message, msgId}) { // We get the generic, application-independent envelope.
@@ -278,19 +302,23 @@ function showNotificationFromEnvelope({deleted, message, msgId}) { // We get the
   return showNotification({alert, msgId, lat, lng, issuedTime, hashtag, body});
 }
 
-async function cancelNotification(tag, body = '') { // Cancel those that match tag, and if body, then only those also matching body.
-  for (const notification of await self.registration.getNotifications({tag})) {
-    console.log('cancel notification', {tag, body, notification});
-    if (!body || (body === notification.body)) {
+function cancelNotification(tag, body = '') { // Cancel those that match tag, and if body, then only those also matching body.
+  return notificationQueue = notificationQueue.then(async () => {
+    const notifications = await self.registration.getNotifications({tag});
+    const toCancel = notifications.filter(notification => !body || (body === notification.body));
+    await expireStaleAlerts(-toCancel.length, 'cancelNotification');
+    // In principle, we could remove the cancelled notifications from alertCache, as we SHOULD NOT try to notify them again.
+    // But it is conceivable that a network blip could cause a resubscribe to see a pub followed by a separate re-cancel, and
+    // we don't want to see that in notifications. So we'll keep it in alertCache until it actually expires.
+    for (const notification of toCancel) {
       notification.close();
-      await new Promise(resolve => setTimeout(resolve, 1e3));
+      await delay(500);
     }
-  }
-  await expireStaleAlerts(0);
+  });
 }
 
 self.addEventListener('message', event => {
-  const {method, params} = event.data;
+  const {method, params = []} = event.data;
   switch (method) {
   case 'version':
     event.waitUntil(event.source.postMessage({method: 'version', params: {serviceVersion, releaseNotesURL}}));
@@ -305,6 +333,9 @@ self.addEventListener('message', event => {
   case 'cancelNotification':
     event.waitUntil(cancelNotification(...params));
     break;
+  case 'expireStaleAlerts':
+    event.waitUntil(expireStaleAlerts(...params));
+    break;
   default:
     console.warn(`Unrecognized service worker message: "${event.data}".`);
   }
@@ -314,10 +345,11 @@ self.addEventListener('push', event => event.waitUntil(showNotificationFromEnvel
 
 self.addEventListener('notificationclick', event => {
   const {notification} = event;
-  const {title, body, tag, data} = notification;
+  const {title, body, tag, data, timestamp} = notification;
   event.waitUntil(new Promise(async resolve => {
-    await expireStaleAlerts(-1);
-    notification.close();
+    const expiration = Date.now() - ALERT_EXPIRATION_MS;
+    await expireStaleAlerts(timestamp < expiration ? 0 : -1, 'notificationclick');
+    notification.close(); // Do not remove from alertCache, as resubscribing may try to notify again.
     if (!data) return resolve(console.log('no data in notification', notification));
     // Look to see if the current is already open and focuses if it is. Else opens one.
     const clientList = await clients.matchAll({type: 'window', includeUncontrolled: true});
