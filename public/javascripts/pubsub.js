@@ -52,7 +52,7 @@ function directFireEvent(...rest) { // Send envelope to a subscribed hander.
     const topic = envelope.topic;
     const topicId = await deriveTopicId(topic);
     const subscription = await store.get('sub', topicId, nodeTag);
-    if (subscription) push(envelope, subscription, PUBLISH_TIMEOUT); // Do not wait for push to complete.
+    if (subscription) push(envelope, subscription, Date.now() - envelope.ts + PUBLISH_TIMEOUT); // Do not wait for push to complete.
   });
 }
 
@@ -70,9 +70,14 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}
   }
   if (since) { // invoke handler on any sticky data, but only after we have told client the subscription id. TODO: is there a better way?
     setTimeout(async () => {
-	let lastEnvelope = null, lastTime = 0;
+        let lastEnvelope = null, lastTime = 0;
+        const earliestAllowedTimestamp = Date.now() - PUBLISH_TIMEOUT;
 	for (const envelope of await store.values('pub', topicId)) {
-	  if (!await store.get('sub', topicId, nodeTag)) return;
+	  if (!await store.get('sub', topicId, nodeTag)) return; // In case it was asynchronously unsubscribed while we were iterating.
+	  if (envelope.ts < earliestAllowedTimestamp) { // Belt and suspenders, in case the store expiration implementation is sloppy.
+	    store.remove('pub', topicId, envelope.msgId); // No need to wait.
+	    continue;
+	  }
 	  switch (since) {
 	  case 'all':
 	    await directFireEvent(nodeTag, id, envelope);
