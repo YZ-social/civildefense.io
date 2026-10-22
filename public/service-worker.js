@@ -348,20 +348,30 @@ self.addEventListener('notificationclick', event => {
   const {title, body, tag, data, timestamp} = notification;
   event.waitUntil(new Promise(async resolve => {
     const expiration = Date.now() - ALERT_EXPIRATION_MS;
-    await expireStaleAlerts(timestamp < expiration ? 0 : -1, 'notificationclick');
-    notification.close(); // Do not remove from alertCache, as resubscribing may try to notify again.
-    if (!data) return resolve(console.log('no data in notification', notification));
+    const increment = timestamp < expiration ? 0 : -1;
+    const update = async () => { // Used in three places.
+      await expireStaleAlerts(increment, 'notificationclick');
+      notification.close(); // Do not remove from alertCache, as resubscribing may try to notify again.
+      resolve();
+    };
+    if (!data) {
+      console.log('no data in notification', notification);
+      await update();
+      return;
+    }
     // Look to see if the current is already open and focuses if it is. Else opens one.
+    // Either way, we try to wake up the app before counting notifications.
     const clientList = await clients.matchAll({type: 'window', includeUncontrolled: true});
     for (const client of clientList) {
       console.log('notificationclick found client', notification, clientList);
       await client.focus();
       await client.postMessage({method: 'go', params: {alert: tag, ...data}});
-      return resolve();
+      await update();
+      return;
     }
     // Client has been closed. Open one.
-    console.log('notificationclick  opening client', notification);
+    console.log('notificationclick opening client', notification);
     await clients.openWindow(data.url);
-    return resolve();
+    await update();
   }));
 });
