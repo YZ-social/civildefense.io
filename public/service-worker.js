@@ -348,10 +348,13 @@ self.addEventListener('notificationclick', event => {
   const {title, body, tag, data, timestamp} = notification;
   event.waitUntil(new Promise(async resolve => {
     const expiration = Date.now() - ALERT_EXPIRATION_MS;
-    const increment = timestamp < expiration ? 0 : -1;
     const update = async () => { // Used in three places.
-      await expireStaleAlerts(increment, 'notificationclick');
       notification.close(); // Do not remove from alertCache, as resubscribing may try to notify again.
+      // In some browsers, the clickc notification will be included in getNotifications,
+      // and in some browsers not. So we close it before expireStatleAlerts and pass 0, so as
+      // to use the actual count (after closing).
+      await delay(500); // But in chrome, we have to delay after closing.
+      await expireStaleAlerts(0, 'notificationclick');
       resolve();
     };
     if (!data) {
