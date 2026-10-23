@@ -238,6 +238,13 @@ async function expireStaleAlerts(increment = 0, source) { // Maintenance: declut
   const expiration = now - ALERT_EXPIRATION_MS;
   const cache = await caches.open(alertCache);
   const notifications = await self.registration.getNotifications();
+  // There is a lot of dancing to work around platform specific bugs:
+  // - Chrome cannot handle registration.getNotifications too soon after navigator.showNotification.
+  // - Safari doesn't define setAppBadge in SOME situations.
+  // - In a notificationclick handler on Safari, the clicked notification is not included in getNotifications.
+  // Given all this, it is tempting to keep our own count of outstanding notifications instead of counting from getNotifications.
+  // However, Safari ignores notification.close in some cases, without actually failing in any way that the program can observe.
+  // So if we try to maintain our own count, we will inevitably get out of phase with the actual number of visible notifications.
 
   // Remove stale cache data.
   for (const key of await cache.keys()) {
@@ -350,7 +357,7 @@ self.addEventListener('notificationclick', event => {
     const expiration = Date.now() - ALERT_EXPIRATION_MS;
     const update = async () => { // Used in three places.
       notification.close(); // Do not remove from alertCache, as resubscribing may try to notify again.
-      // In some browsers, the clickc notification will be included in getNotifications,
+      // In some browsers, the click notification will be included in getNotifications,
       // and in some browsers not. So we close it before expireStatleAlerts and pass 0, so as
       // to use the actual count (after closing).
       await delay(500); // But in chrome, we have to delay after closing.
