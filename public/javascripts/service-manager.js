@@ -47,6 +47,7 @@ export async function postServiceMessage(method, params) {
   const registration = await navigator.serviceWorker.ready;
   return registration.active.postMessage({method, params});
 }
+globalThis.showLog = () => navigator.serviceWorker.ready.then(registration => registration.active.postMessage({method: 'showLog'}));
 
 let resolveCached;
 async function cacheSource(version) {

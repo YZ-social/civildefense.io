@@ -215,6 +215,25 @@ async function cacheSource(version, event) { // Cache source in the given versio
   return version;
 }
 
+const persistedLog = 'persistedLog';
+let logCount = 0;
+async function persistLog(label, ...data) { // Like console.log, but writes to persistedLog cache using counter+label as url.
+  const cache = await caches.open(persistedLog);
+  cache.put(`${logCount++}-${label}`, Response.json(data));
+}
+async function showLog(andDelete = true) {
+  console.log('showLog', andDelete);
+  const cache = await caches.open(persistedLog);
+  const keys = await cache.keys();
+  console.log('showLog', cache, keys);
+  for (const key of keys) {
+    const response = await cache.match(key);
+    const data = await response.json();
+    console.log(key.url, ...data);
+  }
+  if (andDelete) await caches.delete(persistedLog);
+}
+
 // The service worker is stopped and restarted for events, and so we can't keep an in-memory set of issued alerts.
 // Here we keep it in cache, and manually clean up expired entries.
 const alertCache = 'seenNotifications';
@@ -298,14 +317,14 @@ function showNotification({lat, lng, issuedTime, hashtag, msgId, alert, body = '
     const options = {icon, timestamp, body, data, tag: msgId};
     // Debugging note: msgId will be alertCache from the issuableAlert test, but will not be counted in expireStaleAlerts.
     const count = await expireStaleAlerts(1, 'showNotification'); // BEFORE creating new notifications. See comment about Chrome.
-    console.log('showNotification', {msgId, hashtag, options, count});
+    persistLog('showNotification', {msgId, hashtag, options, count});
     await self.registration.showNotification(hashtag, options);
     await delay(500); // Allow chrome to get out of the way of the OS before the next one in our serialization.
   });
 }
 
 function showNotificationFromEnvelope({deleted, message, msgId}) { // We get the generic, application-independent envelope.
-  console.log('received push', msgId, deleted ? 'cancel' : '');
+  persistLog('received push', msgId, deleted ? 'cancel' : '');
   if (deleted) return cancelNotification(msgId);
   const {issuedTime, hashtag, payload, alert = msgId} = message;
   let {lat, lng, label = '', message:body = label, name = ''} = payload;
@@ -347,6 +366,10 @@ self.addEventListener('message', event => {
   case 'expireStaleAlerts':
     event.waitUntil(expireStaleAlerts(...params));
     break;
+  case 'showLog':
+    console.log('showing persistLog', ...params);
+    event.waitUntil(showLog(...params));
+    break;
   default:
     console.warn(`Unrecognized service worker message: "${event.data}".`);
   }
@@ -357,18 +380,18 @@ self.addEventListener('push', event => event.waitUntil(showNotificationFromEnvel
 self.addEventListener('notificationclick', event => {
   const {notification} = event;
   const {title, body, tag, data, timestamp} = notification;
-  console.log('notificationclick', notification);
+  persistLog('notificationclick', notification);
   event.waitUntil(new Promise(async resolve => {
     const expiration = Date.now() - ALERT_EXPIRATION_MS;
     const update = async () => { // Used in three places.
-      console.log('notificationclick start update');
+      persistLog('notificationclick start update');
       notification.close(); // Do not remove from alertCache, as resubscribing may try to notify again.
       // In some browsers, the click notification will be included in getNotifications,
       // and in some browsers not. So we close it before expireStatleAlerts and pass 0, so as
       // to use the actual count (after closing).
       await delay(500); // But in chrome, we have to delay after closing.
       await expireStaleAlerts(0, 'notificationclick');
-      console.log('notificationclick finished update');
+      persistLog('notificationclick finished update');
       resolve();
     };
     if (!data) {
@@ -379,19 +402,19 @@ self.addEventListener('notificationclick', event => {
     // Look to see if the current is already open and focuses if it is. Else opens one.
     // Either way, we try to wake up the app before counting notifications.
     const clientList = await clients.matchAll({type: 'window', includeUncontrolled: true});
-    console.log('notificationclick checking clientList', clientList);
+    persistLog('notificationclick checking clientList', clientList);
     for (const client of clientList) {
-      console.log('notificationclick focusing client', client);
+      persistLog('notificationclick focusing client', client);
       await client.focus();
       await client.postMessage({method: 'go', params: {alert: tag, ...data}});
-      console.log('notificationclick found client', notification, clientList);
+      persistLog('notificationclick found client', notification, clientList);
       await update();
       return;
     }
     // Client has been closed. Open one.
-    console.log('notificationclick openWindow', data.url);
+    persistLog('notificationclick openWindow', data.url);
     await clients.openWindow(data.url);
-    console.log('notificationclick opened client', notification);
+    persistLog('notificationclick opened client', notification);
     await update();
   }));
 });
