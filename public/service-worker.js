@@ -251,8 +251,8 @@ async function expireStaleAlerts(increment = 0, source) { // Maintenance: declut
   const toCancel = notifications.filter(notification => notification.timestamp < expiration);
   const count = increment + notifications.length - toCancel.length;
   console.log('setAppBadge', {source, increment, notifications, toCancel, count});
-  if (count > 0) await navigator.setAppBadge(count);
-  else await navigator.clearAppBadge();
+  if (count > 0) await navigator.setAppBadge?.(count); // Not always defined.
+  else await navigator.clearAppBadge?.();
   // Cancel them.
   toCancel.forEach(notification => notification.close());
   return count;
