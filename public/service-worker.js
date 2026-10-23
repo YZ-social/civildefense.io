@@ -215,21 +215,36 @@ async function cacheSource(version, event) { // Cache source in the given versio
   return version;
 }
 
+async function setJSON(cache, key, value) { // Store value under key in persistent cache.
+  console.log('setJSON', {cache, key, value});
+  const response = Response.json(value);
+  await cache.put(key, response);
+  console.log('setJSON ok');
+}
+async function getJSON(cache, key, defaultValue) { // Promise value previously stored under key in persistent cache.
+  const matched = await cache.match(key);
+  if (!matched) return defaultValue;
+  return await matched.json();
+}
 const persistedLog = 'persistedLog';
-let logCount = 0;
+async function showLog1(cache, key) {
+  const data = await getJSON(cache, key);
+  console.log(key.url || key, ...(Array.isArray(data) ? data : [data]));
+}
 async function persistLog(label, ...data) { // Like console.log, but writes to persistedLog cache using counter+label as url.
   const cache = await caches.open(persistedLog);
-  cache.put(`${logCount++}-${label}`, Response.json(data));
+  const logCount = 1 + await getJSON(cache, 'count', 0);
+  const key = `${logCount}-${label}`;
+  await setJSON(cache, 'count', logCount);
+  await setJSON(cache, key, data);
+  await showLog1(cache, key);
 }
 async function showLog(andDelete = true) {
-  console.log('showLog', andDelete);
   const cache = await caches.open(persistedLog);
   const keys = await cache.keys();
-  console.log('showLog', cache, keys);
+  console.log('showLog', {andDelete, cache, keys});
   for (const key of keys) {
-    const response = await cache.match(key);
-    const data = await response.json();
-    console.log(key.url, ...data);
+    await showLog1(cache, key);
   }
   if (andDelete) await caches.delete(persistedLog);
 }
@@ -247,13 +262,13 @@ async function issuableAlert(notificationTag, issuedTime) { // Returns true IFF 
     await cache.delete(notificationTag);
     return false;
   }
-  const response = await cache.match(notificationTag);
-  console.log('issueableAlert', {notificationTag, response});
-  if (response) {
-    console.log('Cannot reissue seen notification', notificationTag, new Date(await response.json()));
+  const seenTime = await getJSON(cache, notificationTag);
+  console.log('issueableAlert', {notificationTag, seenTime});
+  if (seenTime) {
+    console.log('Cannot reissue seen notification', notificationTag, new Date(seenTime));
     return false;
   }
-  await cache.put(notificationTag, Response.json(issuedTime));
+  await setJSON(cache, notificationTag, issuedTime);
   return true;
 }
 async function expireStaleAlerts(increment = 0, source) { // Maintenance: declutter notifications and cache storage.
@@ -271,8 +286,7 @@ async function expireStaleAlerts(increment = 0, source) { // Maintenance: declut
 
   // Remove stale cache data.
   for (const key of await cache.keys()) {
-    const response = await cache.match(key);
-    const issued = await response.json();
+    const issued = await getJSON(cache, key);
     if (issued > expiration ) continue;
     console.log('removing stale seen', key);
     cache.delete(key);
@@ -280,7 +294,7 @@ async function expireStaleAlerts(increment = 0, source) { // Maintenance: declut
   // Collect stale notifications.
   const toCancel = notifications.filter(notification => notification.timestamp < expiration);
   const count = increment + notifications.length - toCancel.length;
-  console.log('setAppBadge', {source, increment, notifications, toCancel, count});
+  console.log('expireStaleAlerts', {source, increment, notifications, toCancel, count});
   if (count > 0) await navigator.setAppBadge?.(count); // Not always defined.
   else await navigator.clearAppBadge?.();
   // Cancel them.
@@ -317,19 +331,19 @@ function showNotification({lat, lng, issuedTime, hashtag, msgId, alert, body = '
     const options = {icon, timestamp, body, data, tag: msgId};
     // Debugging note: msgId will be alertCache from the issuableAlert test, but will not be counted in expireStaleAlerts.
     const count = await expireStaleAlerts(1, 'showNotification'); // BEFORE creating new notifications. See comment about Chrome.
-    persistLog('showNotification', {msgId, hashtag, options, count});
+    await persistLog('showNotification', {msgId, hashtag, options, count});
     await self.registration.showNotification(hashtag, options);
     await delay(500); // Allow chrome to get out of the way of the OS before the next one in our serialization.
   });
 }
 
-function showNotificationFromEnvelope({deleted, message, msgId}) { // We get the generic, application-independent envelope.
-  persistLog('received push', msgId, deleted ? 'cancel' : '');
+async function showNotificationFromEnvelope({deleted, message, msgId}) { // We get the generic, application-independent envelope.
+  await persistLog('received-push', msgId, deleted ? 'cancel' : '');
   if (deleted) return cancelNotification(msgId);
   const {issuedTime, hashtag, payload, alert = msgId} = message;
   let {lat, lng, label = '', message:body = label, name = ''} = payload;
   body ||= name;
-  return showNotification({alert, msgId, lat, lng, issuedTime, hashtag, body});
+  await showNotification({alert, msgId, lat, lng, issuedTime, hashtag, body});
 }
 
 function cancelNotification(tag, body = '') { // Cancel those that match tag, and if body, then only those also matching body.
@@ -367,7 +381,6 @@ self.addEventListener('message', event => {
     event.waitUntil(expireStaleAlerts(...params));
     break;
   case 'showLog':
-    console.log('showing persistLog', ...params);
     event.waitUntil(showLog(...params));
     break;
   default:
@@ -380,18 +393,18 @@ self.addEventListener('push', event => event.waitUntil(showNotificationFromEnvel
 self.addEventListener('notificationclick', event => {
   const {notification} = event;
   const {title, body, tag, data, timestamp} = notification;
-  persistLog('notificationclick', notification);
   event.waitUntil(new Promise(async resolve => {
+    await persistLog('notificationclick', notification);
     const expiration = Date.now() - ALERT_EXPIRATION_MS;
     const update = async () => { // Used in three places.
-      persistLog('notificationclick start update');
+      await persistLog('notificationclick-start-update');
       notification.close(); // Do not remove from alertCache, as resubscribing may try to notify again.
       // In some browsers, the click notification will be included in getNotifications,
       // and in some browsers not. So we close it before expireStatleAlerts and pass 0, so as
       // to use the actual count (after closing).
       await delay(500); // But in chrome, we have to delay after closing.
       await expireStaleAlerts(0, 'notificationclick');
-      persistLog('notificationclick finished update');
+      await persistLog('notificationclick-finished-update');
       resolve();
     };
     if (!data) {
@@ -402,19 +415,19 @@ self.addEventListener('notificationclick', event => {
     // Look to see if the current is already open and focuses if it is. Else opens one.
     // Either way, we try to wake up the app before counting notifications.
     const clientList = await clients.matchAll({type: 'window', includeUncontrolled: true});
-    persistLog('notificationclick checking clientList', clientList);
+    await persistLog('notificationclick-checking-clientList', clientList);
     for (const client of clientList) {
-      persistLog('notificationclick focusing client', client);
+      await persistLog('notificationclick-focusing-client', client);
       await client.focus();
       await client.postMessage({method: 'go', params: {alert: tag, ...data}});
-      persistLog('notificationclick found client', notification, clientList);
+      await persistLog('notificationclick-found-client', tag, title, body);
       await update();
       return;
     }
     // Client has been closed. Open one.
-    persistLog('notificationclick openWindow', data.url);
+    await persistLog('notificationclick-openWindow', data.url);
     await clients.openWindow(data.url);
-    persistLog('notificationclick opened client', notification);
+    await persistLog('notificationclick-opened-client', tag, title, body);
     await update();
   }));
 });
