@@ -109,7 +109,7 @@ export async function unsubscribe(topic, nodeTag, {pushId}) {
   // Also remove any sticky push subscription:
   // If not yet promoted to sub, it's in track under our current, protectable nodeTag.
   console.log('unsubscribe untrack', topicId, nodeTag);
-  await store.remove('track', topicId, nodeTag);
+  await store.remove('track', topicId, nodeTag, pushId);
   // Otherwise, it might have been activated in sub under pushId (i.e., a previous session nodeTag).
   // TODO: pushId should probably be a JWS that was signed in the subscribing node's previous session by the pushId,
   // thus proving that the request actually came from the succcessor to that node.
@@ -122,12 +122,12 @@ export async function deleteSubscriber(nodeTag) {
   for (const topicId of await store.topics('sub')) { // Remove in all topics.
     const sub = await store.remove('sub', topicId, nodeTag);
     // Activate pending push subscription, if any, by moving it from 'track' to active 'sub'.
-    console.log('disconnect untrack', topicId, nodeTag);
     const pushSubscription = await store.remove('track', topicId, nodeTag);
     if (pushSubscription) { // This is the only place where we activate a sticky subscription.
-      console.log('activate', topicId, nodeTag, pushSubscription.endpoint.slice(0, 60));
+      console.log('activate from track', topicId, nodeTag, pushSubscription.endpoint.slice(0, 60));
       await store.set('sub', topicId, nodeTag, pushSubscription, ACTIVATED_STICKY_SUBSCRIPTION_TIMEOUT);
     }
+    else console.log('disconnect untrack', topicId, nodeTag);
   }
 }
 

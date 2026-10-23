@@ -224,12 +224,16 @@ async function issuableAlert(notificationTag, issuedTime) { // Returns true IFF 
   const expiration = now - ALERT_EXPIRATION_MS;
   const cache = await caches.open(alertCache);
   if (issuedTime < expiration) { // Check BEFORE consulting cache, which doesn't keep expired stuff.
+    console.log('Cannot issue expired notification', notificationTag, new Date(issuedTime));
     await cache.delete(notificationTag);
     return false;
   }
   const response = await cache.match(notificationTag);
   console.log('issueableAlert', {notificationTag, response});
-  if (response) return false;
+  if (response) {
+    console.log('Cannot reissue seen notification', notificationTag, new Date(await response.json()));
+    return false;
+  }
   await cache.put(notificationTag, Response.json(issuedTime));
   return true;
 }
@@ -373,15 +377,15 @@ self.addEventListener('notificationclick', event => {
     // Either way, we try to wake up the app before counting notifications.
     const clientList = await clients.matchAll({type: 'window', includeUncontrolled: true});
     for (const client of clientList) {
-      console.log('notificationclick found client', notification, clientList);
       await client.focus();
       await client.postMessage({method: 'go', params: {alert: tag, ...data}});
+      console.log('notificationclick found client', notification, clientList);
       await update();
       return;
     }
     // Client has been closed. Open one.
-    console.log('notificationclick opening client', notification);
     await clients.openWindow(data.url);
+    console.log('notificationclick opened client', notification);
     await update();
   }));
 });
