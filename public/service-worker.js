@@ -357,15 +357,18 @@ self.addEventListener('push', event => event.waitUntil(showNotificationFromEnvel
 self.addEventListener('notificationclick', event => {
   const {notification} = event;
   const {title, body, tag, data, timestamp} = notification;
+  console.log('notificationclick', notification);
   event.waitUntil(new Promise(async resolve => {
     const expiration = Date.now() - ALERT_EXPIRATION_MS;
     const update = async () => { // Used in three places.
+      console.log('notificationclick start update');
       notification.close(); // Do not remove from alertCache, as resubscribing may try to notify again.
       // In some browsers, the click notification will be included in getNotifications,
       // and in some browsers not. So we close it before expireStatleAlerts and pass 0, so as
       // to use the actual count (after closing).
       await delay(500); // But in chrome, we have to delay after closing.
       await expireStaleAlerts(0, 'notificationclick');
+      console.log('notificationclick finished update');
       resolve();
     };
     if (!data) {
@@ -376,7 +379,9 @@ self.addEventListener('notificationclick', event => {
     // Look to see if the current is already open and focuses if it is. Else opens one.
     // Either way, we try to wake up the app before counting notifications.
     const clientList = await clients.matchAll({type: 'window', includeUncontrolled: true});
+    console.log('notificationclick checking clientList', clientList);
     for (const client of clientList) {
+      console.log('notificationclick focusing client', client);
       await client.focus();
       await client.postMessage({method: 'go', params: {alert: tag, ...data}});
       console.log('notificationclick found client', notification, clientList);
@@ -384,6 +389,7 @@ self.addEventListener('notificationclick', event => {
       return;
     }
     // Client has been closed. Open one.
+    console.log('notificationclick openWindow', data.url);
     await clients.openWindow(data.url);
     console.log('notificationclick opened client', notification);
     await update();

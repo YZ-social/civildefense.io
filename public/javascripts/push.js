@@ -23,6 +23,6 @@ export async function push(envelope, {applicationServerKey, applicationId, ...su
   // to correlate known topic activity with someone's push records obtained from the service.
   const reply = await webpush.sendNotification?.(subscription, JSON.stringify(envelope), options)
 	.catch(error => console.error(`${error.message} for push ${subscription?.endpoint.slice(0, 60)}.`));
-  console.log('push', {msgId: envelope.msgId, endpoint: subscription.endpoint, status: reply?.statusCode, TTLms});
+  console.log('push', {msgId: envelope.msgId, endpoint: subscription.endpoint.slice(0, 60), status: reply?.statusCode, TTLms});
   return reply;
 }
