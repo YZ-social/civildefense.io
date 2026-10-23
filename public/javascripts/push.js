@@ -22,7 +22,7 @@ export async function push(envelope, {applicationServerKey, applicationId, ...su
   // Consider delaying this by a random amount, to make it that much harder for someone
   // to correlate known topic activity with someone's push records obtained from the service.
   const reply = await webpush.sendNotification?.(subscription, JSON.stringify(envelope), options)
-      .catch(error => console.error(`${error.message} for push ${subscription?.endpoint}.`));
+	.catch(error => console.error(`${error.message} for push ${subscription?.endpoint.slice(0, 60)}.`));
   console.log('push', {msgId: envelope.msgId, endpoint: subscription.endpoint, status: reply?.statusCode, TTLms});
   return reply;
 }
