@@ -44,10 +44,10 @@ export function setSender(receiver) { // Set the means by which we fire events o
 
 function directFireEvent(...rest) { // Send envelope to a subscribed hander.
   return invoke(...rest).catch(async error => { // Error sending, e.g., nodeTag is gone and we had not yet noticed.
-    console.log(new Date(), error.message || error);
     // invoke() has already terminated and removed the socket. But it is up to us to deleteSubscriber,
     // and then immediately use the newly activated sticky subscription to push the message.
     const [nodeTag, id, envelope] = rest;
+    console.log(new Date(), nodeTag, error.message || error);
     await deleteSubscriber(nodeTag);
     const topic = envelope.topic;
     const topicId = await deriveTopicId(topic);
@@ -64,8 +64,10 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}
   await store.set('sub', topicId, nodeTag, id, SUBSCRIPTION_TIMEOUT);
   // If pushData, store it separately by nodeTag until it needs to be activated.
   if (pushData) {
+    console.log('subscribe track', topicId, nodeTag, pushData.endpoint.slice(0, 60));
     await store.set('track', topicId, nodeTag, pushData, TRACK_TIMEOUT);
   } else {
+    console.log('subscribe untrack', topicId, nodeTag);
     store.remove('track', topicId, nodeTag);
   }
   if (since) { // invoke handler on any sticky data, but only after we have told client the subscription id. TODO: is there a better way?
@@ -106,6 +108,7 @@ export async function unsubscribe(topic, nodeTag, {pushId}) {
   let id = await store.remove('sub', topicId, nodeTag), tracked;
   // Also remove any sticky push subscription:
   // If not yet promoted to sub, it's in track under our current, protectable nodeTag.
+  console.log('unsubscribe untrack', topicId, nodeTag);
   await store.remove('track', topicId, nodeTag);
   // Otherwise, it might have been activated in sub under pushId (i.e., a previous session nodeTag).
   // TODO: pushId should probably be a JWS that was signed in the subscribing node's previous session by the pushId,
@@ -119,8 +122,10 @@ export async function deleteSubscriber(nodeTag) {
   for (const topicId of await store.topics('sub')) { // Remove in all topics.
     const sub = await store.remove('sub', topicId, nodeTag);
     // Activate pending push subscription, if any, by moving it from 'track' to active 'sub'.
+    console.log('disconnect untrack', topicId, nodeTag);
     const pushSubscription = await store.remove('track', topicId, nodeTag);
     if (pushSubscription) { // This is the only place where we activate a sticky subscription.
+      console.log('activate', topicId, nodeTag, pushSubscription.endpoint.slice(0, 60));
       await store.set('sub', topicId, nodeTag, pushSubscription, ACTIVATED_STICKY_SUBSCRIPTION_TIMEOUT);
     }
   }
