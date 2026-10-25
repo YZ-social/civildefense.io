@@ -56,11 +56,22 @@ function directFireEvent(...rest) { // Send envelope to a subscribed hander.
   });
 }
 
-export async function subscribe(topic, nodeTag, {since = 'all', pushData = null}) {
-  // Axona allows multiple handlers on the same topic, but we don't use that in civildefense, and do not implement it here.
+export async function subscribe(topic, nodeTag, {since = 'all', pushData = null, pushId = null}) {
+  // Axona could allow multiple handlers on the same topic (but currently does not),
+  // but we don't use that in civildefense, and do not implement it here.
+  //
+  // This implementation is not good enough for production, because all the store.mumble ops
+  // should be as one atomic transaction, in case a publish happens while we're messing about.
 
   const {name, region, owner, write, topicId} = await resolveTopic(topic);
   const id = uuidv4();
+  if (pushId) { // If supplied, remove old sticky.
+    const untracked = await store.remove('track', topicId, pushId);
+    const unactivated = await store.remove('sub', topicId, pushId);
+    // Shouldn't be both, but let's be rigorous.
+    if (untracked) console.log('subscribe untrack', topicId, pushId, untracked.endpoint.slice(0, 60));
+    if (unactivated) console.log('subscribe unactivate', topicId, pushId, unactivated.endpoint.slice(0, 60));
+  }
   await store.set('sub', topicId, nodeTag, id, SUBSCRIPTION_TIMEOUT);
   // If pushData, store it separately by nodeTag until it needs to be activated.
   if (pushData) {
@@ -109,16 +120,23 @@ export async function unsubscribe(topic, nodeTag, {pushId}) {
   // Also remove any sticky push subscription:
   // If not yet promoted to sub, it's in track under our current, protectable nodeTag.
   console.log('unsubscribe untrack', topicId, nodeTag);
-  await store.remove('track', topicId, nodeTag, pushId);
-  // Otherwise, it might have been activated in sub under pushId (i.e., a previous session nodeTag).
+  await store.remove('track', topicId, nodeTag);
+  // Otherwise, it might have been tracked or activated in sub under pushId (i.e., a previous session nodeTag).
   // TODO: pushId should probably be a JWS that was signed in the subscribing node's previous session by the pushId,
   // thus proving that the request actually came from the succcessor to that node.
-  if (pushId) tracked = await store.remove('sub', topicId, pushId);  // pushId must match that used during activation.
+  if (pushId) {
+    tracked = await store.remove('sub', topicId, pushId);  // pushId must match that used during activation.
+    const tracked2 = await store.remove('track', topicId, pushId); // Shouldn't be both, but let's be rigorous.
+    if (tracked && tracked2) console.warn(pushId, 'was both tracked and activated as', tracked, tracked2, 'for', topicId);
+    tracked ||= tracked2;
+    if (tracked) console.log('unsubscribe old untrack', topicId, pushId);
+  }
   return {ok: !!id, id, pushId: tracked}; // Axona doesn't return the id(s) of the subscription(s), but it is convenient for us to do so.
 }
 
 export async function deleteSubscriber(nodeTag) {
   // The node is gone: lost connection, or directFireEvent failed.
+  console.log('deleteSubscriber start', nodeTag);
   for (const topicId of await store.topics('sub')) { // Remove in all topics.
     const sub = await store.remove('sub', topicId, nodeTag);
     // Activate pending push subscription, if any, by moving it from 'track' to active 'sub'.
@@ -129,6 +147,7 @@ export async function deleteSubscriber(nodeTag) {
     }
     else console.log('disconnect untrack', topicId, nodeTag);
   }
+  console.log('deleteSubscriber end', nodeTag);
 }
 
 function isConnectedSubscription(handlerInfo) { // True if a it's a direct-connect subscription, false if sticky (push).
@@ -141,7 +160,7 @@ async function handleEvents(topicId, envelope)  {
     if (isConnectedSubscription(handlerInfo)) { // nodeId
       return directFireEvent(nodeTag, handlerInfo, envelope);
     } else { // activated sticky push subscription data object.
-      push(envelope, handlerInfo, PUBLISH_TIMEOUT);
+      push(envelope, handlerInfo, PUBLISH_TIMEOUT); // todo: unsub if not successful? I suppose it depends on what the problem was.
       return null; // Do not wait for push
     }
   }));
