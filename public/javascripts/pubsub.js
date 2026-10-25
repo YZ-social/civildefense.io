@@ -56,6 +56,18 @@ function directFireEvent(...rest) { // Send envelope to a subscribed hander.
   });
 }
 
+function report(label, item, id) {
+  if (!item) return '';
+  return label + id + ' ' + (item.endpoint || item).slice(0, 45);
+}
+function reportAction(label, topicId, nodeTag, pushId, pushData, untrackedOld, unactivatedOld, untrackedNew) {
+  console.log(label, topicId,
+	      report('untracking-old ', untrackedOld, pushId),
+	      report('unactivating-old ', unactivatedOld, pushId),
+	      report('untracking-current ', untrackedNew, nodeTag),
+	      report('tracking ', pushData, nodeTag));
+}
+
 export async function subscribe(topic, nodeTag, {since = 'all', pushData = null, pushId = null}) {
   // Axona could allow multiple handlers on the same topic (but currently does not),
   // but we don't use that in civildefense, and do not implement it here.
@@ -65,22 +77,20 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null,
 
   const {name, region, owner, write, topicId} = await resolveTopic(topic);
   const id = uuidv4();
+  let untrackedOld, unactivatedOld, untrackedNew;
   if (pushId) { // If supplied, remove old sticky.
-    const untracked = await store.remove('track', topicId, pushId);
-    const unactivated = await store.remove('sub', topicId, pushId);
     // Shouldn't be both, but let's be rigorous.
-    if (untracked) console.log('subscribe untrack', topicId, pushId, untracked.endpoint.slice(0, 60));
-    if (unactivated) console.log('subscribe unactivate', topicId, pushId, unactivated.endpoint.slice(0, 60));
+    untrackedOld = await store.remove('track', topicId, pushId);
+    unactivatedOld = await store.remove('sub', topicId, pushId);
   }
   await store.set('sub', topicId, nodeTag, id, SUBSCRIPTION_TIMEOUT);
   // If pushData, store it separately by nodeTag until it needs to be activated.
   if (pushData) {
-    console.log('subscribe track', topicId, nodeTag, pushData.endpoint.slice(0, 60));
     await store.set('track', topicId, nodeTag, pushData, TRACK_TIMEOUT);
   } else {
-    console.log('subscribe untrack', topicId, nodeTag);
-    store.remove('track', topicId, nodeTag);
+    untrackedNew = store.remove('track', topicId, nodeTag);
   }
+  reportAction('subscribe', topicId, nodeTag, pushId, pushData, untrackedOld, unactivatedOld, untrackedNew);
   if (since) { // invoke handler on any sticky data, but only after we have told client the subscription id. TODO: is there a better way?
     setTimeout(async () => {
         let lastEnvelope = null, lastTime = 0;
@@ -119,35 +129,32 @@ export async function unsubscribe(topic, nodeTag, {pushId}) {
   let id = await store.remove('sub', topicId, nodeTag), tracked;
   // Also remove any sticky push subscription:
   // If not yet promoted to sub, it's in track under our current, protectable nodeTag.
-  console.log('unsubscribe untrack', topicId, nodeTag);
-  await store.remove('track', topicId, nodeTag);
+  let untrackedOld, unactivatedOld, untrackedNew = await store.remove('track', topicId, nodeTag);
   // Otherwise, it might have been tracked or activated in sub under pushId (i.e., a previous session nodeTag).
   // TODO: pushId should probably be a JWS that was signed in the subscribing node's previous session by the pushId,
   // thus proving that the request actually came from the succcessor to that node.
   if (pushId) {
-    tracked = await store.remove('sub', topicId, pushId);  // pushId must match that used during activation.
-    const tracked2 = await store.remove('track', topicId, pushId); // Shouldn't be both, but let's be rigorous.
-    if (tracked && tracked2) console.warn(pushId, 'was both tracked and activated as', tracked, tracked2, 'for', topicId);
-    tracked ||= tracked2;
-    if (tracked) console.log('unsubscribe old untrack', topicId, pushId);
+    unactivatedOld = await store.remove('sub', topicId, pushId);  // pushId must match that used during activation.
+    untrackedOld = await store.remove('track', topicId, pushId); // Shouldn't be both, but let's be rigorous.
   }
+  reportAction('unsubscribe', topicId, nodeTag, pushId, null, untrackedOld, unactivatedOld, untrackedNew);
   return {ok: !!id, id, pushId: tracked}; // Axona doesn't return the id(s) of the subscription(s), but it is convenient for us to do so.
 }
 
 export async function deleteSubscriber(nodeTag) {
   // The node is gone: lost connection, or directFireEvent failed.
-  console.log('deleteSubscriber start', nodeTag);
+  let activated = [], pushData;
   for (const topicId of await store.topics('sub')) { // Remove in all topics.
     const sub = await store.remove('sub', topicId, nodeTag);
     // Activate pending push subscription, if any, by moving it from 'track' to active 'sub'.
     const pushSubscription = await store.remove('track', topicId, nodeTag);
     if (pushSubscription) { // This is the only place where we activate a sticky subscription.
-      console.log('activate from track', topicId, nodeTag, pushSubscription.endpoint.slice(0, 60));
+      activated.push(topicId);
+      pushData ||= pushSubscription;
       await store.set('sub', topicId, nodeTag, pushSubscription, ACTIVATED_STICKY_SUBSCRIPTION_TIMEOUT);
     }
-    else console.log('disconnect untrack', topicId, nodeTag);
   }
-  console.log('deleteSubscriber end', nodeTag);
+  console.log('disconnected', nodeTag, 'activating', pushData?.endpoint.slice(0, 45), activated);
 }
 
 function isConnectedSubscription(handlerInfo) { // True if a it's a direct-connect subscription, false if sticky (push).
