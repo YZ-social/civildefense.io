@@ -323,7 +323,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     if (reason !== 'map') {
       const [oldId, ...oldEventNames] = this.clearPushData();
       if (oldId !== contact.nodeIdentity.id) pushId = oldId;
-      if (oldId) console.log('updateSubscriptions old data to remove', oldId, ...oldEventNames);
+      //if (oldId) console.log('updateSubscriptions old data to remove', oldId, ...oldEventNames);
       // Some oldEventName might not be in newKeys (new tab with different screen shape, hashtags, ...).
       // These must have sticky subs removed separately.
       oldEventNames.forEach(eventName => ((eventName in newKeys) || dropped.push(eventName)));
@@ -388,7 +388,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     else conversations = conversations.filter(item => item !== tag);
     localStorage.setItem(this.constructor.conversationPersistKey, JSON.stringify(conversations));
     pushData = await pushData;
-    console.log('subscribeReplies', {tag, region, aggregate, on, pushId, pushData: pushData?.endpoint.slice(0, 60)});
+    //console.log('subscribeReplies', {tag, region, aggregate, on, pushId, pushData: pushData?.endpoint.slice(0, 60)});
     // Currently, Axona overwrites the old handler with the new one, so it is not necessary to remove the old:
     // if (on && this.subscribed) await contact.subscribe({eventName: tag, region, handler: null, pushId, pushData});
     this.subscribed = on;
