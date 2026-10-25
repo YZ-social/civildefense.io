@@ -133,7 +133,6 @@ if (dht < 1) {
 	return {peers: [], axonRoles: []};
       },
       async leave() {
-	await send('deleteSubscriber', nodeTag);
 	disconnect();
       },
       async sub(topic, handler, options) {
