@@ -1,7 +1,7 @@
 const { QRCodeStyling, GeolocationPositionError, localStorage, BigInt, URL, Notification } = globalThis; // For linters.
 import { appVersion } from './versions.js';
 import { Int } from './translations.js';
-import { openDisplay, showMessage } from './display.js';
+import { openDisplay, showMessage, closeTeach } from './display.js';
 import { Agent} from './agent.js';
 import { P2PWebNetwork } from './p2pWebNetwork.js';
 import { getPointInCell, getSmallestCellSurrounding } from './s2.js';
@@ -25,6 +25,7 @@ export var networkPromise = null;
 export function resetInactivityTimer(clearMessage = true) { // if !networkPromise, initialize(false).
   // Historically, this also managed a timer that disconnected from network after a perdiod with no activity.
   //console.log('resetInactivityTimer, networkPromise:', networkPromise);
+  closeTeach();
   if (clearMessage) showMessage('');
   if (!networkPromise) return initialize(false);
 }
@@ -232,7 +233,7 @@ function initializeGeolocation(subscribe = false) {
     updateHome(location);
     if (!subscribeOneShot) return;
     subscribeOneShot = false;
-    resetInactivityTimer(false);
+    initialize(false);
   };
   if (!geolocation) {
     showMessage(Int`Geolocation not supported. Using default location.`, 'error', 'fail');
