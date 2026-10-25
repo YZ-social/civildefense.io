@@ -87,7 +87,7 @@ function noteNotificationPermission(permission = window.Notification?.permission
     showNotifications.checked = false;
     showNotifications.indeterminate = true;
     showNotifications.toggleAttribute('disabled', true);
-    showNotificationsLabel.innerHTML = `${Int`Apple only supports mobile notifications for web pages that have been`} <a href="https://www.google.com/search?q=iphone+install+web+page+to+home+screen" target="yz.sidebar">${Int`installed to the home screen`}</a>.`;
+    showNotificationsLabel.innerHTML = `${Int`Apple only supports mobile notifications for web pages that have been`} <a href="https://duckduckgo.com?q=${Int`iphone+install+web+page+to+home+screen`}" target="yz.sidebar">${Int`installed to the home screen`}</a>.`;
   } else {
     switch (permission) {
     case 'default':
@@ -107,8 +107,8 @@ function noteNotificationPermission(permission = window.Notification?.permission
       showNotifications.toggleAttribute('disabled', true);
       const isApp = isStandalone();
       const search = isApp ?
-	    `https://www.google.com/search?q=${osName()}+open+app+settings` :
-	    `https://www.google.com/search?q=open+site+settings+${browserName() || `"${navigator.userAgent}"`}`;
+	    `https://duckduckgo.com/?q=${osName()}+${Int`open+settings+for+a+particular+app`}` :
+	    `https://duckduckgo.com?q=${Int`open+site+settings`}+${osName()}+${browserName() || `"${navigator.userAgent}"`}`;
       const label = isApp ? `CivilDefense.io ${Int`app`}` : Int`browser site settings`;
       showNotificationsLabel.innerHTML = `${Int`Permissions can be re-enabled through the`} <a href="${search}" target="yz.sidebar">${label}</a>.`;
       break;

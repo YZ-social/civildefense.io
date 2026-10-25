@@ -87,6 +87,9 @@ const translations = {
   ['No update at']: {es: "No hay actualizaciones a las"},
   ['is available']: {es: "está disponible"},
   ['>Zoom in on multiple alerts in this area.']: {es: "Amplía la vista sobre varias alertas en esta zona."},
+  ['iphone+install+web+page+to+home+screen']: {es: "Añadir+una+página+web+a+la+pantalla+de+inicio+en+el+iPhone"},
+  ['open+settings+for+a+particular+app']: {es: "abrir la configuración de una aplicación específica"},
+  ['open+site+settings']: {es: "abrir+configuración+del+sitio"},
 
   ['.firstConversation .teach.correspondent']: {en: "Change how you label this correspondent.", es: "Cambia la forma en que etiquetas a este corresponsal."},
   ['.firstPublish .teach.correspondent']: {en: "Change how you label yourself.", es: "Cambia la forma en que te etiquetas."},
