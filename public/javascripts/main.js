@@ -298,7 +298,6 @@ function initialize(event) { // Ensure there is a network promise and map, and r
       const {promise, resolve} = Promise.withResolvers();
       networkPromise = promise;
       console.log('Creating node.');
-      Alert.clearPushData();
       resolve(P2PWebNetwork.create({pushPersistor: postServiceMessage && (dht === 0) && localStorage}));
       networkPromise.then(contact => {
 	globalThis.contact = contact; // For debugging.

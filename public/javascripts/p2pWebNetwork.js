@@ -25,8 +25,6 @@ export class P2PWebNetwork {
   static setSessionLocation = resolveSessionLocation;
   static sessionLocation = sessionLocationPromise;
   static async create({infoLogger = console.log, debugLogger,
-		       // Pass a Storage object to clear peristed push subscriptions, and persist current ones for next session.
-		       pushPersistor = null,
 		       location = this.sessionLocation,
 		       bridgeUrl = (globalThis.location && new URL(globalThis.location).searchParams.get('bridge')) ||
 		       globalThis.process?.env.BRIDGE_URL ||
@@ -49,7 +47,7 @@ export class P2PWebNetwork {
     });
     infoLogger ||= null;
     debugLogger ||= null;
-    Object.assign(network, {infoLogger, debugLogger, disconnector: disconnect, transport, nodeIdentity, peer, pushPersistor});
+    Object.assign(network, {infoLogger, debugLogger, disconnector: disconnect, transport, nodeIdentity, peer});
 
     network.info(`Created network node for kernel ${this.kernelVersion} region 0x${this.regionCode(location.lat, location.lng).toString(16)}.`);
     peer.onError(error => {
@@ -62,30 +60,9 @@ export class P2PWebNetwork {
     peer.onLog('error', (...rest) => network.info('ERROR', ...rest));
     const { peers, ms } = status;
     network.info(`Connected ${peers} connections through ${bridgeUrl} in ${ms.toLocaleString()} ms.`);
-    await network.resetPersisted();
     network.attached(network);
     network.info('initial ICE connections', network.ice());
     return network;
-  }
-  static pushPersistKey = 'lastPushed';
-  currentTopics = new Set();
-  pushPersist() { // Add/remove topics
-    if (!this.pushPersistor) return;
-    this.pushPersistor.setItem(this.constructor.pushPersistKey, JSON.stringify([this.nodeIdentity.id, ...this.currentTopics]));
-  }
-  async resetPersisted() { // Clears any sticky subscriptions in network and for browser's pushManager.
-    const {pushPersistor, peer} = this;
-    const lastPushed = pushPersistor && pushPersistor.getItem(this.constructor.pushPersistKey);
-    if (lastPushed) {
-      const [pushId, ...topics] = JSON.parse(lastPushed);
-      await Promise.all([
-	navigator.serviceWorker.ready
-	  .then(registration => registration.pushManager?.getSubscription())
-	  .then(subscription => subscription?.unsubscribe()),
-	...topics.map(topic => peer.unsub(topic, {pushId}))
-      ]);
-      this.pushPersist();
-    }
   }
   
   async disconnect(debugLogger = this.debugLogger) { // Politely close network connection.
@@ -206,8 +183,8 @@ export class P2PWebNetwork {
   async subscribe({eventName, region, owner, since = 'all',
 		   handler,  // If truthy, associates the handler with topic. If falsy, removes all such handlers from topic.
 		   pushData, // If handler and truthy (a browser subscription object extended with keys), create a sticky subscription with that.
-		   pushId,   // If no handler and truthy (a previous session nodeId), then cancel that session's sticky subscription.
-		   pushPersist = this.pushPersistor}) {  // If non-null, call this.pushPersist to save sticky data for undoing next session. (See lastPushed in create().)
+		   pushId    // If truthy (a previous session nodeId), then cancel that session's sticky subscription.
+		  }) {
     await this.attachment;
     const topic = {region, name: eventName};
     if (owner) topic.owner = owner;
@@ -222,15 +199,9 @@ export class P2PWebNetwork {
 	}
 	handler({...message, agent: signerPubkey, tag: msgId, topic, ts});
       };
-      const result = await this.peer.sub(topic, callback, {since, pushData});
-      this.currentTopics.add(topic); // topic rather than result.topicId. See https://github.com/axona-net/axona-protocol/issues/64
-      if (pushPersist) this?.pushPersist();
-      return result;
+      return await this.peer.sub(topic, callback, {since, pushData, pushId});
     } else {
-      const result = this.peer.unsub(topic, {pushId}); // See ticket ref'd above, altough topicId will have to be derived in this case.
-      this.currentTopics.delete(topic);
-      if (pushPersist) this?.pushPersist();
-      return result;
+      return this.peer.unsub(topic, {pushId}); // See ticket ref'd above, altough topicId will have to be derived in this case.
     }
   }
   static currentPublishIdentity = null;

@@ -141,6 +141,7 @@ class AlertReply extends Reply {
   }
   async destroy() {
     super.destroy();
+    Alert.removeItem(this.tag); // If it was a supplemental and still there.
     // See service worker showNotification comments regarding cancel.
     postServiceMessage('cancelNotification', [this.tag]); // Do not check for allowed, as it may have been on before and not now.
   }
@@ -218,18 +219,6 @@ export class Alert extends Conversation { // A wrapper around L.marker
     alert.showNotification({agent, issuedTime});
     return keep;
   }
-
-  susbscribed = false;
-  async ensureRepliesSubscribed(unsubscribe = false) { // Listen for replies to this alert.
-    const {tag, region, aggregate, subscribed} = this;
-    console.log('subscribeReplies', {tag, region, aggregate, subscribed, unsubscribe});
-    if (aggregate) return;
-    this.subscribed = true;
-    const contact = await networkPromise;
-    if (unsubscribe) await contact.subscribe({eventName: tag, region, handler: null});
-    await contact.subscribe({eventName: tag, region, handler: data => this.ensure(data),
-			     pushData: await this.constructor.pushData});
-  }
   update({topic, ts, hashtag, ...rest}) { // Called when handling an existing Conversation. super confirms that nothing immutable has changed.
     return super.update({...rest}); // topic and ts vary with level, and so must not be part of ensure/update checks.
   }
@@ -268,7 +257,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     }
     // We are in Alert.ensure, with data that would normally appear for alertInstance.ensure() which we still call.
     // It creates the reply adds it to alertInstance.items and promises the reply.
-    // Here we ALSO add that reply to Alert.items, so that a killed publication event will find/destroy it.
+    // Here we ALSO add that reply to Alert.items, so that a killed publication event will find/destroyf it.
     const { tag:replyTag } = data;
     const reply = await existingAlert.ensure(data);
     this.setItem(replyTag, reply);
@@ -283,9 +272,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     this.clearAvatars();
     const {isAggregate, marker, tag, region} = this;
     // Unsubscribe from replies.
-    if (!isAggregate) networkPromise?.then(async contact => {
-      contact.subscribe({eventName: tag, region, handler: null});
-    });
+    if (!isAggregate) this.subscribeReplies({on: false});
     this.cellBorder?.removeFrom(map);
     super.destroy();
     if (markerDelayMS) {
@@ -293,14 +280,14 @@ export class Alert extends Conversation { // A wrapper around L.marker
       marker.unbindPopup(); // It would be confusing if it happens to be open, or clicked on while being removed.
       marker.setOpacity(0);
       await P2PWebNetwork.delay(markerDelayMS);
+      // The deleting owner might not be the owner of each reply, and thus cannot cancel them on the network.
+      // However, we can reclaim our local memory, and close any associated notifications.
+      for (const reply of this.items) reply.destroy();
     }
     marker.removeFrom(map);
   }
   delete() { // If ensure gets an empty body, cancel any associated notification.
     if (notificationsAllowed()) postServiceMessage('cancelNotification', [this.tag]);
-    // The deleting owner might not be the owner of each reply, and thus cannot cancel them on the network.
-    // However, we can reclaim our local memory, and close any associated notifications.
-    for (const reply of this.items) reply.destroy();
     return super.delete();
   }
 
@@ -308,6 +295,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
   static updateSubscriptions(reason = 'map') { // Update current subscriptions for the given purpose:
     // newNode: Supply an empty oldSubscriptions.
     // stickyChange: Make sticky subscriptions match a new state.
+    // hashtags: Change to hashtags.
     // map: Make fewest changes for new map display.
     //
     // The effects must be serialized, but a pending map update can always be skipped for something after it.
@@ -328,32 +316,28 @@ export class Alert extends Conversation { // A wrapper around L.marker
 
     const queue = this.subscriptionQueue;
     const reason = queue.shift();
-    let newKeys, oldKeys;
-    if (reason === 'stickyChange') {
-      await contact.resetPersisted();
-    }
+    const dropped = [], added = [], promises = [];
+    let newKeys = this.subscriptionFromMap(), oldKeys = this.subscriptions, pushId;
+    // If this is purely a map change, we will only drop some and add others, with no changes to sticky subs.
+    // Otherwise, we have to resub with new pushData and the old pushId.
     if (reason !== 'map') {
-      oldKeys = {};
+      const [oldId, ...oldEventNames] = this.clearPushData();
+      if (oldId !== contact.nodeIdentity.id) pushId = oldId;
+      if (oldId) console.log('updateSubscriptions old data to remove', oldId, ...oldEventNames);
+      // Some oldEventName might not be in newKeys (new tab with different screen shape, hashtags, ...).
+      // These must have sticky subs removed separately.
+      oldEventNames.forEach(eventName => ((eventName in newKeys) || dropped.push(eventName)));
+      oldKeys = {}; // So that we (re-)subscribe to all.
       // Update replies subscriptions for alerts that have already been opened.
-      for (const alert of this.items) {
-	if (alert.subscribed) await alert.ensureRepliesSubscribed(true);
+      for (const tag of this.getPersistedConversationList()) {
+	await Alert.getItem(tag)?.subscribeReplies({pushId});
       }
     } else if (queue.length > 0) { // Skip this map and just go on to whatever is pending.
       return this.updatePendingSubscriptions();
     }
 
     // Now complete this subscription update in full, before considering any others.
-    oldKeys ||= this.subscriptions;
-    newKeys ||= this.subscriptionFromMap();
-
-    const dropped = [], added = [];
     this.subscriptions = newKeys; // Before subscribing.
-    const subscribe = async (eventName, handler) => {
-      if (!eventName) console.log('sub to no eventName', {oldKeys, newKeys, dropped, added, handler});
-      const region = topicRegion(eventName);
-      const pushData = handler && await this.pushData;
-      return contact.subscribe({eventName, region, handler, pushData, pushPersist: null});
-    };
     for (const key in newKeys) oldKeys.hasOwnProperty(key) || added.push(key);
     for (const key in oldKeys) newKeys.hasOwnProperty(key) || dropped.push(key);
     console.log('updating subscriptions', {reason, added, dropped, newKeys, oldKeys});
@@ -369,7 +353,12 @@ export class Alert extends Conversation { // A wrapper around L.marker
     // Subtle: await throttle time between initiating network request, but do not wait for each request to complete before starting the next.
     // Do wait for all to complete.
     const throttleMS = 20;
-    const promises = [];
+    const subscribe = async (eventName, handler) => {
+      if (!eventName) console.log('sub to no eventName', {oldKeys, newKeys, dropped, added, handler});
+      const region = topicRegion(eventName);
+      const pushData = handler && await this.pushData;
+      return contact.subscribe({eventName, region, handler, pushData, pushId});
+    };
     for (const key of added) {
       promises.push(subscribe(key, data => Alert.ensure(data)));
       if (throttleMS) await P2PWebNetwork.delay(throttleMS);
@@ -378,25 +367,60 @@ export class Alert extends Conversation { // A wrapper around L.marker
       promises.push(subscribe(key, null));
       if (throttleMS) await P2PWebNetwork.delay(throttleMS);
     }
-    contact.pushPersist();
+    if (notificationsAllowed()) await this.pushPersist(Object.keys(newKeys));
     await Promise.all(promises);
     //console.log('updated', promises.length);
     if (queue.length) return this.updatePendingSubscriptions(); // Handle anything now pending.
     return null;
   }
-  static clearPushData() { // Force new push subscription when next asked. Not needed at startup, but when creating a new node.
-    this._pushData = null; // Otherwise, new subscriptions with the old data will be rejected by the service as being for an unsubscribed client.
+  susbscribed = false;
+  static conversationsPersistKey = 'conversations';
+  static getPersistedConversationList() {
+    return JSON.parse(localStorage.getItem(this.conversationPersistKey) || '[]');
   }
-  static get pushData() {
+  async subscribeReplies({on = true, pushData = this.constructor.pushData, pushId} = {}) { // Listen for replies to this alert, or cancel.
+    const {tag, region, aggregate} = this;
+    if (aggregate) return;
+    const contact = await networkPromise;
+    const handler = on && (data => this.ensure(data));
+    let conversations = this.constructor.getPersistedConversationList();
+    if (on) conversations.push(tag);
+    else conversations = conversations.filter(item => item !== tag);
+    localStorage.setItem(this.constructor.conversationPersistKey, JSON.stringify(conversations));
+    pushData = await pushData;
+    console.log('subscribeReplies', {tag, region, aggregate, on, pushId, pushData: pushData?.endpoint.slice(0, 60)});
+    // Currently, Axona overwrites the old handler with the new one, so it is not necessary to remove the old:
+    // if (on && this.subscribed) await contact.subscribe({eventName: tag, region, handler: null, pushId, pushData});
+    this.subscribed = on;
+    await contact.subscribe({eventName: tag, region, handler, pushId, pushData});
+  }
+  static pushPersistKey = 'sticky';
+  static async pushPersist(topics) { // Keep track of sticky node id and topics.
+    const contact = await networkPromise;
+    topics.sort(); // fixme remove this and next.
+    localStorage.setItem(this.pushPersistKey, JSON.stringify([contact.nodeIdentity.id, ...topics]));
+  }
+  static clearPushData() { // Force new pushData when next asked, and return/clear persisted data.
+    const key = this.pushPersistKey;
+    const old = localStorage.getItem(key);
+    localStorage.removeItem(key);
+    this._pushData = null;
+    return JSON.parse(old || '[]');
+  }
+  static get pushData() { // Promise PushManager subscription in a form suitable for subscribe({..., pushData}),
+    // generating and caching one if necessary. null if !notificationsAllowed.
     if (!notificationsAllowed()) return null;
-    if (this._pushData) return this._pushData;
-    return this._pushData = new Promise(async resolve => {
+    return this._pushData ||= new Promise(async resolve => {
+      try { // fixme
       const {publicKey:applicationServerKey, privateKey:applicationId} = await generateVapidKeys();
       const registration = await navigator.serviceWorker.ready;
+      const oldData = await registration.pushManager.getSubscription();
+      await oldData?.unsubscribe(); // Else new subscribe with old key will fail.
       const data = await registration.pushManager.subscribe({userVisibleOnly: true, applicationServerKey});
       const json = data.toJSON();
       //console.log('pushData', {registration, data, json});
-      resolve({...json, applicationId, applicationServerKey});
+	resolve({...json, applicationId, applicationServerKey});
+      } catch (e) { console.error(e); }
     });
   }
 
@@ -584,7 +608,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
       this.shownCells = [...mapPolys/*, ...homePolys*/];
     }
     // Alert.ensure will not pub multiple markers/notifications for the same alert, but let us not double subscriptions.
-    //fixme if (gdoCells) geoCells.forEach(cell => newCells.includes(cell) || newCells.push(cell));
+    // if (geoCells) geoCells.forEach(cell => newCells.includes(cell) || newCells.push(cell));
     const newKeys = {};
     newCells.forEach(cell => Hashtags.getSubscribe().forEach(hash => { // Populate count with existing count (exctly carried over cell sizes), else 0.
       const eventName = alertTopic(cell, hash);
@@ -602,7 +626,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
 
   // The app (not the network) restricts the user to publish up to maxPublish alerts over the last maxPublish minutes.
   // I.e., one / minute, but allowing bursts up to maxPublish. After that, one can still publish, but kill the oldest.
-  // We keep enough data in memory that we can reproduce what to kill,m even if Alert has since scrolled off the map and been destroyed.
+  // We keep enough data in memory that we can reproduce what to kill, even if Alert has since scrolled off the map and been destroyed.
   static maxPublish = 10;
   static lastPublished = []; // Last published lat, lng, hashtag
   static publishQueue = Promise.resolve();
@@ -753,7 +777,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     }
     this.logAlert();
     closeTeach({conversation:false, publish:false});
-    if (!this.subscribed) this.ensureRepliesSubscribed();
+    if (!this.subscribed) this.subscribeReplies();
     const {issuedTime, originalPosting, hashtag, agent}  = this;
     this.clearAvatars(popup);
     let contentHTML = `${this.formatAttribution({agent, issuedTime, originalPosting, hashtag})}
