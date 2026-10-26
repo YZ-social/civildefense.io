@@ -88,7 +88,7 @@ export async function subscribe(topic, nodeTag, {since = 'all', pushData = null,
   if (pushData) {
     await store.set('track', topicId, nodeTag, pushData, TRACK_TIMEOUT);
   } else {
-    untrackedNew = store.remove('track', topicId, nodeTag);
+    untrackedNew = await store.remove('track', topicId, nodeTag);
   }
   reportAction('subscribe', topicId, nodeTag, pushId, pushData, untrackedOld, unactivatedOld, untrackedNew);
   if (since) { // invoke handler on any sticky data, but only after we have told client the subscription id. TODO: is there a better way?
