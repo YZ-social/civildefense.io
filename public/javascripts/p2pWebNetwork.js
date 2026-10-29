@@ -43,6 +43,7 @@ export class P2PWebNetwork {
       bridge: bridgeUrl,
       location,
       onDisconnect: network.detached,
+      allowBridgeOnly: bridgeUrl.includes('localhost'),
       author: false
     });
     infoLogger ||= null;
