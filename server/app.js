@@ -17,15 +17,20 @@ const argv = yargs(hideBin(process.argv))
 	default: process.env.PORTALS ? parseInt(process.env.PORTALS) : Math.max(2, logicalCores - 3),
 	description: "The number of steady nodes that handle initial connections."
       })
-      .option('regionStartIndex', {
-	type: 'number',
-	default: -1,
-	description: "If non-negative, place each of the nPortals in successive regions (excluding excludedRegionFromSeries) starting with the region at regionStaartIndex."
+      .option('regionsStart', {
+	type: 'string',
+	default: '',
+	description: "If non-empty, place each of the nPortals in successive regions (excluding excludedRegionFromSeries) starting with the specified HEX region."
       })
-      .option('excludedRegionFromSeries', {
+      .option('excludedRegions', {
 	type: 'string', array: true,
-	default: ['80', '88', '89'],
-	description: "If regionStartIndex is used, the ordered list of regions to occupy is the list of canonical regions less these."
+	default: [],
+	description: "If regionsStart is used, the ordered list of regions to occupy is the list of canonical regions less these, specified in HEX."
+      })
+      .option('perRegionCount', {
+	type: 'number',
+	default: 1,
+	description: "If regionsStart is used, specifies how many portals should be in each region of the nPortals total."
       })
       .option('baseURL', {
 	type: 'string',
@@ -122,21 +127,29 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
     await delay(); // Number chosen to give an unspikey rise in packets/s.
   }
   log(process.title, 'RUNNING.');
-  process.on('SIGINT', async () => { // Leave the network politely.
+  async function shutdown(signal) { // Leave the network politely.
     const seconds = (1 + argv.nPortals) * argv.spacing;
-    log(process.title, 'shutting down', argv.nPortals, 'nodes.');
-    await delay(seconds * 1e3);
+    log(process.title, 'shutting down', argv.nPortals, 'nodes on', signal);
+    // On SIGINT, the subprocesses will receive SIGINT and shut down politely.
+    // ON SIGTERM, they will not.
+    if (signal === 'SIGINT') await delay(seconds * 1e3);
     log(process.title, 'done');
     process.exit(0);
-  });
+  }
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 } else {
   process.title = 'axona-starting';
-  const { P2PWebNetwork, location } = await import('../index.js');
-  const { MAJORS, geoCellCenter } = await import('@axona/protocol');
-  const excluded = argv.excludedRegionFromSeries.map(hex => parseInt(hex, 16).toString());
-  const regions = Object.keys(MAJORS).filter(r => !excluded.includes(r));
-  const index = (cluster.worker.id - 1 + argv.regionStartIndex) % regions.length;
-  const region = (argv.regionStartIndex >= 0) && regions[index];
+  const hex2regionCodeString = hex => parseInt(hex, 16).toString();
+  const { P2PWebNetwork, location, geoCellCenter } = await import('../index.js');
+  const { MAJORS } = await import('@axona/protocol');
+  const allRegions = Object.keys(MAJORS);
+  const excluded = argv.excludedRegions.map(hex2regionCodeString);
+  const regions = allRegions.filter(r => !excluded.includes(r));
+  const startIndex = argv.regionsStart ? regions.indexOf(hex2regionCodeString(argv.regionsStart)) : -1;
+  const workerOffset = Math.floor((cluster.worker.id - 1) / argv.perRegionCount);
+  const index = (workerOffset + startIndex) % regions.length;
+  const region = argv.regionsStart && parseInt(regions[index]);
   const loc = region ? geoCellCenter(parseInt(region)) : location;
   const network = await P2PWebNetwork.create({
     location: loc,
@@ -147,11 +160,11 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   let update = argv.verbose && setInterval(() => {
     network.debug(network.peer.health());
   }, 30e3);
-  process.on('SIGINT', async () => { // Leave the network politely.
+  process.on('SIGINT', async (signal) => { // Leave the network politely.
     const id = cluster.worker.id;
     const seconds = id * argv.spacing;
     clearInterval(update);
-    log(process.title, 'Shutdown for Ctrl+C in', seconds, 'seconds.');
+    log(process.title, 'Shutdown for', signal, 'in', seconds, 'seconds.');
     const health = network.peer.health();
     const inRegionTags = network.inRegionConnections();
     network.info(`Node ${id} has ${inRegionTags.length} connections in region.`);
