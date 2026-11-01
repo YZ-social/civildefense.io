@@ -32,16 +32,11 @@ const argv = yargs(hideBin(process.argv))
 	default: 1,
 	description: "If regionsStart is used, specifies how many portals should be in each region of the nPortals total."
       })
-      .option('baseURL', {
+      .option('bridgeUrl', {
 	type: 'string',
 	default: process.env.BRIDGE_URL || 'wss://bridge.axona.net',
 	description: "The base URL of the portal server through which to bootstrap."
       })
-      // .option('externalBaseURL', {
-      // 	type: 'string',
-      // 	default: '',
-      // 	description: "The base URL of the some other portal server to which we should connect ours, if any."
-// })
       .option('port', {
 	type: 'number',
 	default: 3000,
@@ -153,6 +148,7 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   const loc = region ? geoCellCenter(parseInt(region)) : location;
   const network = await P2PWebNetwork.create({
     location: loc,
+    bridgeUrl: argv.bridgeUrl,
     infoLogger: log,
     debugLogger: debug
   });
