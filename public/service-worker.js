@@ -1,6 +1,6 @@
 const { Request, Response, URL, clients} = self;
 // Little point in trying to automatically pull this through package.json, as we need a byte change in THIS file to trigger a new worker.
-const serviceVersion = '5.4.14';
+const serviceVersion = '5.4.15';
 const releaseNotesURL = 'https://docs.google.com/document/d/19tHpWN1B-xKpZpuBHRuxv89qY39d34UNZM0i5cViCQU/edit?usp=sharing';
 
 function delay(ms) { // Promise to resolve in the specified number of milliseconds.
