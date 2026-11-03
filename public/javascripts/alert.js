@@ -793,7 +793,7 @@ ${this.formatReplyInput()}`;
 
   clearAvatars(popup = this.marker?.getPopup()) {
     popup?.getElement()?.querySelectorAll('.correspondent[data-tag]')
-      .forEach(element => Agent.ensure({tag: element.dataset.tag}).removeElement(element, 'mixed', element.classList.contains('avatar') ? 'avatar' : 'handle'));
+      .forEach(element => Agent.ensure({tag: element.dataset.tag, region: this.region}).removeElement(element, 'mixed', element.classList.contains('avatar') ? 'avatar' : 'handle'));
   }
   initializeHandlers(popup) { // subtle: Leaflet popup will recreate from last setContent string. Need to re-establish handlers.
     const popupElement = popup.getElement();
@@ -1028,7 +1028,7 @@ ${this.formatReplyInput()}`;
       // the parameters being the same so that the computed msgId is the same so that duplicates can be deduped.
       if (this.items.length) await contact.publish({eventName: alert, region, payload, hashtag, alert, issuedTime}); // To alert-specific topic.
       else await Alert.publish({lat, lng, payload, hashtag, alert, issuedTime}); // To all containing cells.
-      Agent.current.persistPublicMetadata();
+      Agent.current.persistPublicMetadata(region);
     } catch (error) {
       this.needsRedisplay = 'reply';
       this.ensureContent();

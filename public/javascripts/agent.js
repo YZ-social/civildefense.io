@@ -38,7 +38,6 @@ export class Agent {
     const scope = Agent.isMine(tag) ? 'public' : 'private';
     this.updateFromLocal(scope, 'handle');
     this.updateFromLocal(scope, 'avatar');
-    this.trackPublicChanges();
   }
   static isMine(tag) { // Is this one of mine?
     return tag === this.tag;
@@ -52,7 +51,10 @@ export class Agent {
   networkPersistKey(type, tag = this.tag) { // for network storage of the public data for this Agent - i.e., an eventName
     return agentTopic(type, tag);
   }
-  async homeRegion(tag = this.tag) { // We currently do NOT publish agent metadata to each region in which the agent is referenced,
+  async homeRegion(tag = this.tag) { // If we had a homeRegion that this agent "lives" in, computed from identity.
+    // We do not currently use this. Instead, we publish agent metadata to where we publish, and tell the world about changes wherever we last published.
+    // Others will either see that change, or not (and thus get older values). We do not RE-publish to the regions of past publishing.
+    throw new Error('FIXME we should not be using homeRegion now');
     // but rather just to one region derived from the agent tag.
     if (!this._homeRegion) {
       const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(tag));
@@ -67,10 +69,10 @@ export class Agent {
     this.updateValue(value, scope, type, false); // Don't publish until we post.
   }
 
-  async trackPublicChanges(region = this.homeRegion()) { // Subscribe to changes for this agent instance's metdata.
+  async trackPublicChanges(region = this.homeRegion()) { // Subscribe to changes for this agent instance's metdata, in the specified region.
     const owner = this.tag;
     const contact = await networkPromise;
-    region = await region;
+    this.latestRegion = region = await region;
     await Promise.all(['handle', 'avatar'].map(type => {
 	const eventName = this.networkPersistKey(type);
 	contact.subscribe({eventName, region, owner, since: 'latest', handler: data => this.setPublicData({...data, type, region})});
@@ -90,8 +92,10 @@ export class Agent {
   }
   
   static agents = {}; // tag => Agent
-  static ensure({tag, identity}) { // Answer Agent for tag, creating it if necessary.
-    return this.agents[tag] ||= new this({tag, identity});
+  static ensure({tag, region, identity}) { // Answer Agent for tag, creating it if necessary, and track changes in the specified region.
+    let agent = this.agents[tag] ||= new this({tag, identity});
+    agent.trackPublicChanges(region);
+    return agent;
   }
 
   // Track values of various types and scope.
@@ -108,7 +112,7 @@ export class Agent {
 
     // Persist if private. For public, update locally but do not publish until this agent publishes an alert or reply.
     if (scope === 'private') this.persistPrivate(value, type);
-    else if (pushPublic && (scope === 'public')) return this.persistPublic(value, type);
+    //else if (pushPublic && (scope === 'public')) return this.persistPublic(value, type);
     this.values[type][scope] = value;
     for (const element of this.elements[type][scope]) this.updateElement(element, type, value);
     if (scope === 'mixed') return null;
@@ -126,17 +130,17 @@ export class Agent {
     if (value === null) localStorage.removeItem(key);
     else localStorage.setItem(key, value);
   }
-  async persistPublicMetadata() { // Publish handle and avatar.
+  async persistPublicMetadata(region) { // Publish handle and avatar in the specified region.
     // Used by Agent.current when we post an alert or reply.
     // There could already be such a publication active, but republishing ensures that it is as fresh as
     // the alert/reply (e.g., with respect to expirations).
-    await Promise.all(['handle', 'avatar'].map(type => this.persistPublic(this.getValue('public', type) || null, type)));
+    await Promise.all(['handle', 'avatar'].map(type => this.persistPublic(this.getValue('public', type) || null, type, region)));
   }
-  async persistPublic(value, type) { // Publish (and we will act on subscription).
+  async persistPublic(value, type, region = this.homeRegion()) { // Publish (and we will act on subscription).
     const eventName = this.networkPersistKey(type);
     const owner = this.tag;
     const contact = await networkPromise;
-    const region = await this.homeRegion();
+    region = await region;
     // Our downsampling is such that we do not need to chunkify.
     // if (type === 'avatar') {
     // 	const blob = await P2PWebNetwork.dataURL2blob(value);
@@ -258,28 +262,29 @@ export class Agent {
       content.parentElement.classList.toggle('hidden', true);
     };
   }
-  async fileEvent(fileChooser, event, scope) { // Update value from fileChooser change event, return dataURL;
+  async fileEvent(fileChooser, event, scope, region) { // Update value from fileChooser change event, return dataURL;
     consume(event);
     if (!fileChooser.files.length) return '';
     const file = fileChooser.files[0];
     const maxDimension = Agent.downsampleResolution;
     const blob = await P2PWebNetwork.downsampledBlob({blob: file, maxDimension});
     const dataURL = await P2PWebNetwork.blob2dataURL(blob);
-    await this.updateValue(dataURL, scope, 'avatar');
+    if (region && (scope === 'public')) await this.persistPublic(dataURL, 'avatar', region);
+    else await this.updateValue(dataURL, scope, 'avatar');
     return dataURL;
   }
   static current = null;
   static tag = null;
-  static identity = null;
+  static identity = null; // Only for our own Agent(s).
   // Keep user separate between dht=1 or empty (Axona) vs dht=0 or -1 (no Axona, for testing).
   static usertagKey = `usertag${(dht <= 0) ? '0' : ''}`;
-  static switchUser(tag, identity) { // Set/persist/ensure the current user, return Agent
+  static switchUser(tag, identity, region = null) { // Set/persist/ensure the current user, return Agent
     this.tag = tag; // Before the ensure().
     this.identity = P2PWebNetwork.currentPublishIdentity = identity;
     localStorage.setItem(this.usertagKey, this.tag);
-    return this.current = this.ensure({tag, identity});
+    return this.current = this.ensure({tag, identity, region});
   }
-  static async initialize() { // Initialize what the agent needs from the about screen
+  static async initialize(startupRegion) { // Initialize what the agent needs from the about screen
     let tag = localStorage.getItem(Agent.usertagKey);
     const persistAs = tag || uuidv4(); // Give it SOMETHING to persistAs.
     const myIdentity = await P2PWebNetwork.createAuthorIdentity({persistAs});
@@ -291,7 +296,7 @@ export class Agent {
       localStorage.removeItem(persistAs);
       tag = realTag;
     }
-    const myAgent = Agent.switchUser(tag, myIdentity);
+    const myAgent = Agent.switchUser(tag, myIdentity, startupRegion);
     const myHandle = document.getElementById('myHandle');
     const myAvatar = document.getElementById('myAvatar');
     myAgent.addElement(myHandle, 'public', 'handle');
@@ -302,7 +307,8 @@ export class Agent {
       resetInactivityTimer();
       const value = DOMPurify.sanitize(myHandle.value) || null;
       console.log('set my handle', value);
-      myAgent.updateValue(value, 'public', 'handle');
+      //myAgent.updateValue(value, 'public', 'handle');
+      myAgent.persistPublic(value, 'handle', myAgent.latestRegion);
       myAgent.persistPrivate(value, 'handle'); // So that we'll have it next session.
     };
     clickTip(myAvatar, Int`Change the image shown for you in the conversation for your alerts and replies.`, event => {
@@ -311,13 +317,14 @@ export class Agent {
       fileChooser.oncancel = event => {
 	consume(event);
 	console.log('cancel my avatar');
-	myAgent.updateValue(null, 'public', 'avatar');
+	//myAgent.updateValue(null, 'public', 'avatar');
+	myAgent.persistPublic(null, 'avatar', myAgent.latestRegion);
 	myAgent.persistPrivate(null, 'avatar'); // So that we'll have it next session.
 	console.log('clearing avatar selection');
       };
       fileChooser.onchange = async event => {
 	myAgent.updateValue(Agent.spinner, 'public', 'avatar', false);
-	const url = await myAgent.fileEvent(fileChooser, event, 'public');
+	const url = await myAgent.fileEvent(fileChooser, event, 'public', myAgent.latestRegion);
 	console.log('set my avatar', url.slice(0, 50));
 	myAgent.persistPrivate(url, 'avatar'); // So that we'll have it next session.
       };

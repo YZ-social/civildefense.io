@@ -317,7 +317,8 @@ function initialize(event) { // Ensure there is a network promise and map, and r
 	// causes errors in some browsers: window.onunload = () => contact.fastDisconnect();
 
 	showMessage(Int`Tap anywhere to mark a concern. Markers fade after 24 hours.`, 'instructions');
-	Alert.updateSubscriptions('newNode').then(Agent.initialize);
+	Alert.updateSubscriptions('newNode')
+	  .then(() => Agent.initialize(parseInt(contact.nodeIdentity.id.slice(0, 2), 16)));
 	contact.detachment.then(onPurpose => { // On disconnect (whether initiated by us or not), message user and set up for reconnection.
 	  networkPromise = null;
 	  const message = onPurpose ? Int`Connection closed. Will reconnect on use.` :
