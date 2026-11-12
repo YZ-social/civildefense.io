@@ -116,6 +116,7 @@ function noteNotificationPermission(permission = window.Notification?.permission
   }
   if (showNotifications.checked === notificationsPreviouslyAllowed) return;
   notificationsPreviouslyAllowed = showNotifications.checked;
+  postServiceMessage?.('wantsNotifications', notificationsPreviouslyAllowed);
   Alert.updateSubscriptions('stickyChange');
 }
 clickTip(showNotifications.parentElement, Int`Enable local ${osName()} notifcations for map alerts, without going through any servers. Requires that the app be running.`, event => {

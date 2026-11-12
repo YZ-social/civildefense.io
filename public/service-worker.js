@@ -216,10 +216,8 @@ async function cacheSource(version, event) { // Cache source in the given versio
 }
 
 async function setJSON(cache, key, value) { // Store value under key in persistent cache.
-  console.log('setJSON', {cache, key, value});
   const response = Response.json(value);
   await cache.put(key, response);
-  console.log('setJSON ok');
 }
 async function getJSON(cache, key, defaultValue) { // Promise value previously stored under key in persistent cache.
   const matched = await cache.match(key);
@@ -252,6 +250,7 @@ async function showLog(andDelete = true) {
 // The service worker is stopped and restarted for events, and so we can't keep an in-memory set of issued alerts.
 // Here we keep it in cache, and manually clean up expired entries.
 const alertCache = 'seenNotifications';
+const wantsNotifications = 'wantsNotifications';
 const ALERT_EXPIRATION_MS = 24 * 60 * 60e3;
 async function issuableAlert(notificationTag, issuedTime) { // Returns true IFF we are not expired and have not previously asked.
   const now = Date.now();
@@ -263,13 +262,12 @@ async function issuableAlert(notificationTag, issuedTime) { // Returns true IFF 
     return false;
   }
   const seenTime = await getJSON(cache, notificationTag);
-  console.log('issueableAlert', {notificationTag, seenTime});
   if (seenTime) {
     console.log('Cannot reissue seen notification', notificationTag, new Date(seenTime));
     return false;
   }
   await setJSON(cache, notificationTag, issuedTime);
-  return true;
+  return await getJSON(cache, wantsNotifications, false); // May have been turned off while other alerts were queuing. But consider it seen.
 }
 async function expireStaleAlerts(increment = 0, source) { // Maintenance: declutter notifications and cache storage.
   const now = Date.now();
@@ -370,6 +368,9 @@ self.addEventListener('message', event => {
   case 'cacheSource': // Cache source in the given version.
     event.waitUntil(cacheSource(params, event)
 		    .then(version => event.source.postMessage({method: 'cached', params: version})));
+    break;
+  case 'wantsNotifications':
+    event.waitUntil(caches.open(alertCache).then(cache => setJSON(cache, wantsNotifications, params)));
     break;
   case 'notify':
     event.waitUntil(showNotification(params));

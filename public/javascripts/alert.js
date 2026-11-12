@@ -216,7 +216,7 @@ export class Alert extends Conversation { // A wrapper around L.marker
     }
     const alert = aggregate || this;
     alert.startExpiration('.alert-pin', remaining);
-    alert.showNotification({agent, issuedTime});
+    if (!aggregate) alert.showNotification({agent, issuedTime});
     return keep;
   }
   update({topic, ts, hashtag, ...rest}) { // Called when handling an existing Conversation. super confirms that nothing immutable has changed.
