@@ -106,7 +106,7 @@ img[src="qr.png"] {
     font-size: 18px;
 }
 .hero h1 span, .hero h4 span { color: var(--red-light); }
-.hero h1 span.about { color: var(--white); }
+.hero h1 span.about, .hero h1 a { color: var(--white); }
 .cd {
     color: var(--red);
     font-weight: 700;
