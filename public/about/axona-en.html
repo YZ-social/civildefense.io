@@ -118,11 +118,11 @@
 
   <h2 id="example">Civil Defense as a Non-Exploitive Example</h2>
 
-  <p>On the surface, Civil Defense is an ordinary browser crowd-mapping app using LeafletJS for display and OpenStreetMap for data. Underneath, alerts and discussions use Axona pub/sub, which resists tracking and takedown.</p>
+  <p>On the surface, Civil Defense is an ordinary browser crowd-mapping app using <a href="https://leafletjs.com/">LeafletJS</a> for display and <a href="https://www.openstreetmap.org/about">OpenStreetMap</a> for data. Underneath, alerts and discussions use Axona pub/sub, which resists tracking and takedown.</p>
 
   <p><b>Alerts.</b> Users type arbitrary alert topic names and choose which alerts are active. A leading emoji becomes the map marker. Alerts and replies can be shared as URLs that carry the topic name, so receivers don't need to type it. Each message is signed with a pseudonymous pub/sub key that the user can delete at any time and does not leave the user’s browser.</p>
 
-  <p><b>Location.</b> S2, a library that defines nested cells over the globe, maps each alert's latitude and longitude to a set of cells, each no larger than an Axona region (which also uses S2). The alert topic name is combined with each cell to form full Axona topic names: creating an alert publishes to every one. Based on the current map view, a user subscribes to the smallest set of non-overlapping cells covering it. They therefore receive exactly one publication for all and only the alerts in view that they have made active, and nothing about other activity in the world.</p>
+  <p><b>Location.</b> <a href="https://www.npmjs.com/package/s2js">S2</a>, a library that defines nested cells over the globe, maps each alert's latitude and longitude to a set of cells, each no larger than an Axona region (which also uses S2). The alert topic name is combined with each cell to form full Axona topic names: creating an alert publishes to every one. Based on the current map view, a user subscribes to the smallest set of non-overlapping cells covering it. They therefore receive exactly one publication for all and only the alerts in view that they have made active, and nothing about other activity in the world.</p>
 
   <p><b>Privacy.</b> No one on the network can tell which alert topic names are in use, who sent an alert, where a user is, or who is subscribed to a topic.
     <ul>
@@ -140,7 +140,7 @@
 
 <h2 id="who">Who</h2>
 
-<p>Axona is written by YZ, a currently unincorporated group of developers that includes David Smith as architect and Howard Stearns. Howard Stearns wrote Civil Defense. The group has worked together on many projects, especially real-time distributed systems such as Croquet, of which David Smith is the principal architect.</p>
+<p>Axona is written by YZ, a currently unincorporated group of developers that includes <a href="https://en.wikipedia.org/wiki/David_A._Smith_(computer_scientist)">David Smith</a> as architect and <a href="https://alum.mit.edu/www/stearns">Howard Stearns</a>. Howard Stearns wrote Civil Defense. The group has worked together on many projects, especially real-time distributed systems such as Croquet, of which David Smith is the principal architect.</p>
 
 <h2 id="when">What's Next</h2>
 
