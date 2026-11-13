@@ -81,7 +81,7 @@
     <ul>
       <li><b>No accounts, yet recognizable users.</b> Each self-sovereign user can be unforgeably recognized by other users and applications, if they choose.</li>
       <li><b>Groups of your own.</b> Anyone can form groups with their own self-sovereign identity and membership.</li>
-      <li><b>Data you control.</b> Anyone can define application-specific messages and data that other applications can use. The users and groups who own the data, not Axona or the application, decide who can read it across institutions. Users get the value of group-forming networks without the exploitation and vulnerability of centralized architectures.</li>
+      <li><b>Data you control.</b> Anyone can define application-specific messages and data that other applications can use. The users and groups who own the data decide who can read it across institutions, not Axona or the application. Users get the value of group-forming networks without the exploitation and vulnerability of centralized architectures.</li>
     </ul>
   </p>
 
@@ -98,13 +98,11 @@
 
   <h2 id="neuromorphic">Neuromorphic</h2>
 
-  <p>Neuromorphic is Axona's low-level message delivery layer. It passes each message through direct connections to nodes "closer" to the destination, which pass it closer still – a series of hops of decreasing distance. As in earlier peer-to-peer systems such as Kademlia, a node is identified by a globally unique identifier rather than a machine address, and "closer" means a smaller distance to the destination identifier. A node that originates or forwards a message prefers the contacts whose identifiers are closest to the destination.</p>
+  <p>Neuromorphic is Axona's low-level message delivery layer. It passes each message through direct connections to nodes "closer" to the destination, which pass it closer still – a series of hops of decreasing distance. As in earlier peer-to-peer systems such as Kademlia, a node is identified by a globally unique identifier rather than a machine address, and "closer" means a smaller distance to the destination identifier. A node that originates or forwards a message prefers the contacts whose identifiers are closest to the destination. (A new cryptographic public key is generated for each session to use as the node identifier, so identifiers can't be forged to occupy a chosen "location" in the address space.)</p>
 
-  <p>Older systems used a fixed algorithm to keep just enough connections to fill a table of contacts at varying distances. Neuromorphic adapts its connections dynamically, using rules modeled on how the brain strengthens some synapses and lets others wither. The rules weigh distance, frequency of use, and round-trip time. As with synapses, a node can form a direct connection to another node that often serves as an intermediary. Older systems need a number of hops proportional to the logarithm of the network size (20 or 30 hops for a million or a billion nodes, regardless of hop performance). Neuromorphic gets faster the more it is used.</p>
+  <p>Older systems used a fixed algorithm to keep just enough connections to fill a table of contacts at varying distances. Neuromorphic adapts its connections dynamically, using rules modeled on how the brain strengthens some synapses and lets others wither. The rules weigh distance, frequency of use, and round-trip time. As with synapses, a node can form a direct connection to another node that often serves as an intermediary. Older systems need a number of hops proportional to the logarithm of the network size (20 or 30 hops for a million or a billion nodes, regardless of hop performance). <b>Neuromorphic gets faster the more it is used.</b></p>
 
   <p>Browsers don't let pages listen for incoming network packets, but they do allow one peer to connect directly to another through WebRTC, the API behind video-conferencing services such as Zoom and Google Meet. Neuromorphic uses WebRTC for its direct connections, and that traffic is ordinary Internet traffic of a particular shape.</p>
-
-  <p>Neuromorphic generates a new cryptographic public key for each session, or even within a session, so identifiers can't be forged to occupy a chosen "location" in the address space.</p>
 
   <h2 id="pubsub">Pub/Sub</h2>
 
@@ -114,7 +112,7 @@
 
   <p>That closest node also retains recent publications and gives them to new subscribers. Subscriptions may include alternative transport information, such as platform "push" data, kept for a period after the subscriber disconnects so that later publications can still reach it.</p>
 
-  <p>Axona replicates all of this among peers as they join and leave, and spreads it across peers for load balancing. Axona’s capacity increases with the number of peers. It also distributes topics over about 100 regions worldwide, similar in size to cloud "availability zones". Topics specify their region, along with optional owner information. This reduces both the hops and the per-hop latency for nodes in the same region.</p>
+  <p>Axona replicates all of this among peers as they join and leave, and spreads it across peers for load balancing. <b>Axona’s capacity increases with the number of peers online.</b> It also distributes topics over about 100 regions worldwide, similar in size to cloud "availability zones". Topics specify their region, along with optional owner information. This reduces both the hops and the per-hop latency for nodes in the same region.</p>
 
   <h2 id="example">Civil Defense as a Non-Exploitive Example</h2>
 
@@ -122,14 +120,14 @@
 
   <p><b>Alerts.</b> Users type arbitrary alert topic names and choose which alerts are active. A leading emoji becomes the map marker. Alerts and replies can be shared as URLs that carry the topic name, so receivers don't need to type it. Each message is signed with a pseudonymous pub/sub key that the user can delete at any time and does not leave the user’s browser.</p>
 
-  <p><b>Location.</b> <a href="https://www.npmjs.com/package/s2js">S2</a>, a library that defines nested cells over the globe, maps each alert's latitude and longitude to a set of cells, each no larger than an Axona region (which also uses S2). The alert topic name is combined with each cell to form full Axona topic names: creating an alert publishes to every one. Based on the current map view, a user subscribes to the smallest set of non-overlapping cells covering it. They therefore receive exactly one publication for all and only the alerts in view that they have made active, and nothing about other activity in the world.</p>
+  <p><b>Location.</b> <a href="https://www.npmjs.com/package/s2js">S2</a>, a library that defines nested cells over the globe, maps each alert's latitude and longitude to a set of cells, each no larger than an Axona region (which also uses S2). The alert topic name is combined with each cell to form full Axona topic names: creating an alert publishes to each nested topic. Based on the current map view, a user subscribes to the smallest set of non-overlapping cells covering it. They therefore receive exactly one publication for all and only the alerts in view that they have made active, and nothing about other activity in the world.</p>
 
   <p><b>Privacy.</b> No one on the network can tell which alert topic names are in use, who sent an alert, where a user is, or who is subscribed to a topic.
     <ul>
-      <li>No servers in the path. Nothing passes through servers. Anyone can run a browser or NodeJS peer, but no one controls which low-level Neuromorphic messages pass through it.</li>
-      <li>Code delivery. The page source comes from a Web server at https://civildefense.io and is cached by a service worker, so it isn't fetched again after first use. The app offers new versions for the user to load when they choose. Anyone can run a mirror from the full source, using the same network and sharing the same data.</li>
-      <li>Bridges. WebRTC requires a third party to introduce any two nodes. The first introduction each session goes through a public Axona "bridge" node. After that, introductions happen through the network itself and the bridge is no longer needed. Anyone can run a bridge and publish it to a public topic. Civil Defense uses these automatically as needed, and runs a bridge in every mirror by default.</li>
-      <li>TURN relays. WebRTC introductions punch through most firewalls and routers. To work in every case, each bridge also runs a TURN relay server by default.</li>
+      <li><b>No servers in the path.</b> Nothing passes through servers. Anyone can run a browser or NodeJS peer, but no one controls which low-level Neuromorphic messages pass through it.</li>
+      <li><b>Code delivery.</b> The page source comes from a Web server at <a href="/">https://civildefense.io</a> and is cached by a service worker, so it isn't fetched again after first use. The app offers new versions for the user to load when they choose. Anyone can run a mirror from the full source, using the same network and data, without the webserservers connecting to each other.</li>
+      <li><b>Bridges.</b> WebRTC requires a third party to introduce any two nodes. The first introduction each session goes through a public Axona "bridge" node. After that, introductions happen through the network itself and the bridge is no longer needed. Anyone can run a bridge and publish it to a public topic. Civil Defense uses these automatically as needed, and runs a bridge in every mirror by default.</li>
+      <li><b>TURN relays.</b> WebRTC introductions punch through most firewalls and routers. To work in every case, each bridge also runs a TURN relay server by default.</li>
     </ul>
   </p>
 
@@ -150,7 +148,7 @@
 
 <p>The next Axona app is expected to be a social feed with the same safety properties as Civil Defense, with the item-selection algorithm running on the user's own device under their control. Users will be able to install their own algorithms. The default will learn your preferences much as Neuromorphic learns the best network routes.</p>
 
-<p>After that, YZ aims to build the Concordance Engine, high-speed real-time distributed infrastructure based on Croquet that runs on Axona with no central or fixed servers. Several first-person, multi-user games are under consideration, along with a design for a distributed digital accounting system that runs directly on mobile devices with instant settlement.</p>
+<p>After that, YZ aims to build the Concordance Engine - high-speed real-time distributed infrastructure based on Croquet that runs on Axona with no central or fixed servers. Several first-person, multi-user games are under consideration, along with a design for a distributed digital accounting system that runs directly on mobile devices with instant settlement.</p>
 
 </main>
 </body>
