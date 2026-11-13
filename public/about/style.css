@@ -103,6 +103,7 @@ img[src="qr.png"] {
 }
 .hero h4 {
     color: var(--white);
+    font-size: 18px;
 }
 .hero h1 span, .hero h4 span { color: var(--red-light); }
 .hero h1 span.about { color: var(--white); }
@@ -122,6 +123,36 @@ img[src="qr.png"] {
     margin: 1.25rem auto 1.25rem;
     border-radius: 2px;
 }
+
+blockquote {
+    margin-left: 30px;
+    margin-bottom: 18px;
+    position: relative;
+    padding: 26px 28px 6px;
+    border-left: 5px solid var(--navy-mid);
+    background: white;
+    border-radius: 0 12px 12px 0;
+}
+blockquote > p:first-child {
+    font-size: 19px;
+}
+blockquote > p:first-child:before {
+    content: open-quote;
+    font: 700 26px/1 Georgia, serif;
+    color: var(--navy-mid);
+}
+blockquote > p:first-child:after {
+    content: close-quote;
+    font: 700 26px/1 Georgia, serif;
+    color: var(--navy-mid);
+}
+blockquote > p:last-child:before {
+    content: "\2014";
+}
+blockquote > p:last-child {
+    text-align: right;
+}
+
 
 /* ── Carousel ───────────────────────────────────────────── */
 .carousel-section {
