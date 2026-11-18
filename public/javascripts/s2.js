@@ -6,7 +6,7 @@ const { BigInt } = globalThis;
 
 // s2 defines non-overlapping cells that completely cover the globe, at several different levels of cell-size.
 // Each cell, at each level, has its own unique id, which we use a pub/sub key.
-// Here we work with only the 0 to MAX_LEVEL largest levels, where MAX_LEVEL is the smallest size.
+// Here we work with only the MIN_LEVEL to MAX_LEVEL largest levels, where MAX_LEVEL is the smallest size.
 //
 // When publishing, we publish to each s2 key that identifies a cell within our levels that contains the user-selected point.
 

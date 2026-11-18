@@ -5,32 +5,37 @@ import cluster from 'node:cluster';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { resolve } from './dirname.js';
-
+import { MAJORS } from '@axona/protocol';
 
 const logicalCores = availableParallelism();
 
 const argv = yargs(hideBin(process.argv))
       .usage(`Start an http server for Alert and with nPortals nodes to connect through. Model description "${cpus()[0].model}", ${logicalCores} logical cores.`)
-      .option('nPortals', {
-	alias: 'p',
-	type: 'number',
-	default: process.env.PORTALS ? parseInt(process.env.PORTALS) : Math.max(2, logicalCores - 3),
-	description: "The number of steady nodes that handle initial connections."
-      })
-      .option('regionsStart', {
-	type: 'string',
-	default: '',
-	description: "If non-empty, place each of the nPortals in successive regions (excluding excludedRegionFromSeries) starting with the specified HEX region."
-      })
-      .option('excludedRegions', {
+      .option('regions', {
 	type: 'string', array: true,
 	default: [],
-	description: "If regionsStart is used, the ordered list of regions to occupy is the list of canonical regions less these, specified in HEX."
+	description: "If non-empty, place perRegionCount in each of the enumerated regions UNLESS the region is folded in to a specified region."
       })
       .option('perRegionCount', {
 	type: 'number',
 	default: 1,
-	description: "If regionsStart is used, specifies how many portals should be in each region of the nPortals total."
+	description: "If regions or regionsStart is used, specifies how many portals should be in each region."
+      })
+      .option('regionsStart', {
+	type: 'string',
+	default: '',
+	description: "If non-empty, place each of the nPortals in successive regions (excluding folded or excludedRegionFromSeries) starting with the specified HEX region. Ignored if regions is specified."
+      })
+      .option('excludedRegions', {
+	type: 'string', array: true,
+	default: [],
+	description: "If regionsStart is used, the ordered list of regions to occupy is the list of canonical regions less these, specified in HEX. Ignored if regions is specified."
+      })
+      .option('nPortals', {
+	alias: 'p',
+	type: 'number',
+	default: process.env.PORTALS ? parseInt(process.env.PORTALS) : Math.max(2, logicalCores - 3),
+	description: "The number of steady nodes that handle initial connections. Ignored if regions is specified."
       })
       .option('bridgeUrl', {
 	type: 'string',
@@ -69,6 +74,23 @@ const argv = yargs(hideBin(process.argv))
 const log = argv.info && ((...rest) => console.log(new Date(), ...rest));
 const debug = argv.verbose && ((...rest) => console.log(new Date(), ...rest));
 function delay(ms = argv.spacing * 1e3) { return new Promise(resolve => setTimeout(resolve, ms)); }
+const allNonFoldedRegions = Object.keys(MAJORS); // As decimal string.
+const hex2regionCodeString = hex => parseInt(hex, 16).toString();   // Convert hex region string to a decimal string.
+const excluded = argv.excludedRegions.map(hex2regionCodeString);    // Explicitly execluded by user, as decimal strings.
+const validRegions = allNonFoldedRegions.filter(r => !excluded.includes(r)); // As decimal strings.
+let regions, nPortals;
+if (argv.regions.length) { // Drop perRegionsCount into each of the enumerated regions (if region is valid and not excluded).
+  regions = argv.regions.map(hex2regionCodeString).filter(r => validRegions.includes(r)); // As decimal strings.
+  nPortals = regions.length * argv.perRegionCount;
+} else if (argv.regionsStart) { // Drop perRegionsCount into each non-folded
+  nPortals = argv.nPortals;
+  const nRegions = Math.ceil(nPortals / argv.perRegionCount);
+  const startIndex = validRegions.indexOf(hex2regionCodeString(argv.regionsStart));
+  regions = validRegions.slice(startIndex, startIndex + nRegions);
+} else { // All in current location
+  nPortals = argv.nPortals;
+  regions = null; // Use location
+}
 
 if (cluster.isPrimary) { // Parent process with portal webserver through which clienta can bootstrap
   const http = await import('node:http');
@@ -116,14 +138,14 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   }));
 
   server.listen(argv.port);
-  log(`Listening on ${argv.port} and starting ${argv.nPortals} nodes on ${logicalCores} ${cpus()[0].model} logical cores.`);
-  for (let i = 0; i < argv.nPortals; i++) {
+  log(`Listening on ${argv.port} and starting ${nPortals} nodes on ${logicalCores} ${cpus()[0].model} logical cores.`);
+  for (let i = 0; i < nPortals; i++) {
     cluster.fork();
     await delay(); // Number chosen to give an unspikey rise in packets/s.
   }
   log(process.title, 'RUNNING.');
   async function shutdown(signal) { // Leave the network politely.
-    const seconds = (1 + argv.nPortals) * argv.spacing;
+    const seconds = (1 + nPortals) * argv.spacing;
     log(process.title, 'shutting down', argv.nPortals, 'nodes on', signal);
     // On SIGINT, the subprocesses will receive SIGINT and shut down politely.
     // ON SIGTERM, they will not.
@@ -135,19 +157,21 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
   process.on('SIGTERM', shutdown);
 } else {
   process.title = 'axona-starting';
-  const hex2regionCodeString = hex => parseInt(hex, 16).toString();
   const { P2PWebNetwork, location, geoCellCenter } = await import('../index.js');
-  const { MAJORS } = await import('@axona/protocol');
-  const allRegions = Object.keys(MAJORS);
-  const excluded = argv.excludedRegions.map(hex2regionCodeString);
-  const regions = allRegions.filter(r => !excluded.includes(r));
-  const startIndex = argv.regionsStart ? regions.indexOf(hex2regionCodeString(argv.regionsStart)) : -1;
-  const workerOffset = Math.floor((cluster.worker.id - 1) / argv.perRegionCount);
-  const index = (workerOffset + startIndex) % regions.length;
-  const region = argv.regionsStart && parseInt(regions[index]);
-  const loc = region ? geoCellCenter(parseInt(region)) : location;
+  let region = null;
+  if (regions) {
+    // This version creates all the perRegionCound hosts in the first region, then the next region, etc.
+    // const workerOffset = Math.floor((cluster.worker.id - 1) / argv.perRegionCount);
+    // const index = workerOffset % regions.length;
+    // This version creates the hosts breadth-first: one in each region, then the second in region, etc.
+    // Why doesn't this work as well?
+    const index = (cluster.worker.id - 1) % regions.length;
+
+    region = parseInt(regions[index]);
+    //console.log({worker: cluster.worker.id, workerOffset, index, region});
+  }
   const network = await P2PWebNetwork.create({
-    location: loc,
+    location: region ? geoCellCenter(parseInt(region)) : location,
     bridgeUrl: argv.bridgeUrl,
     infoLogger: log,
     debugLogger: debug
@@ -160,7 +184,7 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
     const id = cluster.worker.id;
     const seconds = id * argv.spacing;
     clearInterval(update);
-    log(process.title, 'Shutdown for', signal, 'in', seconds, 'seconds.');
+    //log(process.title, 'Shutdown for', signal, 'in', seconds, 'seconds.');
     const health = network.peer.health();
     const inRegionTags = network.inRegionConnections();
     network.info(`Node ${id} has ${inRegionTags.length} connections in region.`);
