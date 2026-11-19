@@ -76,8 +76,14 @@ export class P2PWebNetwork {
   async replicateStorage() { // Let the network know that we might go away without further notice.
     // FIXME. It would be great if we could remove ourselves from any non-leaf positions in the Axon, but stay subscribed.
   }
-  fastDisconnect() { // Synchronous attempt to be polite to those connected.
-    this.peer.leave(); // Execution is asynchronous. Will not finish -- or perhaps even really start -- within the call.
+  fastDisconnect(debugLogger = this.debugLogger) { // Synchronous attempt to be polite to those connected.
+    const health = this.peer.health();
+    if (debugLogger) this.debug('health at disconnect', health);
+    else this.shortHealth(health);
+    this.peer.leave({drain: false}) // Execution is asynchronous. Will not finish -- or perhaps even really start -- within the call.
+      .then(() => this.peer.stop())
+      .then(() => this.transport.stop());
+    this.resetStatePromises();
   }
 
   async chunkifyString({string, region, signWith = this.constructor.currentPublishIdentity, owner = signWith.authorId}) {
@@ -87,8 +93,8 @@ export class P2PWebNetwork {
     const data = await publishChunkedBytes(this.peer, stringToBytes(string), {topic, signWith});
     return data.topic;
   }
-  async assembleChunkedString(topic) { // Promise the string that was chunkified to topic.
-    const data = await receiveChunkedBytes(this.peer, topic, {/*, onProgress: console.log*/});
+  async assembleChunkedString(topic, options = {}) { // Promise the string that was chunkified to topic.
+    const data = await receiveChunkedBytes(this.peer, topic, options);
     return bytesToString(data.bytes);
   }
 
@@ -169,8 +175,8 @@ export class P2PWebNetwork {
     this.debug('chunked', data);
     return data;
   }
-  async assembleChunkedDataURL(topic) { // Promise {bytes, mime, name, dataURL} that was chunkified to topic.
-    const data = await receiveChunkedBytes(this.peer, topic, {/*, onProgress: console.log*/});
+  async assembleChunkedDataURL(topic, options = {}) { // Promise {bytes, mime, name, dataURL} that was chunkified to topic.
+    const data = await receiveChunkedBytes(this.peer, topic, options);
     // Using dataURL is not terribly efficient, but it is convenient, because formatReplies can return HTML strings with all the data in them,
     // instead of, e.g., needing javascript to later set properties of elements to createObjectURL of a Blob.
     data.dataURL = this.constructor.u82dataURL(data.bytes, data.mime);
@@ -261,7 +267,7 @@ export class P2PWebNetwork {
   }
   shortHealth(health = this.peer.health()) { // Info-report a short form of health.
     const roots = health.axonRoles.filter(r => r.isRoot);
-    this.info(`disconnected with ${health.peers.length} connections: ${health.peers.map(P2PWebNetwork.short)}\nand ${roots.length ? `roots ${roots.map(r => P2PWebNetwork.short(r.topic))}.` : 'no roots.'}`);
+    this.info(`disconnected with ${health.peers.length} connections: ${health.peers.map(P2PWebNetwork.short)}\nand ${roots.length} roots ${roots.map(r => P2PWebNetwork.short(r.topic))}.`);
   }
   inRegionConnections(health = this.peer.health()) {
     const region = this.nodeIdentity.id.slice(0, 2);
