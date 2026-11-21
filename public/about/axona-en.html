@@ -41,11 +41,11 @@
 
   <p>Centralized architecture is a powerful tool for extractive software. It funnels all activity through one controlled point (oddly euphemized as "cloud computing"), which captures an enormous amount of correlatable activity. This is valuable for advertising (people on this page may also want that widget) and for influence and control (people on this page may be motivated by hatred of that group). The payoff is so large that the world's biggest companies grew out of nowhere without charging users a fee (cf. <a href="https://www.hbs.edu/faculty/Pages/item.aspx?num=56791">Surveillance Capitalism</a>).</p>
 
-  <p>The value lies less in any one person's activity, or even in the number of users, than in the staggering number of correlations and inferences that can be drawn from activity across people (cf. <a href="https://web.archive.org/web/19990429093518/http://www.contextmag.com/magazine/setMagazineMain.asp">Reed's Law</a>). Names aren't needed: identity, location and phone number are easy to infer from other data.</p>
+  <p>The value lies less in any one person's activity, or even in the number of users, than in the staggering number of correlations and inferences that can be drawn from activity across people (cf. <a href="https://web.archive.org/web/19990429093518/http://www.contextmag.com/magazine/setMagazineMain.asp">Reed's Law</a>). Removing names from the data doesn't help, as identity, location and phone number are easy to infer from other data.</p>
 
-  <p>Now the same companies are using the world's most powerful AIs to capture even more specific activity, correlate it faster, and keep those correlations private. Imagine learning that a stock price or the availability of a key resource tracks with AI queries on some subject, and watching that activity worldwide in real time. One could even manufacture false content in response.</p>
+  <p>Now the same companies are using the world's most powerful AIs to capture even more specific activity, correlate it faster, and keep those correlations private. Imagine that an AI observed that when people query AI for butter, the price of flour goes up. It could then watch the traffic on butter or even create its own traffic to profit on the price of flour. As AI gets better at predicting markets, the ability of regular people to profit from investing in the market will go down.</p>
 
-  <p>The result is a race to build data centers with growing environmental and human costs. Those data centers are vulnerable to digital and physical attack, and the people who operate them and their families can become targets for criminal and national actors seeking the data. Data centers are a liability, not an asset.</p>
+  <p>The result is a race to build data centers with growing environmental and human costs. Those data centers are vulnerable to digital and physical attack, and the people who operate them and their families can become targets for criminal and national actors seeking the data. Unless you're seeking to exploit users, data centers are a liability, not an asset.</p>
 
   <p>Change is hard, so even small, non-exploitive organizations default to centralized architectures, often in clouds they don't control. For many developers, managers, and the AIs they use, an alternative is nearly impossible to imagine. Axona makes it possible to imagine, and to build.</p>
 
@@ -62,7 +62,7 @@
 
   <p>File sharing, as in Napster and BitTorrent, demonstrated this working at scale. A desktop application held songs or other files and made them automatically available to the same application on other people's computers. The software also replicated each file to a mathematically chosen subset of computers, so files stayed available as individual machines went on and offline.</p>
 
-  <p>Research in the 1990s and 2000s went further. It showed how to prove availability to any chosen standard, such as being more available than the mean time between disk or network failures. It also produced techniques that hide who is requesting a file from the machines that hold it and from anyone watching the network. TOR is one example.</p>
+  <p>Distributed systems research in the 1990s and 2000s went further. It showed how to prove availability to any chosen standard, such as being more available than the mean time between disk or network failures. Research also produced techniques (such as TOR) that hide who is requesting a file from the machines that hold it and from anyone watching the network.</p>
 
   <h2 id="axona"><a href="/about/Axona Whitepaper v0.11.pdf">Axona</a></h2>
 
@@ -73,14 +73,14 @@
 
   <p><a href="/about/Axona Whitepaper v0.11.pdf">Axona</a> is a modern descendant of that peer-to-peer work: a <a href="https://github.com/axona-net">free and open-source library</a> that lets web applications talk directly to other peers.</p>
 
-  <p>Rather than transferring files, Axona offers a simple, general API for reliably sending any application-specific message. Senders need not know the name, machine address or anything else about the receivers, or whether they received it. Receivers don't need to be online when the message is sent.</p>
+  <p>Rather than transferring files, Axona offers a simple, general API for reliably sending any application-specific message. Senders need not know the name, Internet address or anything else about the receivers, or whether they received it. Receivers don't need to be online when the message is sent.</p>
 
   <p>Unlike earlier systems, Axona is written in JavaScript and runs directly in any Web page or Web application, with nothing to install. It is designed for mobile devices, working within their power and storage limits and tolerating the frequent disconnects and reconnects of mobile pages and apps.</p>
 
   <p>The Axona network has no master node, node list, content list, or other single point of failure or control.
     <ul>
-      <li><b>No accounts, yet recognizable users.</b> Each self-sovereign user can be unforgeably recognized by other users and applications, if they choose.</li>
-      <li><b>Groups of your own.</b> Anyone can form groups with their own self-sovereign identity and membership.</li>
+      <li><b>No accounts, yet recognizable users.</b> Each user can be unforgeably recognized by other users and applications, if they choose.</li>
+      <li><b>Groups of your own.</b> Anyone can form groups with their own identity and membership.</li>
       <li><b>Data you control.</b> Anyone can define application-specific messages and data that other applications can use. The users and groups who own the data decide who can read it across institutions, not Axona or the application. Users get the value of group-forming networks without the exploitation and vulnerability of centralized architectures.</li>
     </ul>
   </p>
@@ -96,35 +96,39 @@
 
   <p>The first use of Axona is <a href="/about">Civil Defense</a>, a <a href="https://github.com/YZ-social/civildefense.io/">free and open-source crowd-mapping app</a>. It is a mobile Web page, installable to the home screen, where vulnerable populations can safely report concerns on a map. Users choose the topics, and neither Axona nor Civil Defense can control or even inspect them.</p>
 
-  <p>See also: <a href="/about/">Civil Defense overview, with live examples and a short video</a></p>
+  <p>See also: <a href="/about/">Civil Defense overview</a>, with live examples and a short video</p>
 
   <h1 id="how">How It Works</h1>
 
   <h2 id="neuromorphic">Neuromorphic</h2>
 
-  <p>Neuromorphic is Axona's low-level message delivery layer. It passes each message through direct connections to nodes "closer" to the destination, which pass it closer still – a series of hops of decreasing distance. As in earlier peer-to-peer systems such as Kademlia, a node is identified by a globally unique identifier rather than a machine address, and "closer" means a smaller distance to the destination identifier. A node that originates or forwards a message prefers the contacts whose identifiers are closest to the destination. (A new cryptographic public key is generated for each session to use as the node identifier, so identifiers can't be forged to occupy a chosen "location" in the address space.)</p>
+  <p>Neuromorphic is Axona's low-level message delivery layer. It passes each message through direct connections to nodes that are "closer" to the destination, which pass it closer still – a series of hops of decreasing distance. As in earlier peer-to-peer systems such as Kademlia, a node is addressed by a globally unique identifier rather than an Internet address, and "closer" means a smaller distance to the destination address. (Cryptographic signatures are used to prevent nodes from tampering with each other's messages or from forging their own address.)</p>
 
-  <p>Older systems used a fixed algorithm to keep just enough connections to fill a table of contacts at varying distances. Neuromorphic adapts its connections dynamically, using rules modeled on how the brain strengthens some synapses and lets others wither. The rules weigh distance, frequency of use, and round-trip time. As with synapses, a node can form a direct connection to another node that often serves as an intermediary. Older systems need a number of hops proportional to the logarithm of the network size (20 or 30 hops for a million or a billion nodes, regardless of hop performance). <b>Neuromorphic gets faster the more it is used.</b></p>
+  <p>Older systems used a fixed algorithm to keep just enough connections to fill a table of contacts at varying distances. Neuromorphic adapts its connections dynamically, using rules modeled on how the brain strengthens some synapses and lets others wither. The rules weigh distance, frequency of use, and round-trip time. As with synapses, a node can form a direct connection to another node when the other node gets used a lot. Older systems need a number of hops proportional to the logarithm of the network size (20 or 30 hops for a million or a billion nodes, regardless of hop performance). <b>Neuromorphic gets faster the more it is used.</b></p>
 
-  <p>Browsers don't let pages listen for incoming network packets, but they do allow one peer to connect directly to another through WebRTC, the API behind video-conferencing services such as Zoom and Google Meet. Neuromorphic uses WebRTC for its direct connections, and that traffic is ordinary Internet traffic of a particular shape.</p>
+  <p>Browsers don't let pages listen for incoming network packets, but they do allow one peer to connect directly to another through WebRTC, the API behind video-conferencing services such as Zoom and Google Meet. Neuromorphic uses WebRTC for its direct connections.</p>
 
   <h2 id="pubsub">Pub/Sub</h2>
 
-  <p>Applications publish messages to a topic made of a topic name and other information. Axona serializes and hashes the topic into a destination address the same size as a Neuromorphic identifier, and the sender simply sends the message toward that address. The sender signs the message with a public key that can be persisted across sessions, letting receivers recognize pseudonymous senders over time.</p>
+  <p>Applications publish messages to a topic made of a topic name and other information. Axona serializes and hashes the topic into a destination address the same size as a Neuromorphic address, and the sender simply sends the message toward that address. A node subscribes by sending a similar message with the topic and its own Neuromorphic address.</p>
 
-  <p>A node subscribes by sending a similar message with the topic and its own Neuromorphic identifier. The node whose identifier is closest to the topic keeps a table of subscribers and forwards each new publication to them. When a node disconnects, it is removed from the table.</p>
-
-  <p>That closest node also retains recent publications and gives them to new subscribers. Subscriptions may include alternative transport information, such as platform "push" data, kept for a period after the subscriber disconnects so that later publications can still reach it.</p>
-
-  <p>Axona replicates all of this among peers as they join and leave, and spreads it across peers for load balancing. <b>Axona’s capacity increases with the number of peers online.</b> It also distributes topics over about 100 regions worldwide, similar in size to cloud "availability zones". Topics specify their region, along with optional owner information. This reduces both the hops and the per-hop latency for nodes in the same region.</p>
+  <p>The network itself builds a distributed structure, rooted at the nodes closest to the topic address:
+    <ul>
+      <li>The structure keeps track of the Neuromorphic address of each current subscriber. When a publication message reaches the structure, the new message is forwarded to each subscriber. <b>Publishers and subscribers are not directly connected, and know nothing about each other.</b></li>
+      <li>The structure keeps track of recent publication messages. When a subscription message reaches the structure, the past publications are forwarded to the new subscriber. <b>Subscribers can receive messages that were published before they opened the app.</b></li>
+      <li>The structure keeps track of optional alternative transport information. When the system tries to send a message to a subscriber that is no longer connected, the new publication is pushed over Apple/Google messaging <b>Subscribers can receive push notifications that were published after they closed the app.</b></li>
+    </ul>
+    Axona replicates all of this among peers as they join and leave, and spreads it across peers for load balancing. <b>Axona’s capacity increases with the number of peers online.</b>
+  </p>
+  <p>Axona defines about 100 regions worldwide, similar in size to cloud "availability zones". Topics and nodes specify a region, which is used in computing distance. This reduces both the number of hops and the per-hop latency for nodes in the same region.</p>
 
   <h2 id="example">Civil Defense as a Non-Exploitive Example</h2>
 
   <p>On the surface, Civil Defense is an ordinary browser crowd-mapping app using <a href="https://leafletjs.com/">LeafletJS</a> for display and <a href="https://www.openstreetmap.org/about">OpenStreetMap</a> for data. Underneath, alerts and discussions use Axona pub/sub, which resists tracking and takedown.</p>
 
-  <p><b>Alerts.</b> Users type arbitrary alert topic names and choose which alerts are active. A leading emoji becomes the map marker. Alerts and replies can be shared as URLs that carry the topic name, so receivers don't need to type it. Each message is signed with a pseudonymous pub/sub key that the user can delete at any time and does not leave the user’s browser.</p>
+  <p><b>Alerts.</b> Users type arbitrary alert topic names and choose which alerts are active. A leading emoji becomes the map marker. Alerts and replies can be shared as URLs that carry the topic name, so receivers don't need to type it. Instead of accounts, each message is signed with a pseudonymous cryptographic key that does not leave the user’s browser, and which can be abandoned at any time by the user, breaking any linkage.</p>
 
-  <p><b>Location.</b> <a href="https://www.npmjs.com/package/s2js">S2</a>, a library that defines nested cells over the globe, maps each alert's latitude and longitude to a set of cells, each no larger than an Axona region (which also uses S2). The alert topic name is combined with each cell to form full Axona topic names: creating an alert publishes to each nested topic. Based on the current map view, a user subscribes to the smallest set of non-overlapping cells covering it. They therefore receive exactly one publication for all and only the alerts in view that they have made active, and nothing about other activity in the world.</p>
+  <p><b>Location.</b> <a href="https://www.npmjs.com/package/s2js">S2</a>, a library that defines nested cells over the globe, maps each alert's latitude and longitude to a set of cells, each no larger than an Axona region (which also uses S2). The alert topic name is combined with each cell to form full Axona topic names: creating an alert publishes to each nested topic. Based on the current map view, a user subscribes to the smallest set of non-overlapping cells covering the area. They therefore receive exactly one publication for all and only their active topics, and nothing about other activity in the world.</p>
 
   <p><b>Privacy.</b> No one on the network can tell which alert topic names are in use, who sent an alert, where a user is, or who is subscribed to a topic.
     <ul>
@@ -142,7 +146,7 @@
 
 <h2 id="who">Who</h2>
 
-<p>Axona is written by YZ, a currently unincorporated group of developers that includes <a href="https://en.wikipedia.org/wiki/David_A._Smith_(computer_scientist)">David Smith</a> as architect and <a href="https://alum.mit.edu/www/stearns">Howard Stearns</a>. Howard Stearns wrote Civil Defense. The group has worked together on many projects, especially real-time distributed systems such as Croquet, of which David Smith is the principal architect.</p>
+<p>Axona is written by YZ, a currently unincorporated group of developers that includes <a href="https://en.wikipedia.org/wiki/David_A._Smith_(computer_scientist)">David Smith</a> as architect and <a href="https://alum.mit.edu/www/stearns">Howard Stearns</a>. Howard Stearns wrote Civil Defense. The group has worked together on many projects, especially real-time distributed systems such as <a href="https://croquet.io/">Croquet</a>, of which David Smith is the principal architect.</p>
 
 <h2 id="when">What's Next</h2>
 
@@ -152,7 +156,7 @@
 
 <p>The next Axona app is expected to be a social feed with the same safety properties as Civil Defense, with the item-selection algorithm running on the user's own device under their control. Users will be able to install their own algorithms. The default will learn your preferences much as Neuromorphic learns the best network routes.</p>
 
-<p>After that, YZ aims to build the Concordance Engine - high-speed real-time distributed infrastructure based on Croquet that runs on Axona with no central or fixed servers. Several first-person, multi-user games are under consideration, along with a design for a distributed digital accounting system that runs directly on mobile devices with instant settlement.</p>
+<p>After that, YZ aims to build the Concordance Engine - high-speed real-time distributed infrastructure based on Croquet that runs on Axona with no central or fixed servers. Several first-person, multi-user games are under consideration, along with a distributed digital accounting system that runs directly on mobile devices with instant settlement.</p>
 
 </main>
 </body>
