@@ -155,7 +155,12 @@ describe("CivilDefense", function () {
   }
   const inOrder = ['alice pub', '  bob pub'];
 
+  let hosts;
   beforeAll(async function () {
+    // Ensure three host nodes:
+    hosts = await Promise.all(Array.from({length: 3}).map(() => Node.create({location})));
+    await Promise.all(hosts.map(h => h.host()));
+
     [alice, bob] = await Promise.all([
       TestNode.create({location, events: {}, label: 'alice', authorIdentity: '{"kind":"author","pubkey":"b08988518013fabc5949353281d263cb7916f273f3f8badf0b16443a67d0b05c","privkey":"MC4CAQAwBQYDK2VwBCIEIC7ZrU8C2WSBdoBQW/JoE0ZYRkp/kFcCGf7H25DVqM17","createdAt":1782508727637}'}),
       TestNode.create({location, events: {}, label: '  bob', authorIdentity: '{"kind":"author","pubkey":"6447bae1e8f1d5c99243251b43b4d354fb4928c10b69076563617c06fff46ca3","privkey":"MC4CAQAwBQYDK2VwBCIEIGGHVqedJBPtzSDR3P03HHpWTPlyXteHJAPtABmdwujM","createdAt":1782508849433}'})
@@ -177,7 +182,7 @@ describe("CivilDefense", function () {
     //await TestNode.delay(4e3);
     //expect(await statsPromise).toBe(2);
     console.log('finished', currentOperation);
-  }, 2 * connectAllowanceMS + deliveryAllowanceMS);
+  }, 3 * connectAllowanceMS + deliveryAllowanceMS);
   describe("initial", function () {
     it("alice receives all pubs from herself and bob", function () { expect(alice.events.initial).toEqual(inOrder); });
     it("  bob receives all pubs from himself and bob", function () { expect(  bob.events.initial).toEqual(inOrder); });
@@ -232,5 +237,6 @@ describe("CivilDefense", function () {
       david?.disconnect(),
       emma?.disconnect(),
     ]);
+    await Promise.all(hosts.map(h => h.disconnect()));
   });
 });

@@ -104,7 +104,7 @@ async function installUpdate(event, newVersion) {
 if (!(await caches.has(appVersion))) cacheSource(appVersion);
 
 await navigator.serviceWorker
-  .register("/service-worker.js", {updateViaCache: 'none', type: 'module'})
+  .register("/app/service-worker.js", {updateViaCache: 'none', type: 'module'})
   .then(registration => {
     let serviceVersion;
     // No need to reset button/status on click, because we will be reloading.

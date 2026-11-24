@@ -12,16 +12,18 @@ import { P2PWebNetwork } from './p2pWebNetwork.js';
 export class Agent {
   // Tracks what we know of people, and updates avatars and handles representing them.
 
+  // Every alert or reply is authored by an Agent, referenced by tag string (a pubkey).
+  // For the user's own Agent, there is also an Identity object that has a public/private keypair for signing.
+
   // Agent metadata are always republished with each alert/reply, using alert's region in region/name/author
-  // Not republished when the value changes.
-  // Next time the agent is used in an alert/reply, it will publish to the region/name/author
+  // When a user then changes their Agent's metadata, it will publish to the region/name/author
   //   Any subscribers in that region will see the new value.
-  //   Subscribers in other regions will not know of the change -- until the user has activity there.
-  // A map display might cross across two or more regions. We do not want the same user to appear
+  //   Subscribers that are solely in other regions will not know of the change -- until the user has activity there.
+  // A map display might cut across two or more regions. We do not want the same user to appear
   // differently for alerts on the other side of an arbitrary and invisible line.
-  // Thus we keep on Agent per persona tag, and have it display the latest info we have.
+  // Thus we keep on Agent per persona tag rather than per tag-region, and have it display the latest info we have, wherever it was received.
   // Currently, this is done with a subscription for each region in which we have had
-  // a referencing open alert this session, and it remains an active subscription through the session.
+  // a referencing open alert this session -- any such subscription handler changes the same canonical Agent.
   // (We don't want to try to determine when the last reference goes away to unsubscribe, and we
   // don't want to continuously subscribe/unsubscribe when opening and closing alerts.)
 
@@ -29,12 +31,13 @@ export class Agent {
     // Throughout, 'type' is either 'avatar' (indicating an image) or 'handle' (a string).
 
     this.identity = identity; // (tag gets carried through the system handle.)
+
     // The system value for handle and avatar is the same, but it is convenient to
     // represent this as two types, like everything else.
     this.updateValue(tag, 'system', 'handle');
     this.updateValue(tag, 'system', 'avatar');
     // Our private choice for this user is stored locally.
-    // But for our own avatar, is the public choice.
+    // But for our own avatar, it is the public choice.
     const scope = Agent.isMine(tag) ? 'public' : 'private';
     this.updateFromLocal(scope, 'handle');
     this.updateFromLocal(scope, 'avatar');
@@ -55,14 +58,6 @@ export class Agent {
     // We do not currently use this. Instead, we publish agent metadata to where we publish, and tell the world about changes wherever we last published.
     // Others will either see that change, or not (and thus get older values). We do not RE-publish to the regions of past publishing.
     throw new Error('FIXME we should not be using homeRegion now');
-    // but rather just to one region derived from the agent tag.
-    if (!this._homeRegion) {
-      const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(tag));
-      const bytes = new Uint8Array(hash);
-      const rawCode = bytes[0]; // hash is distributed uniformly, so it doesn't matter which we take.
-      this._homeRegion = rawCode < 0xcf ? rawCode : rawCode & 0x3f; // Wrap around when we get to reserved regions.
-    }
-    return this._homeRegion;
   }
   updateFromLocal(scope, type, tag = this.tag) { // get value locally, and then update (which may have side-effect)
     const value = localStorage.getItem(this.localPersistKey(type, tag));
@@ -184,7 +179,7 @@ export class Agent {
     this.elements[type][scope].delete(element);
   }
 
-  describe(event) { // Describe someone who posted or replied
+  describe(event) { // Describe someone who posted or replied. The user can click on elements of the display to define their own "pet name" versions.
     const content = openDisplay('correspondentContainer', event);
     const handleSpan = content.querySelector('.handle');
     const avatarSpan = content.querySelector('.avatar');
@@ -217,7 +212,7 @@ export class Agent {
     clickTip(publicHandle, Int`Capture this name they are currently sharing, so that even if the user changes what they share, you'll still see this text for alerts and replies by this user.`, event => {
       consume(event);
       this.updateValue(publicHandle.getAttribute('value') || '', 'private', 'handle');
-    });
+     });
     privateHandle.oninput = event => {
       resetInactivityTimer();
       this.updateValue(DOMPurify.sanitize(privateHandle.value) || null, 'private', 'handle');
@@ -273,9 +268,11 @@ export class Agent {
     else await this.updateValue(dataURL, scope, 'avatar');
     return dataURL;
   }
+
+  // A user currently has just one agent that represents themself.
   static current = null;
   static tag = null;
-  static identity = null; // Only for our own Agent(s).
+  static identity = null;
   // Keep user separate between dht=1 or empty (Axona) vs dht=0 or -1 (no Axona, for testing).
   static usertagKey = `usertag${(dht <= 0) ? '0' : ''}`;
   static switchUser(tag, identity, region = null) { // Set/persist/ensure the current user, return Agent
@@ -284,7 +281,7 @@ export class Agent {
     localStorage.setItem(this.usertagKey, this.tag);
     return this.current = this.ensure({tag, identity, region});
   }
-  static async initialize(startupRegion) { // Initialize what the agent needs from the about screen
+  static async initialize(startupRegion) { // Initialize what our own Agent needs from the app's "about"/"profile" screen.
     let tag = localStorage.getItem(Agent.usertagKey);
     const persistAs = tag || uuidv4(); // Give it SOMETHING to persistAs.
     const myIdentity = await P2PWebNetwork.createAuthorIdentity({persistAs});

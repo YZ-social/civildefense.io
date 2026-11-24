@@ -128,12 +128,30 @@ if (cluster.isPrimary) { // Parent process with portal webserver through which c
 
   app.use(express.json());
 
-  app.use('/images', express.static(resolve('../public/images'), {
+  // The canonical paths within the domain are /app/* and /about/*.
+  // Explicit references to either should work, regardless of domain.
+  // Here we arrange for app.<domain> and <domain> to rewrite to the above if/as needed.
+  // This could also be done with the vhost npm package, or with a front end.
+  app.use((req, res, next) => {
+    if (!req.url.startsWith('/app') && !req.url.startsWith('/about')) {
+      console.log('rewrite', req.url);
+      if (req.hostname.startsWith('app.')) req.url = '/app' + req.url;
+      else req.url = '/about' + req.url;
+    }
+    next();
+  });
+
+  app.use('/about', express.static(resolve('../about'), {
     maxAge: '1d',
     etag: true,
     immutable: true
   }));
-  app.use(express.static(resolve('../public'), {
+  app.use('/app/images', express.static(resolve('../app/images'), {
+    maxAge: '1d',
+    etag: true,
+    immutable: true
+  }));
+  app.use('/app', express.static(resolve('../app'), {
     extensions: ['js'] // Some dependencies refer to .js files as relative pathnames, with the .js missing.
   }));
 

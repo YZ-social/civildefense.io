@@ -1,7 +1,7 @@
 const { Request, Response, URL, clients} = self;
 // Little point in trying to automatically pull this through package.json, as we need a byte change in THIS file to trigger a new worker.
-const serviceVersion = '5.4.16';
-const releaseNotesURL = 'https://docs.google.com/document/d/19tHpWN1B-xKpZpuBHRuxv89qY39d34UNZM0i5cViCQU/edit?usp=sharing';
+const serviceVersion = '5.4.17';
+const releaseNotesURL = 'https://docs.google.com/document/d/1udLFB7RlRjWS22GXg-mqQuVmRBVxO_oUPx4LeTwlptE/edit?usp=sharing';
 
 function delay(ms) { // Promise to resolve in the specified number of milliseconds.
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -9,7 +9,7 @@ function delay(ms) { // Promise to resolve in the specified number of millisecon
 
 const cacheList = [ // The files we need.
   "/",
-  "/index.html", // Just in case anyone is specifying that.
+  "index.html", // Just in case anyone is specifying that.
   "favicon.ico",
   "manifest.json",
   "package.json",

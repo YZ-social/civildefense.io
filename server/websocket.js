@@ -1,6 +1,6 @@
 // Offer a websocket connection for testing, that skips the DHT entirely, and accepts publishing by pushing to subscribers over the websocket.
 import { WebSocketServer } from 'ws';
-import { operators } from '../public/javascripts/pubsub.js';
+import { operators } from '../app/javascripts/pubsub.js';
 
 const sockets = {};
 operators.setSender((nodeId, eventHandlerId, envelope) => new Promise((resolve, reject) => {
